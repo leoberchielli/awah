@@ -1,0 +1,13 @@
+# Fim de linha normalizado no repositório, sempre LF.
+#
+# O Biome formata com LF e o CI roda em Linux. Sem isto, um contribuidor no
+# Windows com core.autocrlf=true vê o repositório inteiro como modificado na
+# primeira vez que salva um arquivo, e o lint reclama de todos eles.
+* text=auto eol=lf
+
+# Binários e o que o GitHub não deve contar como código escrito à mão.
+*.png binary
+*.woff binary
+*.woff2 binary
+pnpm-lock.yaml linguist-generated=true
+packages/db/migrations/** linguist-generated=true
