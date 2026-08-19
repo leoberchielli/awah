@@ -4,11 +4,13 @@ import { ChatwootClient, ChatwootError } from './chatwoot/client'
 import {
   type ChatwootConfig,
   clearIntegrationError,
+  type HttpConfig,
   type LoadedIntegration,
   loadActiveIntegrations,
   recordIntegrationError,
   type TypebotConfig,
 } from './config'
+import { HttpConnector, HttpConnectorError } from './http/connector'
 import { expireLink, findLink, upsertLink } from './links'
 import { TypebotClient, TypebotError } from './typebot/client'
 
@@ -36,6 +38,7 @@ export interface IntegrationDispatcherDeps {
   /** Injetáveis para teste. */
   chatwootFactory?: (config: ChatwootConfig) => ChatwootClient
   typebotFactory?: (config: TypebotConfig) => TypebotClient
+  httpFactory?: (config: HttpConfig) => HttpConnector
 }
 
 /** Três tentativas em ~7 s cobrem o reinício de um contêiner do outro lado. */
@@ -83,8 +86,10 @@ export class IntegrationDispatcher {
       try {
         if (integracao.row.kind === 'chatwoot') {
           await this.paraChatwoot(integracao as LoadedIntegration<'chatwoot'>, mensagem)
-        } else {
+        } else if (integracao.row.kind === 'typebot') {
           await this.paraTypebot(integracao as LoadedIntegration<'typebot'>, mensagem)
+        } else {
+          await this.paraHttp(integracao as LoadedIntegration<'http'>, mensagem)
         }
 
         if (integracao.row.lastError) {
@@ -199,6 +204,49 @@ export class IntegrationDispatcher {
   }
 
   /**
+   * O escape para qualquer plataforma.
+   *
+   * Posta o evento e envia de volta o que a resposta trouxer. Diferente de um
+   * webhook comum, que avisa e esquece: aqui a resposta **é** a mensagem, e é
+   * isso que permite a um fluxo do n8n ou a uma função serverless ser o robô
+   * sem que ninguém escreva um conector dedicado aqui dentro.
+   */
+  private async paraHttp(
+    integracao: LoadedIntegration<'http'>,
+    mensagem: MensagemRecebida,
+  ): Promise<void> {
+    const conector = this.criarHttp(integracao.config)
+
+    const resultado = await tentar(TENTATIVAS, () =>
+      conector.enviar({
+        event: 'message.received',
+        data: {
+          sessionId: mensagem.sessionId,
+          messageId: mensagem.engineMessageId,
+          chatId: mensagem.chatId,
+          from: mensagem.fromJid,
+          type: 'text',
+          body: mensagem.body,
+          timestamp: mensagem.occurredAt.toISOString(),
+        },
+      }),
+    )
+
+    /**
+     * Resposta que não virou mensagem é registrada como erro, não engolida.
+     *
+     * Silêncio aqui é o pior resultado possível: quem acabou de plugar uma
+     * plataforma nova ficaria olhando para uma conversa parada sem nenhuma
+     * pista de que o formato da resposta estava errado.
+     */
+    if (resultado.diagnostico) {
+      throw new Error(resultado.diagnostico)
+    }
+
+    await this.enfileirar(mensagem, integracao.row.id, resultado.replies)
+  }
+
+  /**
    * As respostas entram pela mesma fila de qualquer outro envio.
    *
    * É o ponto do arranjo: a resposta do fluxo herda ordem por conversa, motor de
@@ -240,6 +288,10 @@ export class IntegrationDispatcher {
   private criarTypebot(config: TypebotConfig): TypebotClient {
     return this.deps.typebotFactory?.(config) ?? new TypebotClient(config)
   }
+
+  private criarHttp(config: HttpConfig): HttpConnector {
+    return this.deps.httpFactory?.(config) ?? new HttpConnector(config)
+  }
 }
 
 /**
@@ -259,7 +311,10 @@ async function tentar<T>(vezes: number, acao: () => Promise<T>): Promise<T> {
       ultimo = erro
 
       const permanente =
-        (erro instanceof ChatwootError || erro instanceof TypebotError) && erro.isPermanente
+        (erro instanceof ChatwootError ||
+          erro instanceof TypebotError ||
+          erro instanceof HttpConnectorError) &&
+        erro.isPermanente
       if (permanente || i === vezes - 1) break
 
       await new Promise((resolve) => setTimeout(resolve, ESPERA_BASE_MS * 2 ** i))

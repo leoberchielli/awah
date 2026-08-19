@@ -16,8 +16,13 @@ export const engineType = pgEnum('engine_type', ['baileys', 'cloud_api', 'wwebjs
  * automatizado e responde ao que chega. Eles não são exclusivos entre si: o
  * arranjo mais comum é o fluxo atender primeiro e passar para o humano quando
  * não dá conta.
+ *
+ * `http` é o escape: fala com qualquer coisa que aceite um POST e devolva JSON.
+ * Existe para que plugar uma plataforma nova não dependa de alguém escrever um
+ * conector dedicado aqui dentro — n8n, Make, uma função serverless ou o sistema
+ * da casa entram por ele sem mudança de código.
  */
-export const integrationKind = pgEnum('integration_kind', ['chatwoot', 'typebot'])
+export const integrationKind = pgEnum('integration_kind', ['chatwoot', 'typebot', 'http'])
 
 export const sessionStatus = pgEnum('session_status', [
   'created',

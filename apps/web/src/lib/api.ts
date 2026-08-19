@@ -170,7 +170,7 @@ export interface QrResponse {
 export interface Integration {
   id: string
   sessionId: string
-  kind: 'chatwoot' | 'typebot'
+  kind: 'chatwoot' | 'typebot' | 'http'
   active: boolean
   /** Última falha ao falar com a ferramenta. Nulo quando está tudo bem. */
   lastError: string | null
@@ -208,4 +208,16 @@ export interface CaixaChatwoot {
 export interface DescobertaChatwoot {
   accounts: ContaChatwoot[]
   inboxes: CaixaChatwoot[] | null
+}
+
+export interface TesteDoConector {
+  /** Falso quando a resposta não virou mensagem — o diagnóstico diz por quê. */
+  ok: boolean
+  status: number
+  durationMs: number
+  replies: string[]
+  raw: string
+  diagnostico: string | null
+  /** O que foi postado, para montar o fluxo do outro lado em cima da amostra. */
+  sentPayload: Record<string, unknown>
 }

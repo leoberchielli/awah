@@ -24,7 +24,7 @@ número"**.
 
 ## Estado
 
-**Ondas 0 a 10 concluídas.** A sessão conecta e pareia, o envio passa por uma fila
+**Ondas 0 a 11 concluídas.** A sessão conecta e pareia, o envio passa por uma fila
 durável com ordem garantida por conversa, o motor de risco regula o ritmo para
 proteger o número, os eventos saem por webhooks assinados, o gateway roda em
 várias réplicas com failover automático, a operação é mensurável por um painel
@@ -46,12 +46,13 @@ real.**
 | 8 | Documentação, SDK TypeScript, hardening | ✅ |
 | 9 | Conectores nativos de Chatwoot e Typebot | ✅ |
 | 10 | Adoção sem curl: setup no painel e assistentes de conexão | ✅ |
+| 11 | Conector HTTP: plugar qualquer plataforma sem conector novo | ✅ |
 
 > Nada além do pareamento foi exercitado contra um número real de ponta a ponta:
 > o QR é gerado e o socket conecta, mas o funil de entrega, os limites do motor
 > de risco em carga e o failover com sessão conectada ainda não passaram por um
 > aparelho de verdade. Os números do painel vêm dos agregados; a mecânica é
-> coberta por 349 testes, e ainda assim é teste, não produção.
+> coberta por 366 testes, e ainda assim é teste, não produção.
 
 ## Documentação
 
@@ -60,6 +61,7 @@ real.**
 | [docs/comecando.md](docs/comecando.md) | Do zero a uma conversa no Chatwoot, sem curl nenhum |
 | Este README | O que o projeto faz e como usar cada parte |
 | [docs/integracoes.md](docs/integracoes.md) | Ligar Chatwoot e Typebot, e o que o gateway acrescenta a eles |
+| [docs/qualquer-plataforma.md](docs/qualquer-plataforma.md) | O conector HTTP: n8n, Make, serverless, sistema próprio |
 | [docs/producao.md](docs/producao.md) | Subir e não se arrepender: TLS, backup, réplicas, monitoramento |
 | [docs/solucao-de-problemas.md](docs/solucao-de-problemas.md) | Os sintomas que aparecem de verdade e o que cada um costuma ser |
 | [packages/sdk](packages/sdk/README.md) | Cliente TypeScript, sem dependências |
@@ -434,11 +436,12 @@ os **bytes crus** do corpo, não sobre o JSON reserializado: reserializar produz
 bytes parecidos, não idênticos, e o HMAC falharia de forma intermitente e
 inexplicável.
 
-## Chatwoot e Typebot
+## Integrações
 
 O AWAH não tem caixa de entrada nem construtor de fluxo, e isso é decisão, não
-lacuna. O Chatwoot já resolve atendimento humano; o Typebot já resolve fluxo. O
-que falta aos dois é justamente o que o gateway tem:
+lacuna. O Chatwoot já resolve atendimento humano; o Typebot já resolve fluxo;
+qualquer outra plataforma entra pelo conector HTTP. O que falta a todas elas é
+justamente o que o gateway tem:
 
 | | Ligado direto na Meta | Com o AWAH embaixo |
 | --- | --- | --- |
@@ -463,6 +466,30 @@ dele.
 ```bash
 curl -X PUT http://localhost:2900/v1/sessions/$ID/integrations/typebot -H "Authorization: Bearer $AWAH_KEY" -H 'content-type: application/json' -d '{"shareUrl":"https://typebot.io/meu-fluxo"}'
 ```
+
+### Qualquer outra plataforma
+
+Os dois conectores acima existem porque são os casos mais comuns. Para o resto há
+o **conector HTTP**: o gateway posta cada mensagem recebida na sua URL e envia de
+volta o que a resposta trouxer.
+
+```bash
+curl -X PUT http://localhost:2900/v1/sessions/$ID/integrations/http -H "Authorization: Bearer $AWAH_KEY" -H 'content-type: application/json' -d '{"url":"https://n8n.exemplo.com/webhook/atendimento","secret":"um-segredo-bem-longo"}'
+```
+
+Responda `{"reply":"texto"}` e a mensagem sai. Responda vazio e nada sai — válido
+para quem só quer registrar. Com isso, n8n, Make, uma função serverless ou o
+sistema da casa viram o robô sem ninguém escrever conector novo aqui dentro.
+
+**Isso não é o mesmo que um webhook.** Webhook avisa e esquece: a resposta dele é
+ignorada. O conector faz pergunta e resposta, e o que volta entra pela mesma fila
+de qualquer envio — com ordem por conversa, motor de risco e reentrega. Um fluxo
+do n8n ligado direto na Meta não tem nada disso.
+
+O painel tem um botão **Testar** que manda um evento de exemplo e mostra status,
+tempo, o corpo cru e — quando a resposta não vira mensagem — o motivo. Receitas
+para cada plataforma em
+[docs/qualquer-plataforma.md](docs/qualquer-plataforma.md).
 
 Os dois convivem na mesma sessão, que é o arranjo mais útil: o Typebot atende
 primeiro, e quando o cliente digita **atendente** o fluxo se cala e o agente
@@ -564,7 +591,7 @@ apps/api
   cluster/        lease, roteamento de comando, failover
   dashboard/      estáticos do painel e fallback de rota de cliente
   engines/        contrato EngineAdapter + Baileys e Cloud API
-  integrations/   conectores de Chatwoot e Typebot
+  integrations/   conectores de Chatwoot, Typebot e HTTP genérico
   sessions/       ciclo de vida, reconexão, posse por nó
   messaging/      outbox, scheduler, persistência, retenção
   risk/           orçamento, warmup, score, jitter

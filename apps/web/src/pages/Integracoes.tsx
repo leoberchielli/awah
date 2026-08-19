@@ -6,9 +6,10 @@ import type { Integration, SessionRow } from '../lib/api'
 import { del } from '../lib/api'
 import { dataHora } from '../lib/format'
 import { AssistenteChatwoot } from './integracoes/AssistenteChatwoot'
+import { AssistenteHttp } from './integracoes/AssistenteHttp'
 import { AssistenteTypebot } from './integracoes/AssistenteTypebot'
 
-const NOMES = { chatwoot: 'Chatwoot', typebot: 'Typebot' } as const
+const NOMES = { chatwoot: 'Chatwoot', typebot: 'Typebot', http: 'Plataforma externa' } as const
 
 export function Integracoes() {
   const sessoes = useQuery<{ sessions: SessionRow[] }>('/v1/sessions', 0)
@@ -21,7 +22,7 @@ export function Integracoes() {
       <div className="flex flex-col gap-4">
         <Card
           title="Ferramentas ligadas"
-          hint="O AWAH é o transporte: o Chatwoot cuida do atendimento humano, o Typebot cuida do fluxo, e a fila durável, a ordem por conversa e o motor de risco ficam embaixo dos dois."
+          hint="O AWAH é o transporte. Chatwoot e Typebot têm conector próprio; qualquer outra plataforma entra pelo conector HTTP. Em todos os casos, a fila durável, a ordem por conversa e o motor de risco ficam embaixo."
         >
           {!integracoes.settled ? (
             <Skeleton className="h-24" />
@@ -44,6 +45,7 @@ export function Integracoes() {
         <div className="grid items-start gap-4 lg:grid-cols-2">
           <AssistenteChatwoot sessoes={lista} aoSalvar={integracoes.refetch} />
           <AssistenteTypebot sessoes={lista} aoSalvar={integracoes.refetch} />
+          <AssistenteHttp sessoes={lista} aoSalvar={integracoes.refetch} />
         </div>
       </div>
     </Shell>

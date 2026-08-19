@@ -59,12 +59,44 @@ export const typebotConfigSchema = z.object({
   humanHandoffReply: z.string().default('Certo! Vou chamar alguém da equipe.'),
 })
 
+/**
+ * O conector para qualquer plataforma.
+ *
+ * Existe para que plugar uma ferramenta nova não dependa de alguém escrever um
+ * conector dedicado aqui dentro. Qualquer coisa que aceite um POST e devolva
+ * JSON serve: n8n, Make, uma função serverless, o sistema da casa.
+ */
+export const httpConfigSchema = z.object({
+  url: z.string().url().describe('Para onde o gateway posta cada mensagem recebida.'),
+  /**
+   * Assina o corpo em HMAC-SHA256, no mesmo esquema dos webhooks — quem já
+   * valida webhook do AWAH valida isto com a mesma função. Opcional porque em
+   * rede fechada é peso sem ganho; obrigatório na prática se a URL for pública.
+   */
+  secret: z.string().min(16).optional(),
+  /** Cabeçalhos fixos. É onde entra o token de autenticação do outro lado. */
+  headers: z.record(z.string()).optional(),
+  /**
+   * Teto de espera. Fica no caminho da mensagem, então é curto de propósito: a
+   * plataforma que demora 30 s para responder atrasa a fila inteira daquela
+   * conversa.
+   */
+  timeoutMs: z.coerce.number().int().min(500).max(30_000).default(10_000),
+  /** Caminho por ponto até a resposta, quando ela vem aninhada. */
+  replyPath: z.string().optional(),
+  /** Rótulo do painel, para distinguir quando houver mais de um. */
+  label: z.string().min(1).default('Plataforma externa'),
+})
+
 export type ChatwootConfig = z.infer<typeof chatwootConfigSchema>
 export type TypebotConfig = z.infer<typeof typebotConfigSchema>
+export type HttpConfig = z.infer<typeof httpConfigSchema>
+export type AnyIntegrationConfig = ChatwootConfig | TypebotConfig | HttpConfig
 
 const SCHEMAS = {
   chatwoot: chatwootConfigSchema,
   typebot: typebotConfigSchema,
+  http: httpConfigSchema,
 } as const
 
 export interface IntegrationRow {
@@ -78,9 +110,15 @@ export interface IntegrationRow {
   createdAt: Date
 }
 
+type ConfigDe<K extends IntegrationKind> = K extends 'chatwoot'
+  ? ChatwootConfig
+  : K extends 'typebot'
+    ? TypebotConfig
+    : HttpConfig
+
 export interface LoadedIntegration<K extends IntegrationKind = IntegrationKind> {
   row: IntegrationRow
-  config: K extends 'chatwoot' ? ChatwootConfig : TypebotConfig
+  config: ConfigDe<K>
 }
 
 const COLUMNS = {
@@ -94,7 +132,7 @@ const COLUMNS = {
   createdAt: schema.integrations.createdAt,
 }
 
-export function parseConfig(kind: IntegrationKind, valor: unknown): ChatwootConfig | TypebotConfig {
+export function parseConfig(kind: IntegrationKind, valor: unknown): AnyIntegrationConfig {
   const resultado = SCHEMAS[kind].safeParse(valor)
 
   if (!resultado.success) {
@@ -113,7 +151,7 @@ export async function saveIntegration(
     orgId: string
     sessionId: string
     kind: IntegrationKind
-    config: ChatwootConfig | TypebotConfig
+    config: AnyIntegrationConfig
     active?: boolean
     /**
      * Id escolhido de fora.

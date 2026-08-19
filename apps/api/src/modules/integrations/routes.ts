@@ -6,14 +6,22 @@ import { z } from 'zod'
 import { requireAuth } from '../../auth/plugin'
 import { ChatwootClient, ChatwootError } from '../../integrations/chatwoot/client'
 import {
+  type AnyIntegrationConfig,
   type ChatwootConfig,
   deleteIntegration,
   findIntegrationById,
+  type HttpConfig,
+  httpConfigSchema,
   listIntegrations,
   parseConfig,
   saveIntegration,
   type TypebotConfig,
 } from '../../integrations/config'
+import {
+  EVENTO_DE_TESTE,
+  HttpConnector,
+  HttpConnectorError,
+} from '../../integrations/http/connector'
 import { findLinkByExternal } from '../../integrations/links'
 import { derivarDoLink, TypebotClient } from '../../integrations/typebot/client'
 import { randomToken, safeEqual } from '../../lib/crypto'
@@ -24,7 +32,7 @@ import { SessionRepository } from '../../repos/sessions'
 const integrationSchema = z.object({
   id: z.string(),
   sessionId: z.string(),
-  kind: z.enum(['chatwoot', 'typebot']),
+  kind: z.enum(['chatwoot', 'typebot', 'http']),
   active: z.boolean(),
   lastError: z.string().nullable().describe('Última falha ao falar com a ferramenta.'),
   lastErrorAt: z.date().nullable(),
@@ -45,7 +53,30 @@ export async function integrationRoutes(app: FastifyInstance) {
    * derrubar a sessão, a conversa simplesmente não chegaria na ferramenta, sem
    * ninguém saber por quê.
    */
-  async function verificar(kind: IntegrationKind, config: ChatwootConfig | TypebotConfig) {
+  async function verificar(kind: IntegrationKind, config: AnyIntegrationConfig) {
+    /**
+     * O conector genérico é exercitado de verdade: manda um evento de exemplo e
+     * conta o que voltou. Aceitar sem testar deixaria a plataforma calada até a
+     * primeira mensagem de um cliente real, que é justamente a hora errada de
+     * descobrir que a URL estava errada.
+     */
+    if (kind === 'http') {
+      const resultado = await new HttpConnector(config as HttpConfig).enviar(EVENTO_DE_TESTE)
+
+      if (resultado.diagnostico) {
+        return {
+          detail: `A plataforma respondeu ${resultado.status} em ${resultado.durationMs} ms, mas nada virou mensagem: ${resultado.diagnostico}`,
+        }
+      }
+
+      return {
+        detail:
+          resultado.replies.length > 0
+            ? `Respondeu ${resultado.status} em ${resultado.durationMs} ms com ${resultado.replies.length} mensagem(ns).`
+            : `Respondeu ${resultado.status} em ${resultado.durationMs} ms, sem mensagem de volta — válido para quem só quer registrar o que chega.`,
+      }
+    }
+
     if (kind === 'chatwoot') {
       const cliente = new ChatwootClient(config as ChatwootConfig)
       const inbox = await cliente.verificar()
@@ -218,6 +249,75 @@ export async function integrationRoutes(app: FastifyInstance) {
     },
   )
 
+  /**
+   * Manda um evento de exemplo e conta o que voltou.
+   *
+   * Quando alguém pluga uma plataforma que ninguém aqui conhece, a alternativa a
+   * este botão é adivinhação: a conversa simplesmente não responde e não há
+   * pista de onde está o engano. Aqui aparecem status, tempo, o corpo cru e o
+   * diagnóstico de por que a resposta não virou mensagem.
+   */
+  route.post(
+    '/v1/integrations/http/test',
+    {
+      preHandler: app.requirePermission('session:write'),
+      config: { rateLimit: { max: 20, timeWindow: '1 minute' } },
+      schema: {
+        tags: ['integrações'],
+        summary: 'Testar uma URL de conector',
+        body: z.object({
+          url: z.string().url(),
+          secret: z.string().min(16).optional(),
+          headers: z.record(z.string()).optional(),
+          timeoutMs: z.coerce.number().int().min(500).max(30_000).optional(),
+          replyPath: z.string().optional(),
+        }),
+        response: {
+          200: z.object({
+            ok: z.boolean(),
+            status: z.number(),
+            durationMs: z.number(),
+            replies: z.array(z.string()),
+            raw: z.string(),
+            diagnostico: z.string().nullable(),
+            /** O que foi postado, para quem está montando o fluxo do outro lado. */
+            sentPayload: z.record(z.unknown()),
+          }),
+        },
+      },
+    },
+    async (request) => {
+      const config = httpConfigSchema.parse(request.body)
+
+      try {
+        const resultado = await new HttpConnector(config).enviar(EVENTO_DE_TESTE)
+
+        return {
+          ok: resultado.diagnostico === null,
+          ...resultado,
+          sentPayload: EVENTO_DE_TESTE as unknown as Record<string, unknown>,
+        }
+      } catch (erro) {
+        /**
+         * Falha de rede vira resposta, não erro da API: quem está testando quer
+         * ver o motivo na tela, e um 500 aqui só diria "deu errado".
+         */
+        return {
+          ok: false,
+          status: erro instanceof HttpConnectorError ? erro.status : 0,
+          durationMs: 0,
+          replies: [],
+          raw: '',
+          diagnostico:
+            erro instanceof Error
+              ? erro.message
+              : 'Não consegui alcançar essa URL. Confira se ela é acessível a partir do servidor do gateway.',
+          sentPayload: EVENTO_DE_TESTE as unknown as Record<string, unknown>,
+        }
+      }
+    },
+  )
+
   route.put(
     '/v1/sessions/:id/integrations/:kind',
     {
@@ -227,7 +327,7 @@ export async function integrationRoutes(app: FastifyInstance) {
         summary: 'Ligar uma ferramenta à sessão',
         description:
           'Testa a conexão antes de gravar. PUT porque o conjunto vale inteiro: um token novo com o id de caixa antigo é configuração quebrada, não parcial.',
-        params: z.object({ id: z.string().uuid(), kind: z.enum(['chatwoot', 'typebot']) }),
+        params: z.object({ id: z.string().uuid(), kind: z.enum(['chatwoot', 'typebot', 'http']) }),
         body: z.record(z.unknown()),
         response: {
           200: z.object({

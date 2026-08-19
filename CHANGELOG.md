@@ -108,6 +108,23 @@ quando o conjunto estiver exercitado contra tráfego real.
   separados, e recusa o link do editor explicando onde está o certo — em vez de
   aceitar e falhar depois, na primeira mensagem de um cliente real.
 
+**Qualquer plataforma**
+
+- Conector HTTP genérico: o gateway posta a mensagem recebida numa URL e envia
+  de volta o que a resposta trouxer. É o escape que faz plugar uma ferramenta
+  nova não depender de alguém escrever um conector dedicado — n8n, Make, uma
+  função serverless ou o sistema da casa entram por ele sem mudança de código.
+- Diferente de um webhook comum, que avisa e esquece: aqui a resposta **é** a
+  mensagem, e entra pela mesma fila de qualquer envio, com ordem por conversa,
+  motor de risco e reentrega.
+- Aceita as formas de resposta que aparecem na prática (`reply`, `replies`,
+  `text`, array, string) e, quando nada é reconhecido, devolve o diagnóstico do
+  motivo em vez de ficar em silêncio.
+- Assinatura HMAC no mesmo esquema dos webhooks, então quem já valida um valida o
+  outro com a mesma função do SDK.
+- Botão de teste que manda um evento de exemplo e mostra status, tempo, corpo
+  cru e o que seria enviado.
+
 ### Segurança
 
 - Em `NODE_ENV=production`, a API se recusa a subir com os segredos de
