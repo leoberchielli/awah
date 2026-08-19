@@ -48,9 +48,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Sem `version` aqui: a action lê o `packageManager` do package.json, e
+      # declarar nos dois lugares faz ela abortar com "multiple versions".
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9
 
       - uses: actions/setup-node@v4
         with:
@@ -97,9 +97,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Sem `version` aqui: a action lê o `packageManager` do package.json, e
+      # declarar nos dois lugares faz ela abortar com "multiple versions".
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9
 
       - uses: actions/setup-node@v4
         with:
