@@ -18,6 +18,7 @@ import type { Env } from './env'
 import { AppError } from './lib/errors'
 import { authRoutes } from './modules/auth/routes'
 import { healthRoutes } from './modules/health/routes'
+import { integrationRoutes } from './modules/integrations/routes'
 import { apiKeyRoutes } from './modules/keys/routes'
 import { messageRoutes } from './modules/messages/routes'
 import { metaRoutes } from './modules/meta/routes'
@@ -279,6 +280,7 @@ export async function buildApp(env: Env): Promise<FastifyInstance> {
   await app.register(riskRoutes)
   await app.register(metricsRoutes)
   await app.register(metaRoutes)
+  await app.register(integrationRoutes)
 
   return app
 }

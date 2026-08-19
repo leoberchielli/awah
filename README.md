@@ -24,7 +24,7 @@ número"**.
 
 ## Estado
 
-**Ondas 0 a 8 concluídas.** A sessão conecta e pareia, o envio passa por uma fila
+**Ondas 0 a 9 concluídas.** A sessão conecta e pareia, o envio passa por uma fila
 durável com ordem garantida por conversa, o motor de risco regula o ritmo para
 proteger o número, os eventos saem por webhooks assinados, o gateway roda em
 várias réplicas com failover automático, a operação é mensurável por um painel
@@ -44,18 +44,20 @@ real.**
 | 6 | Dashboard React: operação, negócio e sessões | ✅ |
 | 7 | Adapter Cloud API atrás do mesmo contrato | ✅ |
 | 8 | Documentação, SDK TypeScript, hardening | ✅ |
+| 9 | Conectores nativos de Chatwoot e Typebot | ✅ |
 
 > Nada além do pareamento foi exercitado contra um número real de ponta a ponta:
 > o QR é gerado e o socket conecta, mas o funil de entrega, os limites do motor
 > de risco em carga e o failover com sessão conectada ainda não passaram por um
 > aparelho de verdade. Os números do painel vêm dos agregados; a mecânica é
-> coberta por 296 testes, e ainda assim é teste, não produção.
+> coberta por 334 testes, e ainda assim é teste, não produção.
 
 ## Documentação
 
 | Documento | Sobre |
 | --- | --- |
 | Este README | O que o projeto faz e como usar cada parte |
+| [docs/integracoes.md](docs/integracoes.md) | Ligar Chatwoot e Typebot, e o que o gateway acrescenta a eles |
 | [docs/producao.md](docs/producao.md) | Subir e não se arrepender: TLS, backup, réplicas, monitoramento |
 | [docs/solucao-de-problemas.md](docs/solucao-de-problemas.md) | Os sintomas que aparecem de verdade e o que cada um costuma ser |
 | [packages/sdk](packages/sdk/README.md) | Cliente TypeScript, sem dependências |
@@ -429,6 +431,35 @@ os **bytes crus** do corpo, não sobre o JSON reserializado: reserializar produz
 bytes parecidos, não idênticos, e o HMAC falharia de forma intermitente e
 inexplicável.
 
+## Chatwoot e Typebot
+
+O AWAH não tem caixa de entrada nem construtor de fluxo, e isso é decisão, não
+lacuna. O Chatwoot já resolve atendimento humano; o Typebot já resolve fluxo. O
+que falta aos dois é justamente o que o gateway tem:
+
+| | Ligado direto na Meta | Com o AWAH embaixo |
+| --- | --- | --- |
+| Ordem por conversa | sem garantia | FIFO por chat, chats em paralelo |
+| Mensagem perdida | dispara e esquece | fila durável, retry, DLQ com replay |
+| Ritmo de envio | o que a ferramenta mandar | orçamento, warmup e freio adaptativo |
+| Reentrega duplicada | manda de novo | idempotência por chave |
+| Estado de entrega | "enviei" | funil sent → delivered → read |
+
+```bash
+curl -X PUT http://localhost:2900/v1/sessions/$ID/integrations/chatwoot -H "Authorization: Bearer $AWAH_KEY" -H 'content-type: application/json' -d '{"baseUrl":"https://app.chatwoot.com","accountId":1,"inboxId":7,"apiAccessToken":"SEU_TOKEN"}'
+```
+
+A conexão é **testada antes de gravar** — credencial errada guardada em silêncio
+só apareceria na primeira mensagem de um cliente real. A resposta traz a URL para
+cadastrar no Chatwoot, e a aba **Integrações** do painel faz o mesmo sem curl.
+
+Os dois convivem na mesma sessão, que é o arranjo mais útil: o Typebot atende
+primeiro, e quando o cliente digita **atendente** o fluxo se cala e o agente
+assume uma conversa que já tem todo o histórico.
+
+Detalhes, incluindo o que não é reenviado e por quê, em
+[docs/integracoes.md](docs/integracoes.md).
+
 ## Métricas
 
 Quatro famílias, uma rota cada. Todas leem dos agregados horários, nunca das
@@ -522,6 +553,7 @@ apps/api
   cluster/        lease, roteamento de comando, failover
   dashboard/      estáticos do painel e fallback de rota de cliente
   engines/        contrato EngineAdapter + Baileys e Cloud API
+  integrations/   conectores de Chatwoot e Typebot
   sessions/       ciclo de vida, reconexão, posse por nó
   messaging/      outbox, scheduler, persistência, retenção
   risk/           orçamento, warmup, score, jitter

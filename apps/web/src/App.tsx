@@ -3,6 +3,7 @@ import { Marca } from './components/Shell'
 import { useQuery } from './hooks/useQuery'
 import type { Me } from './lib/api'
 import { Entrar } from './pages/Entrar'
+import { Integracoes } from './pages/Integracoes'
 import { Negocio } from './pages/Negocio'
 import { Operacao } from './pages/Operacao'
 import { Sessoes } from './pages/Sessoes'
@@ -20,6 +21,7 @@ export function App() {
                 <Route path="/operacao" element={<Operacao />} />
                 <Route path="/negocio" element={<Negocio />} />
                 <Route path="/sessoes" element={<Sessoes />} />
+                <Route path="/integracoes" element={<Integracoes />} />
                 <Route path="*" element={<Navigate to="/operacao" replace />} />
               </Routes>
             </Autenticado>

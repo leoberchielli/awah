@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify'
 import fp from 'fastify-plugin'
+import { IntegrationDispatcher } from '../integrations/dispatcher'
 import { OutboxDispatcher } from '../messaging/dispatcher'
 import { purgeExpiredContent, recordMessage, recordStatus } from '../messaging/persistence'
 import { RetentionResolver } from '../messaging/retention'
@@ -13,6 +14,7 @@ declare module 'fastify' {
   interface FastifyInstance {
     retention: RetentionResolver
     risk: RiskEngine
+    integrations: IntegrationDispatcher
   }
 }
 
@@ -35,6 +37,14 @@ export const workersPlugin = fp(
       enabled: app.env.RISK_ENGINE_ENABLED,
     })
     app.decorate('risk', risk)
+
+    const integrations = new IntegrationDispatcher({
+      db: app.db,
+      encryptionKey: Buffer.from(app.env.ENCRYPTION_KEY, 'base64'),
+      logger: app.log,
+      maxAttempts: app.env.OUTBOX_MAX_ATTEMPTS,
+    })
+    app.decorate('integrations', integrations)
 
     if (!app.env.RISK_ENGINE_ENABLED) {
       app.log.warn(
@@ -69,6 +79,23 @@ export const workersPlugin = fp(
         if (event.fromMe) return
 
         app.metrics.messagesReceived.inc({ session: context.sessionId })
+
+        /**
+         * Ferramentas externas vêm depois da persistência e antes do webhook.
+         *
+         * Depois da persistência porque a mensagem precisa estar salva mesmo se
+         * o Chatwoot estiver fora do ar; o dispatcher engole as próprias falhas
+         * justamente para que uma delas não derrube o restante do tratamento.
+         */
+        await app.integrations.aoReceber({
+          orgId: context.orgId,
+          sessionId: context.sessionId,
+          chatId: event.chatId,
+          engineMessageId: event.engineMessageId,
+          body: event.body,
+          fromJid: event.fromJid,
+          occurredAt: event.occurredAt,
+        })
 
         await emitWebhook(app.db, {
           orgId: context.orgId,

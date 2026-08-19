@@ -75,6 +75,25 @@ quando o conjunto estiver exercitado contra tráfego real.
 - Verificação de assinatura de webhook que roda em Node, Deno, Bun, Workers e no
   navegador.
 
+**Integrações**
+
+- Conectores nativos de Chatwoot e Typebot, ligados por sessão. A decisão por
+  trás deles: em vez de construir caixa de entrada e construtor de fluxo
+  próprios, ser o transporte de quem já resolveu bem essas duas coisas — e
+  entregar embaixo delas o que nenhuma tem, que é fila durável, ordem por
+  conversa e motor de risco.
+- Chatwoot nos dois sentidos, com prevenção de eco por `source_id` e
+  idempotência pelo id da mensagem de lá, o que torna a reentrega deles
+  inofensiva.
+- Typebot com sessão de fluxo por contato, expiração por silêncio e escape para
+  atendimento humano que não passa pelo fluxo.
+- Credenciais cifradas e nunca devolvidas em leitura; conexão testada antes de
+  gravar, porque credencial errada guardada em silêncio só apareceria na
+  primeira mensagem de um cliente real.
+- Falha de ferramenta externa nunca derruba a sessão: o dispatcher engole a
+  própria exceção e registra o erro na integração, para o painel explicar o
+  silêncio.
+
 ### Segurança
 
 - Em `NODE_ENV=production`, a API se recusa a subir com os segredos de

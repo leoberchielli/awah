@@ -1,4 +1,5 @@
 export * from './enums'
+export * from './integrations'
 export * from './messaging'
 export * from './sessions'
 export * from './telemetry'

@@ -1,6 +1,7 @@
 import type {
   desiredState,
   engineType,
+  integrationKind,
   memberRole,
   messageDirection,
   messageStatus,
@@ -20,6 +21,7 @@ import type {
 export type MemberRole = (typeof memberRole.enumValues)[number]
 export type DesiredState = (typeof desiredState.enumValues)[number]
 export type EngineType = (typeof engineType.enumValues)[number]
+export type IntegrationKind = (typeof integrationKind.enumValues)[number]
 export type SessionStatus = (typeof sessionStatus.enumValues)[number]
 export type SessionEventType = (typeof sessionEventType.enumValues)[number]
 export type OutboxStatus = (typeof outboxStatus.enumValues)[number]

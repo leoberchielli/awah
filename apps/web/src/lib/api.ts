@@ -50,6 +50,9 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
 export const get = <T>(path: string) => api<T>(path)
 export const post = <T>(path: string, body?: unknown) =>
   api<T>(path, { method: 'POST', body: body === undefined ? undefined : JSON.stringify(body) })
+export const put = <T>(path: string, body?: unknown) =>
+  api<T>(path, { method: 'PUT', body: body === undefined ? undefined : JSON.stringify(body) })
+export const del = <T>(path: string) => api<T>(path, { method: 'DELETE' })
 
 // ---------------------------------------------------------------------------
 // Contratos. Espelham as respostas do servidor; o que não é usado fica de fora.
@@ -162,4 +165,22 @@ export interface SessionEvent {
 export interface QrResponse {
   qr: string
   image: string
+}
+
+export interface Integration {
+  id: string
+  sessionId: string
+  kind: 'chatwoot' | 'typebot'
+  active: boolean
+  /** Última falha ao falar com a ferramenta. Nulo quando está tudo bem. */
+  lastError: string | null
+  lastErrorAt: string | null
+  createdAt: string
+}
+
+export interface IntegrationSaved {
+  integration: Integration
+  detail: string
+  /** Só o Chatwoot devolve — é a URL que precisa ser cadastrada lá. */
+  webhookUrl: string | null
 }

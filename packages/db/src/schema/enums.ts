@@ -9,6 +9,16 @@ export const memberRole = pgEnum('member_role', ['viewer', 'operator', 'admin', 
 /** Implementações do EngineAdapter (§5 da spec). */
 export const engineType = pgEnum('engine_type', ['baileys', 'cloud_api', 'wwebjs', 'whatsmeow'])
 
+/**
+ * Ferramentas externas que o gateway alimenta.
+ *
+ * `chatwoot` é atendimento humano e fala nos dois sentidos; `typebot` é fluxo
+ * automatizado e responde ao que chega. Eles não são exclusivos entre si: o
+ * arranjo mais comum é o fluxo atender primeiro e passar para o humano quando
+ * não dá conta.
+ */
+export const integrationKind = pgEnum('integration_kind', ['chatwoot', 'typebot'])
+
 export const sessionStatus = pgEnum('session_status', [
   'created',
   'pairing',

@@ -3,6 +3,7 @@ import { NavLink, useLocation, useSearchParams } from 'react-router-dom'
 import { useTheme } from '../hooks/useTheme'
 import { post } from '../lib/api'
 import {
+  IconeLigacao,
   IconeLua,
   IconeMonitor,
   IconeNegocio,
@@ -58,6 +59,7 @@ const ABAS = [
   { para: '/operacao', rotulo: 'Operação', Icone: IconePulso },
   { para: '/negocio', rotulo: 'Negócio', Icone: IconeNegocio },
   { para: '/sessoes', rotulo: 'Sessões', Icone: IconeSessao },
+  { para: '/integracoes', rotulo: 'Integrações', Icone: IconeLigacao },
 ]
 
 export function Shell({ children, acoes }: { children: ReactNode; acoes?: ReactNode }) {
