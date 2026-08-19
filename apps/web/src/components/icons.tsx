@@ -1,8 +1,8 @@
 /**
  * Ícones desenhados à mão, não uma biblioteca.
  *
- * São oito; uma dependência de ícones traria milhares e um passo de tree-shaking
- * para entregar exatamente estes oito.
+ * São nove; uma dependência de ícones traria milhares e um passo de tree-shaking
+ * para entregar exatamente estes nove.
  */
 import type { SVGProps } from 'react'
 
@@ -68,5 +68,12 @@ export const IconeLigacao = (p: Props) => (
   <svg {...base} {...p} aria-hidden>
     <path d="M10 13.5a4.5 4.5 0 0 0 6.6.6l2.6-2.6a4.5 4.5 0 0 0-6.4-6.4l-1.5 1.5" />
     <path d="M14 10.5a4.5 4.5 0 0 0-6.6-.6l-2.6 2.6a4.5 4.5 0 0 0 6.4 6.4l1.5-1.5" />
+  </svg>
+)
+
+export const IconeChave = (p: Props) => (
+  <svg {...base} {...p} aria-hidden>
+    <circle cx="7.5" cy="15.5" r="4.5" />
+    <path d="M10.8 12.2 20.5 2.5M16 7l3 3 2.5-2.5-3-3" />
   </svg>
 )

@@ -58,11 +58,33 @@ export const del = <T>(path: string) => api<T>(path, { method: 'DELETE' })
 // Contratos. Espelham as respostas do servidor; o que não é usado fica de fora.
 // ---------------------------------------------------------------------------
 
+export type Papel = 'viewer' | 'operator' | 'admin' | 'owner'
+
 export interface Me {
   kind: 'user' | 'api_key'
   organizationId: string
-  role: string
+  role: Papel
   userId: string | null
+}
+
+export interface ApiKeyRow {
+  id: string
+  name: string
+  /** Parte pública do token. É por ela que se identifica a chave num log. */
+  prefix: string
+  role: Papel
+  /** Nulo quando a chave alcança toda a organização. */
+  sessionScope: string[] | null
+  lastUsedAt: string | null
+  expiresAt: string | null
+  revokedAt: string | null
+  createdAt: string
+}
+
+export interface ApiKeyCreated {
+  key: ApiKeyRow
+  /** Aparece só nesta resposta — o servidor guarda apenas o hash. */
+  token: string
 }
 
 export interface SessionRow {

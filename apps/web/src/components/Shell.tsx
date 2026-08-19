@@ -2,7 +2,9 @@ import type { ReactNode } from 'react'
 import { NavLink, useLocation, useSearchParams } from 'react-router-dom'
 import { useTheme } from '../hooks/useTheme'
 import { post } from '../lib/api'
+import { papelAoMenos, useMe } from '../lib/sessao'
 import {
+  IconeChave,
   IconeLigacao,
   IconeLua,
   IconeMonitor,
@@ -60,7 +62,19 @@ const ABAS = [
   { para: '/negocio', rotulo: 'Negócio', Icone: IconeNegocio },
   { para: '/sessoes', rotulo: 'Sessões', Icone: IconeSessao },
   { para: '/integracoes', rotulo: 'Integrações', Icone: IconeLigacao },
+  { para: '/chaves', rotulo: 'Chaves', Icone: IconeChave, minimo: 'admin' as const },
 ]
+
+/**
+ * Abas que este papel alcança.
+ *
+ * Mostrar a aba de chaves para quem vai levar 403 ao abrir não é transparência,
+ * é uma porta pintada na parede. A autorização continua sendo do servidor.
+ */
+function useAbas() {
+  const me = useMe()
+  return ABAS.filter((aba) => !aba.minimo || papelAoMenos(me.role, aba.minimo))
+}
 
 export function Shell({ children, acoes }: { children: ReactNode; acoes?: ReactNode }) {
   return (
@@ -87,6 +101,7 @@ export function Shell({ children, acoes }: { children: ReactNode; acoes?: ReactN
  */
 function CabecalhoMovel() {
   const { search } = useLocation()
+  const abas = useAbas()
 
   return (
     <div className="mb-3 flex flex-col gap-3 sm:hidden">
@@ -106,7 +121,7 @@ function CabecalhoMovel() {
       </div>
 
       <nav aria-label="Seções" className="flex gap-1 overflow-x-auto">
-        {ABAS.map(({ para, rotulo, Icone }) => (
+        {abas.map(({ para, rotulo, Icone }) => (
           <NavLink
             key={para}
             to={{ pathname: para, search }}
@@ -130,6 +145,7 @@ function CabecalhoMovel() {
 
 function Rail() {
   const { search } = useLocation()
+  const abas = useAbas()
 
   return (
     <nav
@@ -140,7 +156,7 @@ function Rail() {
         <Marca />
       </div>
 
-      {ABAS.map(({ para, rotulo, Icone }) => (
+      {abas.map(({ para, rotulo, Icone }) => (
         <NavLink
           key={para}
           to={{ pathname: para, search }}

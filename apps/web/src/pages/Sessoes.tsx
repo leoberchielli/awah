@@ -4,7 +4,7 @@ import { Card, cx, Empty, Pill, Skeleton, Stat, type Tone } from '../components/
 import { useQuery } from '../hooks/useQuery'
 import type { QrResponse, RiskSnapshot, SessionEvent, SessionRow } from '../lib/api'
 import { ApiError, post } from '../lib/api'
-import { dataHora, desde, num, pct, telefone } from '../lib/format'
+import { dataHora, desde, num, pct, statusDeSessao, telefone } from '../lib/format'
 
 const TOM_POR_STATUS: Record<string, Tone> = {
   connected: 'ok',
@@ -14,16 +14,6 @@ const TOM_POR_STATUS: Record<string, Tone> = {
   disconnected: 'crit',
   logged_out: 'crit',
   banned: 'crit',
-}
-
-const ROTULO_POR_STATUS: Record<string, string> = {
-  connected: 'Conectada',
-  connecting: 'Conectando',
-  pairing: 'Pareando',
-  created: 'Criada',
-  disconnected: 'Desconectada',
-  logged_out: 'Deslogada',
-  banned: 'Banida',
 }
 
 const ENGINES = [
@@ -112,7 +102,7 @@ function Pareamento({ sessao, aoMudar }: { sessao: SessionRow; aoMudar: () => vo
     <Card
       title={`Parear "${sessao.name}"`}
       hint="O código se renova sozinho a cada poucos segundos. Deixe esta tela aberta até a sessão aparecer como conectada."
-      action={<Pill tone="warn">{ROTULO_POR_STATUS[sessao.status] ?? sessao.status}</Pill>}
+      action={<Pill tone="warn">{statusDeSessao(sessao.status)}</Pill>}
     >
       <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
         <PainelDeQr sessionId={sessao.id} />
@@ -237,7 +227,7 @@ function LinhaDeSessao({
 
         <div className="flex items-center gap-2">
           <Pill tone={TOM_POR_STATUS[sessao.status] ?? 'hold'}>
-            {ROTULO_POR_STATUS[sessao.status] ?? sessao.status}
+            {statusDeSessao(sessao.status)}
           </Pill>
 
           {divergente && <Pill tone="crit">Deveria estar rodando</Pill>}

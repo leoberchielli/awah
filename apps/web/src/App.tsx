@@ -2,6 +2,8 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { Marca } from './components/Shell'
 import { useQuery } from './hooks/useQuery'
 import type { Bootstrap, Me } from './lib/api'
+import { ProvedorDeSessao } from './lib/sessao'
+import { Chaves } from './pages/Chaves'
 import { Entrar } from './pages/Entrar'
 import { Integracoes } from './pages/Integracoes'
 import { Negocio } from './pages/Negocio'
@@ -23,6 +25,7 @@ export function App() {
                 <Route path="/negocio" element={<Negocio />} />
                 <Route path="/sessoes" element={<Sessoes />} />
                 <Route path="/integracoes" element={<Integracoes />} />
+                <Route path="/chaves" element={<Chaves />} />
                 <Route path="*" element={<Navigate to="/operacao" replace />} />
               </Routes>
             </Autenticado>
@@ -59,7 +62,7 @@ function Autenticado({ children }: { children: React.ReactNode }) {
     return <Navigate to={`/entrar?voltar=${encodeURIComponent(destino)}`} replace />
   }
 
-  return <>{children}</>
+  return <ProvedorDeSessao value={data}>{children}</ProvedorDeSessao>
 }
 
 function Carregando() {
