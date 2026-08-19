@@ -1,0 +1,184 @@
+import { AwahConnectionError, AwahError } from './errors'
+
+export interface AwahOptions {
+  /** Endereço da instância, com esquema. Ex.: `https://awah.suaempresa.com`. */
+  baseUrl: string
+  /** Chave no formato `awah_<prefixo>_<segredo>`. */
+  apiKey: string
+  /** Teto por requisição, incluindo a leitura do corpo. Padrão 30 s. */
+  timeoutMs?: number
+  /** Tentativas adicionais depois da primeira. Padrão 2. */
+  maxRetries?: number
+  /** Injetável para teste e para runtimes com fetch próprio. */
+  fetch?: typeof fetch
+  /** Cabeçalhos extras em toda requisição. Útil para tracing. */
+  headers?: Record<string, string>
+}
+
+interface Pedido {
+  method: string
+  path: string
+  body?: unknown
+  query?: Record<string, string | number | boolean | undefined>
+  /**
+   * Se repetir esta chamada é seguro. GET e DELETE são por natureza; POST só
+   * quando a rota tem chave de idempotência, e é por isso que o cliente sempre
+   * manda um `clientMessageId` no envio.
+   */
+  idempotente?: boolean
+  headers?: Record<string, string>
+}
+
+const RETENTATIVA_BASE_MS = 300
+const RETENTATIVA_TETO_MS = 8000
+
+export class HttpClient {
+  private readonly baseUrl: string
+  private readonly apiKey: string
+  private readonly timeoutMs: number
+  private readonly maxRetries: number
+  private readonly fetchImpl: typeof fetch
+  private readonly headersExtras: Record<string, string>
+
+  constructor(options: AwahOptions) {
+    if (!options.baseUrl) throw new Error('baseUrl é obrigatório')
+    if (!options.apiKey) throw new Error('apiKey é obrigatório')
+
+    this.baseUrl = options.baseUrl.replace(/\/+$/, '')
+    this.apiKey = options.apiKey
+    this.timeoutMs = options.timeoutMs ?? 30_000
+    this.maxRetries = options.maxRetries ?? 2
+    this.fetchImpl = options.fetch ?? globalThis.fetch
+    this.headersExtras = options.headers ?? {}
+
+    if (typeof this.fetchImpl !== 'function') {
+      throw new Error('fetch indisponível neste runtime; passe um em options.fetch')
+    }
+  }
+
+  async request<T>(pedido: Pedido): Promise<T> {
+    const url = this.montarUrl(pedido.path, pedido.query)
+    const podeRepetir = pedido.idempotente ?? ['GET', 'HEAD', 'DELETE'].includes(pedido.method)
+
+    let ultimoErro: unknown
+
+    for (let tentativa = 0; tentativa <= this.maxRetries; tentativa++) {
+      try {
+        const resposta = await this.enviar(url, pedido)
+
+        if (resposta.ok) return await this.lerCorpo<T>(resposta)
+
+        const erro = await this.montarErro(resposta)
+
+        /**
+         * Repetir 4xx que não seja 408 ou 429 é desperdício: o servidor rejeitou
+         * o conteúdo, e mandar de novo produz a mesma rejeição.
+         */
+        if (!erro.isRetryable || !podeRepetir || tentativa === this.maxRetries) throw erro
+
+        await dormir(this.esperaAte(tentativa, resposta.headers.get('retry-after')))
+        ultimoErro = erro
+      } catch (falha) {
+        if (falha instanceof AwahError) {
+          if (!falha.isRetryable || !podeRepetir || tentativa === this.maxRetries) throw falha
+          ultimoErro = falha
+          continue
+        }
+
+        const conexao = new AwahConnectionError(
+          falha instanceof Error ? falha.message : 'falha de rede',
+          falha,
+        )
+        if (!podeRepetir || tentativa === this.maxRetries) throw conexao
+
+        ultimoErro = conexao
+        await dormir(this.esperaAte(tentativa, null))
+      }
+    }
+
+    throw ultimoErro
+  }
+
+  private montarUrl(path: string, query?: Pedido['query']): string {
+    const url = new URL(`${this.baseUrl}${path}`)
+
+    for (const [chave, valor] of Object.entries(query ?? {})) {
+      if (valor !== undefined) url.searchParams.set(chave, String(valor))
+    }
+
+    return url.toString()
+  }
+
+  private async enviar(url: string, pedido: Pedido): Promise<Response> {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), this.timeoutMs)
+
+    try {
+      return await this.fetchImpl(url, {
+        method: pedido.method,
+        signal: controller.signal,
+        headers: {
+          authorization: `Bearer ${this.apiKey}`,
+          accept: 'application/json',
+          ...(pedido.body === undefined ? {} : { 'content-type': 'application/json' }),
+          ...this.headersExtras,
+          ...pedido.headers,
+        },
+        body: pedido.body === undefined ? undefined : JSON.stringify(pedido.body),
+      })
+    } finally {
+      clearTimeout(timer)
+    }
+  }
+
+  private async lerCorpo<T>(resposta: Response): Promise<T> {
+    if (resposta.status === 204) return undefined as T
+
+    const texto = await resposta.text()
+    if (!texto) return undefined as T
+
+    try {
+      return JSON.parse(texto) as T
+    } catch {
+      return texto as T
+    }
+  }
+
+  private async montarErro(resposta: Response): Promise<AwahError> {
+    const corpo = await resposta
+      .text()
+      .then((texto) => (texto ? JSON.parse(texto) : null))
+      .catch(() => null)
+
+    const envelope = (corpo as { error?: { code?: string; message?: string; details?: unknown } })
+      ?.error
+
+    return new AwahError(
+      resposta.status,
+      envelope?.code ?? 'unknown',
+      envelope?.message ?? `A API respondeu ${resposta.status}.`,
+      envelope?.details,
+      corpo,
+    )
+  }
+
+  /**
+   * Backoff exponencial com jitter, e `Retry-After` acima de tudo.
+   *
+   * O jitter não é enfeite: sem ele, cem clientes que tomaram 429 juntos voltam
+   * juntos no mesmo milissegundo e tomam 429 de novo.
+   */
+  private esperaAte(tentativa: number, retryAfter: string | null): number {
+    if (retryAfter) {
+      const segundos = Number(retryAfter)
+      if (Number.isFinite(segundos) && segundos >= 0) return Math.min(segundos * 1000, 60_000)
+    }
+
+    const teto = Math.min(RETENTATIVA_BASE_MS * 2 ** tentativa, RETENTATIVA_TETO_MS)
+    return teto / 2 + Math.random() * (teto / 2)
+  }
+}
+
+function dormir(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}

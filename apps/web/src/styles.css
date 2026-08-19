@@ -1,0 +1,159 @@
+@import "tailwindcss";
+
+/*
+ * Só os subconjuntos latinos. O pacote completo traz cirílico, grego e
+ * vietnamita — trinta e poucos arquivos que ninguém aqui vai baixar, mas que
+ * entram na imagem do servidor e no cache do CDN de quem hospedar.
+ */
+@import "@fontsource/ibm-plex-sans/latin-400.css";
+@import "@fontsource/ibm-plex-sans/latin-500.css";
+@import "@fontsource/ibm-plex-sans/latin-600.css";
+@import "@fontsource/ibm-plex-sans/latin-ext-400.css";
+@import "@fontsource/ibm-plex-mono/latin-400.css";
+@import "@fontsource/ibm-plex-mono/latin-500.css";
+
+/*
+ * Painel de instrumentos, não página de marketing.
+ *
+ * Cor: neutros levemente frios, um único acento (íris) e três cores semânticas
+ * que nunca são usadas como enfeite — verde é sessão conectada, âmbar é
+ * segurada, vermelho é falha. Quem olha de longe deve conseguir dizer se está
+ * tudo bem sem ler um número sequer.
+ *
+ * Tipo: IBM Plex Sans na interface e IBM Plex Mono em tudo que é número, id ou
+ * código. Dígito monoespaçado alinha em coluna e é o que faz uma tabela de
+ * métricas parecer um instrumento em vez de um texto.
+ */
+:root {
+  --ground: #faf9f7;
+  --surface: #ffffff;
+  --surface-2: #f4f3f0;
+  --line: #e5e3de;
+  --line-strong: #d2cfc8;
+  --ink: #17191c;
+  --muted: #6a6e76;
+  --accent: #5b5bd6;
+  --accent-soft: #ececfb;
+  --ok: #12a150;
+  --warn: #b87503;
+  --crit: #d13438;
+  --hold: #7a7f89;
+  --shadow: 0 1px 2px rgb(23 25 28 / 0.06), 0 4px 12px rgb(23 25 28 / 0.04);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #0f1113;
+    --surface: #17191d;
+    --surface-2: #1e2126;
+    --line: #282b31;
+    --line-strong: #3a3e46;
+    --ink: #e7e8ea;
+    --muted: #8d929b;
+    --accent: #8b8bf0;
+    --accent-soft: #21223a;
+    --ok: #35c07a;
+    --warn: #e0a12a;
+    --crit: #ef6a6d;
+    --hold: #7f858f;
+    --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 14px rgb(0 0 0 / 0.28);
+  }
+}
+
+:root[data-theme="dark"] {
+  --ground: #0f1113;
+  --surface: #17191d;
+  --surface-2: #1e2126;
+  --line: #282b31;
+  --line-strong: #3a3e46;
+  --ink: #e7e8ea;
+  --muted: #8d929b;
+  --accent: #8b8bf0;
+  --accent-soft: #21223a;
+  --ok: #35c07a;
+  --warn: #e0a12a;
+  --crit: #ef6a6d;
+  --hold: #7f858f;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 14px rgb(0 0 0 / 0.28);
+}
+
+@theme {
+  --color-ground: var(--ground);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+  --color-crit: var(--crit);
+  --color-hold: var(--hold);
+
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+
+  --radius-card: 10px;
+}
+
+@layer base {
+  html {
+    color-scheme: light dark;
+  }
+
+  body {
+    background-color: var(--ground);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Dígito não dança quando o número muda. */
+  .tnum,
+  table,
+  .font-mono {
+    font-variant-numeric: tabular-nums;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+}
+
+@layer components {
+  .card {
+    background-color: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow);
+  }
+
+  /* Rótulo de seção: caixa alta pequena com respiro entre letras. */
+  .eyebrow {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+}
+
+/*
+ * Quem pediu menos movimento no sistema operacional precisa que a preferência
+ * ganhe de qualquer transição declarada depois — é o único caso em que
+ * !important é a ferramenta certa, e não um atalho.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    /* biome-ignore lint/complexity/noImportantStyles: a preferência do usuário precisa vencer */
+    animation-duration: 0.01ms !important;
+    /* biome-ignore lint/complexity/noImportantStyles: a preferência do usuário precisa vencer */
+    transition-duration: 0.01ms !important;
+  }
+}

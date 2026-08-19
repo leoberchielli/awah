@@ -1,0 +1,175 @@
+import type { FastifyInstance, FastifyRequest, preHandlerHookHandler } from 'fastify'
+import fp from 'fastify-plugin'
+import { hashToken, safeEqual } from '../lib/crypto'
+import { badRequest, forbidden, unauthorized } from '../lib/errors'
+import { findApiKeyByPrefix, touchApiKey } from '../repos/api-keys'
+import { IdentityRepository } from '../repos/identity'
+import { bearerFrom, parseApiKey } from './api-key'
+import { apiKeyCan, can, type Permission, type Role } from './rbac'
+
+export const SESSION_COOKIE = 'awah_session'
+/** Escolhe a organização quando o usuário pertence a mais de uma. */
+export const ORG_HEADER = 'x-awah-org'
+
+export interface AuthContext {
+  kind: 'user' | 'api_key'
+  orgId: string
+  role: Role
+  userId: string | null
+  apiKeyId: string | null
+  /** Sessões que a credencial alcança. Nulo significa todas as da org. */
+  sessionScope: string[] | null
+}
+
+declare module 'fastify' {
+  interface FastifyRequest {
+    auth: AuthContext | null
+  }
+  interface FastifyInstance {
+    /** Exige credencial válida e popula `request.auth`. */
+    authenticate: preHandlerHookHandler
+    /** Exige credencial válida que satisfaça a permissão. */
+    requirePermission: (permission: Permission) => preHandlerHookHandler
+  }
+}
+
+async function authFromApiKey(app: FastifyInstance, token: string): Promise<AuthContext | null> {
+  const parsed = parseApiKey(token)
+  if (!parsed) return null
+
+  const record = await findApiKeyByPrefix(app.db, parsed.prefix)
+  if (!record) return null
+
+  /**
+   * SHA-256 e não argon2, de propósito. O segredo tem 24 bytes de entropia
+   * aleatória, então não existe ataque de dicionário para encarecer — e um
+   * argon2 de 19 MiB por requisição transformaria o gateway em um gargalo de
+   * CPU justamente no caminho quente do envio. Senha de usuário é outro caso:
+   * lá o argon2 é obrigatório.
+   */
+  if (!safeEqual(hashToken(parsed.secret), record.secretHash)) return null
+
+  if (record.revokedAt) return null
+  if (record.expiresAt && record.expiresAt.getTime() <= Date.now()) return null
+
+  // Fora do caminho crítico: falha aqui não invalida a requisição.
+  void touchApiKey(app.db, record.id).catch((error) => {
+    app.log.warn({ err: error, apiKeyId: record.id }, 'falha ao registrar uso da chave')
+  })
+
+  return {
+    kind: 'api_key',
+    orgId: record.orgId,
+    role: record.role,
+    userId: null,
+    apiKeyId: record.id,
+    sessionScope: record.sessionScope,
+  }
+}
+
+async function authFromSession(
+  app: FastifyInstance,
+  request: FastifyRequest,
+  rawCookie: string,
+): Promise<AuthContext | null> {
+  const identity = new IdentityRepository(app.db)
+  const found = await identity.findSessionUser(hashToken(rawCookie))
+  if (!found) return null
+
+  const memberships = await identity.listMemberships(found.userId)
+  if (memberships.length === 0) {
+    throw forbidden('Sua conta não pertence a nenhuma organização.')
+  }
+
+  const requested = request.headers[ORG_HEADER]
+  const wanted = Array.isArray(requested) ? requested[0] : requested
+
+  let membership = memberships[0]
+  if (wanted) {
+    membership = memberships.find((m) => m.orgId === wanted || m.orgSlug === wanted) ?? undefined
+    if (!membership) {
+      throw forbidden('Você não pertence à organização informada.')
+    }
+  } else if (memberships.length > 1) {
+    throw badRequest(
+      `Você pertence a mais de uma organização. Informe qual no header ${ORG_HEADER}.`,
+      { organizations: memberships.map((m) => ({ id: m.orgId, slug: m.orgSlug })) },
+    )
+  }
+
+  if (!membership) return null
+
+  void identity.touchSession(found.sessionId).catch((error) => {
+    app.log.warn({ err: error }, 'falha ao atualizar last_seen da sessão')
+  })
+
+  return {
+    kind: 'user',
+    orgId: membership.orgId,
+    role: membership.role,
+    userId: found.userId,
+    apiKeyId: null,
+    sessionScope: null,
+  }
+}
+
+async function resolveAuth(
+  app: FastifyInstance,
+  request: FastifyRequest,
+): Promise<AuthContext | null> {
+  const bearer = bearerFrom(request.headers.authorization)
+  if (bearer) {
+    return authFromApiKey(app, bearer)
+  }
+
+  const cookie = request.cookies[SESSION_COOKIE]
+  if (cookie) {
+    const unsigned = request.unsignCookie(cookie)
+    if (!unsigned.valid || !unsigned.value) return null
+    return authFromSession(app, request, unsigned.value)
+  }
+
+  return null
+}
+
+export const authPlugin = fp(
+  async (app: FastifyInstance) => {
+    app.decorateRequest('auth', null)
+
+    app.decorate('authenticate', async function authenticate(request) {
+      const context = await resolveAuth(app, request)
+      if (!context) throw unauthorized()
+      request.auth = context
+    } satisfies preHandlerHookHandler)
+
+    app.decorate('requirePermission', (permission: Permission): preHandlerHookHandler => {
+      return async function checkPermission(request) {
+        const context = request.auth ?? (await resolveAuth(app, request))
+        if (!context) throw unauthorized()
+        request.auth = context
+
+        const allowed =
+          context.kind === 'api_key'
+            ? apiKeyCan(context.role, permission)
+            : can(context.role, permission)
+
+        if (!allowed) {
+          throw forbidden(
+            context.kind === 'api_key'
+              ? 'Chaves de API não executam esta operação — use uma sessão de usuário.'
+              : `Seu papel (${context.role}) não alcança esta operação.`,
+          )
+        }
+      }
+    })
+  },
+  { name: 'awah-auth' },
+)
+
+/** Lê o contexto de auth garantindo que o preHandler rodou antes. */
+export function requireAuth(request: FastifyRequest): AuthContext {
+  if (!request.auth) {
+    throw unauthorized()
+  }
+  return request.auth
+}

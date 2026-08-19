@@ -1,0 +1,3 @@
+Os arquivos SQL desta pasta são gerados por `pnpm db:generate` (drizzle-kit) a
+partir do schema em `src/schema/`. Eles são versionados no repositório — gere,
+revise o SQL e faça commit junto da mudança de schema.

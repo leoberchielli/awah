@@ -1,0 +1,107 @@
+name: awah
+
+# Valores padrão servem apenas para desenvolvimento local. Em produção defina
+# tudo por .env — as chaves abaixo são públicas e estão no repositório.
+x-api-env: &api-env
+  NODE_ENV: ${NODE_ENV:-development}
+  PORT: "2900"
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+  DATABASE_URL: postgres://awah:awah@postgres:5432/awah
+  REDIS_URL: redis://redis:6379
+  ENCRYPTION_KEY: ${ENCRYPTION_KEY:-YXdhaC1kZXYta2V5LW5vdC1mb3ItcHJvZHVjdGlvbiE=}
+  COOKIE_SECRET: ${COOKIE_SECRET:-awah-dev-cookie-secret-trocar-antes-de-ir-a-producao}
+  ALLOW_OPEN_REGISTRATION: ${ALLOW_OPEN_REGISTRATION:-true}
+  # Vazios em desenvolvimento; obrigatórios quando a instância vira alcançável.
+  PUBLIC_URL: ${PUBLIC_URL:-}
+  TRUST_PROXY: ${TRUST_PROXY:-false}
+  METRICS_TOKEN: ${METRICS_TOKEN:-}
+  ENGINE_LOG_LEVEL: ${ENGINE_LOG_LEVEL:-silent}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: awah
+      POSTGRES_PASSWORD: awah
+      POSTGRES_DB: awah
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - ./.docker-data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U awah -d awah"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - ./.docker-data/redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  # Passo único: aplica as migrations e sai. A API espera esta conclusão.
+  migrate:
+    build: .
+    command: ["node", "apps/api/dist/migrate.js"]
+    environment: *api-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    build: .
+    environment:
+      <<: *api-env
+      NODE_ID: awah-1
+    ports:
+      - "${PORT:-2900}:2900"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:2900/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
+    restart: unless-stopped
+
+  # Segunda réplica. Sobe com o perfil `cluster`:
+  #   docker compose --profile cluster up -d
+  # Existe para exercitar failover e roteamento de comandos de verdade — em
+  # produção seriam N réplicas atrás de um balanceador, com a mesma configuração.
+  api2:
+    profiles: ["cluster"]
+    build: .
+    environment:
+      <<: *api-env
+      NODE_ID: awah-2
+    ports:
+      - "${PORT2:-2901}:2900"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:2900/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
+    restart: unless-stopped

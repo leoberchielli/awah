@@ -1,0 +1,28 @@
+{
+  "name": "awah",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Gateway de WhatsApp com fila durável, motor de risco e sessões em cluster",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "dev": "pnpm --filter @awah/api dev",
+    "dev:web": "pnpm --filter @awah/web dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "db:generate": "pnpm --filter @awah/db generate",
+    "db:migrate": "pnpm --filter @awah/db migrate",
+    "db:studio": "pnpm --filter @awah/db studio"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.1.2",
+    "typescript": "^5.7.3"
+  }
+}

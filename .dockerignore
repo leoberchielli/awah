@@ -1,0 +1,14 @@
+node_modules
+**/node_modules
+dist
+**/dist
+coverage
+**/coverage
+.git
+.github
+.env
+.env.*
+!.env.example
+*.log
+.docker-data
+README.md
