@@ -8,6 +8,19 @@ const boolish = z
     typeof v === 'boolean' ? v : ['1', 'true', 'yes', 'on'].includes(v.trim().toLowerCase()),
   )
 
+/**
+ * Marca um campo como opcional tratando string vazia como ausente.
+ *
+ * `.optional()` sozinho só aceita `undefined`, e orquestrador nenhum fala essa
+ * língua: Docker Compose, Kubernetes e o GitHub Actions materializam variável
+ * não configurada como string vazia. O `docker-compose.yml` deste repositório
+ * declara `PUBLIC_URL: ${PUBLIC_URL:-}` justamente para documentar a variável —
+ * e com `.optional()` puro isso derrubava o processo no boot com "Invalid url"
+ * para quem tinha acabado de baixar o compose e rodar `docker compose up -d`.
+ */
+const opcional = <T extends z.ZodTypeAny>(schema: T) =>
+  z.preprocess((v) => (typeof v === 'string' && v.trim() === '' ? undefined : v), schema.optional())
+
 const base64Key = (bytes: number) =>
   z.string().refine((v) => {
     try {
@@ -27,7 +40,7 @@ const envSchema = z.object({
    * Identidade da réplica no cluster. É o valor gravado em `sessions.owner_node_id`
    * quando esta réplica toma o lease de uma sessão (§4.4).
    */
-  NODE_ID: z.string().min(1).optional(),
+  NODE_ID: opcional(z.string().min(1)),
 
   DATABASE_URL: z.string().min(1),
   DATABASE_POOL_MAX: z.coerce.number().int().positive().default(10),
@@ -42,11 +55,7 @@ const envSchema = z.object({
    * certo. Vazio, a API assume `http://localhost:PORT` — correto no laptop,
    * errado atrás de qualquer proxy.
    */
-  PUBLIC_URL: z
-    .string()
-    .url()
-    .optional()
-    .transform((valor) => valor?.replace(/\/+$/, '')),
+  PUBLIC_URL: opcional(z.string().url()).transform((valor) => valor?.replace(/\/+$/, '')),
 
   /**
    * Se dá para confiar nos cabeçalhos `X-Forwarded-*`.
@@ -131,7 +140,7 @@ const envSchema = z.object({
    * Protege o endpoint /metrics. Sem ele, qualquer um que alcance a porta lê
    * volume de mensagens, número de sessões e saúde da operação.
    */
-  METRICS_TOKEN: z.string().min(16).optional(),
+  METRICS_TOKEN: opcional(z.string().min(16)),
   /** Intervalo da materialização dos agregados horários. */
   AGGREGATOR_INTERVAL_MS: z.coerce.number().int().min(10_000).default(300_000),
   /** Horas recalculadas a cada passada, para absorver ACK e retry atrasados. */
@@ -151,7 +160,7 @@ const envSchema = z.object({
    * `../web/dist` e `apps/web/dist`, nessa ordem, e sobe sem painel se não
    * achar nenhum — a API é útil sozinha.
    */
-  DASHBOARD_DIR: z.string().min(1).optional(),
+  DASHBOARD_DIR: opcional(z.string().min(1)),
 })
 
 export type Env = z.infer<typeof envSchema> & { NODE_ID: string }

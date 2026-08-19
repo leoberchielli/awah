@@ -1,11 +1,16 @@
 name: Imagem
 
-# Publica a imagem no registro do GitHub.
+# Publica a imagem no registro do GitHub e prova que ela sobe.
 #
 # O CI já construía a imagem para provar que o Dockerfile compila, mas jogava o
 # resultado fora. Isso obrigava quem quisesse experimentar o AWAH a clonar o
 # repositório e compilar — vários minutos e uma cadeia de ferramentas inteira
 # antes de ver a primeira tela. Aqui a imagem passa a existir para o mundo.
+#
+# "Compilou" não é "funciona": o segundo job puxa a imagem recém-publicada e
+# sobe o `docker-compose.yml` deste repositório, que é literalmente o caminho de
+# instalação que a documentação promete. Se esse caminho quebrar, quebra aqui e
+# não na máquina de quem estava experimentando o projeto pela primeira vez.
 
 on:
   push:
@@ -28,6 +33,12 @@ jobs:
       # Necessária para a attestation de proveniência assinada.
       id-token: write
       attestations: write
+
+    outputs:
+      # Referência por digest, não por tag. É o que garante que o teste de fumaça
+      # exercite exatamente o binário que este job acabou de publicar — uma tag
+      # como `edge` pode ter sido movida por outra execução no meio do caminho.
+      referencia: ghcr.io/${{ github.repository }}@${{ steps.build.outputs.digest }}
 
     steps:
       - uses: actions/checkout@v4
@@ -90,3 +101,128 @@ jobs:
           subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE }}
           subject-digest: ${{ steps.build.outputs.digest }}
           push-to-registry: true
+
+  fumaca:
+    name: Provar a imagem publicada
+    needs: publicar
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: read
+
+    env:
+      # É esta variável que o `docker-compose.yml` lê. Apontá-la para o digest
+      # faz o compose do repositório rodar contra a imagem recém-publicada em vez
+      # da `latest`, sem editar uma linha do arquivo que o usuário vai baixar.
+      AWAH_IMAGE: ${{ needs.publicar.outputs.referencia }}
+      # Definido de propósito: com ele vazio a rota fica aberta e o teste não
+      # provaria nada sobre a proteção. Aqui exercitamos os dois lados.
+      METRICS_TOKEN: token-de-fumaca-do-ci
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Puxar do registro
+        run: docker pull "$AWAH_IMAGE"
+
+      - name: Conferir arquiteturas e rótulos
+        run: |
+          set -euo pipefail
+
+          # `unknown/unknown` são as entradas de attestation, não plataformas.
+          plataformas=$(docker buildx imagetools inspect "$AWAH_IMAGE" --format '{{json .Manifest}}' \
+            | jq -r '.manifests[].platform | "\(.os)/\(.architecture)"' \
+            | grep -v unknown | sort -u)
+          echo "$plataformas"
+          grep -qx 'linux/amd64' <<<"$plataformas"
+          grep -qx 'linux/arm64' <<<"$plataformas"
+
+          rotulos=$(docker image inspect "$AWAH_IMAGE" --format '{{json .Config.Labels}}')
+          jq . <<<"$rotulos"
+          jq -e --arg sha "$GITHUB_SHA" '
+            .["org.opencontainers.image.source"] != null and
+            .["org.opencontainers.image.licenses"] == "MIT" and
+            .["org.opencontainers.image.revision"] == $sha
+          ' <<<"$rotulos" > /dev/null
+
+      # Exatamente o comando que o README manda rodar, com o mesmo arquivo.
+      - name: Subir a pilha do docker-compose.yml
+        run: docker compose up -d --wait --wait-timeout 300 api
+
+      - name: Provar que a API responde de verdade
+        run: |
+          set -euo pipefail
+          api() { curl -fsS --retry 5 --retry-connrefused "http://localhost:2900$1" "${@:2}"; }
+          codigo() { curl -s -o /dev/null -w '%{http_code}' "http://localhost:2900$1" "${@:2}"; }
+
+          echo "--- /health: a imagem sabe dizer o que é"
+          saude=$(api /health)
+          jq . <<<"$saude"
+          # `version` só é "dev" quando os ARG do Dockerfile não chegaram; a
+          # revisão precisa bater com o commit, senão publicamos outra coisa.
+          jq -e --arg sha "$GITHUB_SHA" \
+            '.status == "ok" and .version != "dev" and .revision == $sha' <<<"$saude" > /dev/null
+
+          echo "--- /health/ready: Postgres e Redis realmente ligados"
+          pronto=$(api /health/ready)
+          jq . <<<"$pronto"
+          jq -e '.status == "ready" and .checks.database and .checks.redis' <<<"$pronto" > /dev/null
+
+          echo "--- instância virgem pede configuração inicial"
+          jq -e '.needsSetup == true' <<<"$(api /v1/auth/bootstrap)" > /dev/null
+
+          echo "--- criar a primeira organização"
+          criado=$(api /v1/auth/register -X POST -H 'content-type: application/json' -d '{
+            "organizationName": "Fumaca",
+            "name": "Verificador",
+            "email": "fumaca@exemplo.invalid",
+            "password": "senha-so-para-o-ci-1234"
+          }')
+          jq -e '.organization.id != null and .user.id != null' <<<"$criado" > /dev/null
+
+          # A leitura seguinte é o que fecha o circuito: prova que a escrita
+          # atravessou a aplicação até o Postgres e voltou. É o mais perto de
+          # "funciona" que dá para chegar sem um número de WhatsApp de verdade.
+          echo "--- e o registro fecha sozinho depois disso"
+          jq -e '.needsSetup == false' <<<"$(api /v1/auth/bootstrap)" > /dev/null
+
+          echo "--- o navegador recebe o painel pela mesma porta"
+          # O `accept` não é enfeite: é ele que separa navegação de integração.
+          # Sem o cabeçalho a resposta é o 404 em JSON, e está certo assim.
+          painel=$(api / -H 'accept: text/html')
+          grep -q 'id="root"' <<<"$painel"
+
+          echo "--- rota do cliente também cai no painel"
+          [ "$(codigo /sessoes -H 'accept: text/html')" = 200 ]
+
+          echo "--- mas caminho de API inexistente continua JSON, mesmo pedindo html"
+          # A regressão que este caso impede: o SPA responder 200 com HTML a um
+          # `/v1/...` digitado errado, e quem integra passar a tarde tentando
+          # entender por que o JSON virou `<!doctype html>`.
+          [ "$(codigo /v1/nao-existe -H 'accept: text/html')" = 404 ]
+
+          echo "--- assets com cache imutável"
+          ativo=$(grep -o '/assets/[A-Za-z0-9._-]*\.js' <<<"$painel" | awk 'NR==1')
+          curl -fsSI "http://localhost:2900$ativo" | tr -d '\r' | grep -qi 'cache-control:.*immutable'
+
+          echo "--- /metrics exige o token quando ele está definido"
+          [ "$(codigo /metrics)" = 401 ]
+          metricas=$(api /metrics -H "authorization: Bearer $METRICS_TOKEN")
+          grep -q 'awah_' <<<"$metricas"
+
+      - name: Logs, quando algo falhou
+        if: failure()
+        run: docker compose logs --no-color --tail=200
+
+      # `-v` aqui é seguro porque o runner é descartável. Em produção nunca:
+      # esses volumes guardam o auth state de todas as sessões.
+      - name: Derrubar
+        if: always()
+        run: docker compose down -v

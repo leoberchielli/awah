@@ -67,4 +67,39 @@ describe('validação de ambiente', () => {
     expect(() => loadEnv({ ...valid, PORT: '70000' })).toThrow('PORT')
     expect(() => loadEnv({ ...valid, PORT: '0' })).toThrow('PORT')
   })
+
+  /**
+   * A regressão que este teste impede: o `docker-compose.yml` deste repositório
+   * declara `PUBLIC_URL: ${PUBLIC_URL:-}` e `METRICS_TOKEN: ${METRICS_TOKEN:-}`
+   * para documentar as duas variáveis. Compose entrega isso ao contêiner como
+   * string vazia, não como ausente — e o processo morria no boot com
+   * "PUBLIC_URL: Invalid url" para quem tinha acabado de baixar o compose.
+   */
+  it.each(['PUBLIC_URL', 'METRICS_TOKEN', 'DASHBOARD_DIR'] as const)(
+    'trata %s vazio como não configurado',
+    (chave) => {
+      expect(loadEnv({ ...valid, [chave]: '' })[chave]).toBeUndefined()
+    },
+  )
+
+  /** NODE_ID vazio não é "sem identidade": é "use o hostname", como ausente. */
+  it('trata NODE_ID vazio como não configurado', () => {
+    expect(loadEnv({ ...valid, NODE_ID: '' }).NODE_ID).toBe(hostname())
+  })
+
+  it('só em branco também conta como não configurado', () => {
+    expect(loadEnv({ ...valid, PUBLIC_URL: '   ' }).PUBLIC_URL).toBeUndefined()
+  })
+
+  /** Vazio vira ausente; errado continua errado. */
+  it('continua recusando valor preenchido e inválido', () => {
+    expect(() => loadEnv({ ...valid, PUBLIC_URL: 'nao-e-url' })).toThrow('PUBLIC_URL')
+    expect(() => loadEnv({ ...valid, METRICS_TOKEN: 'curto-demais' })).toThrow('METRICS_TOKEN')
+  })
+
+  it('tira a barra final do PUBLIC_URL', () => {
+    expect(loadEnv({ ...valid, PUBLIC_URL: 'https://awah.exemplo.com//' }).PUBLIC_URL).toBe(
+      'https://awah.exemplo.com',
+    )
+  })
 })
