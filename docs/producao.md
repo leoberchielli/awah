@@ -143,7 +143,7 @@ para experimentar e ruim para operar — um `docker compose pull` pode trazer um
 versão que você não revisou.
 
 ```bash
-AWAH_IMAGE=ghcr.io/leandroberchielli/awah:1.0.0
+AWAH_IMAGE=ghcr.io/leoberchielli/awah:1.0.0
 ```
 
 `GET /health` devolve a versão e o commit que estão rodando, para não haver
@@ -159,7 +159,7 @@ menos 30 s de `terminationGracePeriod`.
 ### Confira de onde veio a imagem
 
 ```bash
-gh attestation verify oci://ghcr.io/leandroberchielli/awah:1.0.0 --owner leandroberchielli
+gh attestation verify oci://ghcr.io/leoberchielli/awah:1.0.0 --owner leoberchielli
 ```
 
 A attestation prova que aquela imagem saiu daquele commit, por aquele workflow.

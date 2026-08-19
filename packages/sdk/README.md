@@ -1,6 +1,6 @@
 # @awah/sdk
 
-Cliente TypeScript do [AWAH](https://github.com/leandroberchielli/awah). Sem
+Cliente TypeScript do [AWAH](https://github.com/leoberchielli/awah). Sem
 dependências, sobre `fetch` e WebCrypto — roda em Node, Deno, Bun, Cloudflare
 Workers e no navegador.
 

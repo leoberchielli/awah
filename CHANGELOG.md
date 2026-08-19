@@ -127,7 +127,7 @@ quando o conjunto estiver exercitado contra tráfego real.
 
 **Distribuição**
 
-- Imagem publicada em `ghcr.io/leandroberchielli/awah`, multi-arquitetura
+- Imagem publicada em `ghcr.io/leoberchielli/awah`, multi-arquitetura
   (amd64 e arm64). O CI já construía a imagem para provar que o Dockerfile
   compila e jogava o resultado fora — o que obrigava quem quisesse experimentar a
   clonar o repositório e compilar antes de ver a primeira tela.

@@ -76,7 +76,7 @@ Com a instância no ar, `/docs` traz a referência interativa de todas as rotas.
 Sem clonar nada:
 
 ```bash
-curl -O https://raw.githubusercontent.com/leandroberchielli/awah/main/docker-compose.yml
+curl -O https://raw.githubusercontent.com/leoberchielli/awah/main/docker-compose.yml
 ```
 
 ```bash
@@ -566,7 +566,7 @@ node --require ./otel.js apps/api/dist/index.js
 
 ## A imagem
 
-`ghcr.io/leandroberchielli/awah` — multi-arquitetura (amd64 e arm64), publicada
+`ghcr.io/leoberchielli/awah` — multi-arquitetura (amd64 e arm64), publicada
 pelo CI a cada push.
 
 | Tag | O que é |
@@ -580,7 +580,7 @@ Cada publicação carrega uma **attestation de proveniência** assinada, verific
 com o `gh`:
 
 ```bash
-gh attestation verify oci://ghcr.io/leandroberchielli/awah:latest --owner leandroberchielli
+gh attestation verify oci://ghcr.io/leoberchielli/awah:latest --owner leoberchielli
 ```
 
 Não é cerimônia: quem roda um gateway de WhatsApp tem as credenciais dos próprios

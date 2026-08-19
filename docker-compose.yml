@@ -2,7 +2,7 @@ name: awah
 
 # Este arquivo roda sozinho, sem o código-fonte.
 #
-#   curl -O https://raw.githubusercontent.com/leandroberchielli/awah/main/docker-compose.yml
+#   curl -O https://raw.githubusercontent.com/leoberchielli/awah/main/docker-compose.yml
 #   docker compose up -d
 #
 # A imagem vem pronta do registro. Para construir a partir do código, junte o
@@ -15,7 +15,7 @@ name: awah
 
 # Um lugar só para a imagem. AWAH_IMAGE aponta para outro registro ou outra tag
 # sem editar as três ocorrências.
-x-image: &image ${AWAH_IMAGE:-ghcr.io/leandroberchielli/awah:latest}
+x-image: &image ${AWAH_IMAGE:-ghcr.io/leoberchielli/awah:latest}
 x-api-env: &api-env
   NODE_ENV: ${NODE_ENV:-development}
   PORT: "2900"

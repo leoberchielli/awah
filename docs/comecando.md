@@ -11,7 +11,7 @@ Do zero a uma conversa no Chatwoot. São cinco passos e nenhum `curl`.
 Você não precisa do código-fonte. Só de um arquivo:
 
 ```bash
-curl -O https://raw.githubusercontent.com/leandroberchielli/awah/main/docker-compose.yml
+curl -O https://raw.githubusercontent.com/leoberchielli/awah/main/docker-compose.yml
 ```
 
 ```bash
@@ -103,7 +103,7 @@ topologia, e não publicar as portas do Postgres e do Redis.
 O padrão é `latest`. Para fixar, aponte `AWAH_IMAGE` no seu `.env`:
 
 ```bash
-AWAH_IMAGE=ghcr.io/leandroberchielli/awah:1.0.0
+AWAH_IMAGE=ghcr.io/leoberchielli/awah:1.0.0
 ```
 
 `GET /health` diz qual versão está rodando.

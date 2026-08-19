@@ -3,8 +3,9 @@
 ## Reportar uma vulnerabilidade
 
 **Não abra issue pública.** Use o
-[relato privado de vulnerabilidade do GitHub](https://github.com/leandroberchielli/awah/security/advisories/new),
-ou escreva para `leandroberchielli@sis-it.com`.
+[relato privado de vulnerabilidade do GitHub](https://github.com/leoberchielli/awah/security/advisories/new)
+— ele notifica o mantenedor direto e mantém a conversa fechada até haver
+correção.
 
 Inclua o que der: versão, passos para reproduzir, impacto que você enxerga.
 Prova de conceito ajuda muito, mas relato sem PoC também é bem-vindo.
