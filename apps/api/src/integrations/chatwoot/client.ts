@@ -56,16 +56,17 @@ export class ChatwootClient {
     this.timeoutMs = options?.timeoutMs ?? 15_000
   }
 
-  private get base(): string {
-    return `${this.config.baseUrl}/api/v1/accounts/${this.config.accountId}`
+  private request<T>(caminho: string, init?: RequestInit): Promise<T> {
+    return this.absoluto<T>(`/api/v1/accounts/${this.config.accountId}${caminho}`, init)
   }
 
-  private async request<T>(caminho: string, init?: RequestInit): Promise<T> {
+  /** O perfil não vive sob `/accounts/{id}` — daí os dois caminhos. */
+  private async absoluto<T>(caminho: string, init?: RequestInit): Promise<T> {
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), this.timeoutMs)
 
     try {
-      const resposta = await this.fetchImpl(`${this.base}${caminho}`, {
+      const resposta = await this.fetchImpl(`${this.config.baseUrl}${caminho}`, {
         ...init,
         signal: controller.signal,
         headers: {
@@ -93,6 +94,68 @@ export class ChatwootClient {
     } finally {
       clearTimeout(timer)
     }
+  }
+
+  /**
+   * Contas que este token alcança.
+   *
+   * O `accountId` fica escondido na URL do Chatwoot, e pedir que a pessoa o
+   * copie de lá é a primeira coisa que trava a adoção. O token já sabe a
+   * resposta — basta perguntar.
+   */
+  async contas(): Promise<Array<{ id: number; name: string; role: string }>> {
+    const perfil = await this.absoluto<{
+      accounts?: Array<{ id?: number; name?: string; role?: string }>
+    }>('/api/v1/profile')
+
+    return (perfil?.accounts ?? [])
+      .filter((c): c is { id: number; name?: string; role?: string } => typeof c.id === 'number')
+      .map((c) => ({ id: c.id, name: c.name ?? `Conta ${c.id}`, role: c.role ?? 'agent' }))
+  }
+
+  /** Caixas existentes, para reaproveitar uma em vez de criar outra. */
+  async caixas(): Promise<Array<{ id: number; name: string; channelType: string }>> {
+    const resposta = await this.request<{
+      payload?: Array<{ id?: number; name?: string; channel_type?: string }>
+    }>('/inboxes')
+
+    return (resposta?.payload ?? [])
+      .filter(
+        (c): c is { id: number; name?: string; channel_type?: string } => typeof c.id === 'number',
+      )
+      .map((c) => ({
+        id: c.id,
+        name: c.name ?? `Caixa ${c.id}`,
+        channelType: c.channel_type ?? 'desconhecido',
+      }))
+  }
+
+  /**
+   * Cria a caixa API já com o webhook apontado para o gateway.
+   *
+   * São os dois passos mais chatos do manual — criar a caixa clicando e depois
+   * voltar para colar a URL — resolvidos numa chamada. Exige token de
+   * administrador; agente comum recebe 403, e a mensagem diz isso.
+   */
+  async criarCaixa(nome: string, webhookUrl: string): Promise<{ id: number; name: string }> {
+    const caixa = await this.request<{ id?: number; name?: string }>('/inboxes', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: nome,
+        channel: { type: 'api', webhook_url: webhookUrl },
+      }),
+    })
+
+    if (!caixa?.id) throw new ChatwootError(500, 'Chatwoot não devolveu id da caixa criada')
+    return { id: caixa.id, name: caixa.name ?? nome }
+  }
+
+  /** Aponta o webhook de uma caixa que já existia. */
+  async apontarWebhook(inboxId: number, webhookUrl: string): Promise<void> {
+    await this.request(`/inboxes/${inboxId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ channel: { webhook_url: webhookUrl } }),
+    })
   }
 
   /** Confere credenciais e a caixa antes de gravar qualquer coisa. */

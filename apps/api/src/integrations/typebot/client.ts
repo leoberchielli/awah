@@ -169,3 +169,44 @@ function safeJson(texto: string): unknown {
     return null
   }
 }
+
+/**
+ * Deriva endereço e id do fluxo a partir do link que a pessoa tem em mãos.
+ *
+ * Pedir "baseUrl" e "typebotId" em campos separados obriga quem integra a saber
+ * o que é `publicId` e onde ele aparece. O link de compartilhamento já tem os
+ * dois, e é o que está na área de transferência de quem acabou de publicar um
+ * fluxo.
+ */
+export function derivarDoLink(link: string): { baseUrl: string; typebotId: string } {
+  let url: URL
+  try {
+    url = new URL(link.trim())
+  } catch {
+    throw new Error('Isso não parece uma URL. Cole o link de compartilhamento do seu fluxo.')
+  }
+
+  const partes = url.pathname.split('/').filter(Boolean)
+
+  /**
+   * A URL do editor traz o id interno, que o Chat API não aceita.
+   *
+   * É o erro mais provável de quem está com o Typebot aberto: copiar da barra de
+   * endereços do editor em vez do link de compartilhamento. Sem esta conferência
+   * a integração é aceita e só falha depois, na primeira mensagem de um cliente.
+   */
+  if (partes[0] === 'typebots' || url.hostname.startsWith('app.')) {
+    throw new Error(
+      'Esse é o link do editor, que usa o id interno do fluxo. Publique o fluxo e use o link de compartilhamento — em Share, no Typebot.',
+    )
+  }
+
+  const typebotId = partes[0]
+  if (!typebotId) {
+    throw new Error(
+      'Não encontrei o id do fluxo nesse link. Ele deve terminar com o nome do fluxo, como https://typebot.io/meu-fluxo.',
+    )
+  }
+
+  return { baseUrl: url.origin, typebotId }
+}

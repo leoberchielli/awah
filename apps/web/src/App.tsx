@@ -1,11 +1,12 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { Marca } from './components/Shell'
 import { useQuery } from './hooks/useQuery'
-import type { Me } from './lib/api'
+import type { Bootstrap, Me } from './lib/api'
 import { Entrar } from './pages/Entrar'
 import { Integracoes } from './pages/Integracoes'
 import { Negocio } from './pages/Negocio'
 import { Operacao } from './pages/Operacao'
+import { PrimeiroAcesso } from './pages/PrimeiroAcesso'
 import { Sessoes } from './pages/Sessoes'
 
 export function App() {
@@ -41,8 +42,17 @@ export function App() {
  */
 function Autenticado({ children }: { children: React.ReactNode }) {
   const { data, error, settled } = useQuery<Me>('/v1/auth/me')
+  /**
+   * Instância vazia não tem para onde mandar quem chega.
+   *
+   * Sem esta pergunta, o primeiro acesso caía num formulário de login que
+   * ninguém conseguia usar, com a saída escondida num `curl` do README.
+   */
+  const bootstrap = useQuery<Bootstrap>('/v1/auth/bootstrap')
 
-  if (!settled) return <Carregando />
+  if (!settled || !bootstrap.settled) return <Carregando />
+
+  if (bootstrap.data?.needsSetup) return <PrimeiroAcesso />
 
   if (error || !data) {
     const destino = `${window.location.pathname}${window.location.search}`

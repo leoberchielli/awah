@@ -94,6 +94,20 @@ quando o conjunto estiver exercitado contra tráfego real.
   própria exceção e registra o erro na integração, para o painel explicar o
   silêncio.
 
+**Adoção**
+
+- Tela de primeira execução no painel. A única forma de criar a organização
+  inicial era montar um `curl` a partir do README — a trava mais cara que um
+  projeto self-hosted pode ter, porque acontece antes de a pessoa ver qualquer
+  valor.
+- O Chatwoot passa a pedir dois campos: endereço e token. O gateway descobre as
+  contas, lista as caixas e **cria a caixa API já com o webhook apontado para
+  ele**. Caçar `accountId` e `inboxId` na URL e voltar lá para colar o webhook
+  eram os três passos que mais faziam gente desistir.
+- O Typebot aceita o link de compartilhamento no lugar de endereço e `publicId`
+  separados, e recusa o link do editor explicando onde está o certo — em vez de
+  aceitar e falhar depois, na primeira mensagem de um cliente real.
+
 ### Segurança
 
 - Em `NODE_ENV=production`, a API se recusa a subir com os segredos de

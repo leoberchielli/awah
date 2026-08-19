@@ -20,44 +20,50 @@ diretamente.
 Fala nos dois sentidos: a mensagem do cliente vira conversa na caixa de entrada,
 e a resposta do agente volta pela fila do gateway.
 
-### 1. Crie uma caixa do tipo API
+### Pelo painel, em dois campos
 
-No Chatwoot: **Configurações → Caixas de entrada → Adicionar** e escolha **API**.
+Aba **Integrações** → **Conectar o Chatwoot**. Você informa só o endereço da sua
+instância e um **token de acesso** (no Chatwoot: avatar → Perfil → Token de
+acesso).
 
-Precisa ser do tipo API. As outras — WhatsApp, site, e-mail — têm transporte
-próprio e ignorariam o gateway. A rota recusa qualquer outro tipo, com o nome do
-tipo que encontrou.
+O gateway faz o resto:
 
-Anote o **ID da caixa** (aparece na URL) e o **ID da conta** (o número logo
-depois de `/app/accounts/`).
+1. Pergunta ao token quais contas ele alcança, e lista para você escolher — o
+   `accountId` fica escondido na URL do Chatwoot, e caçá-lo lá é a primeira coisa
+   que trava a adoção.
+2. Lista as caixas dessa conta, marcando quais servem. Caixa que não é do tipo
+   API aparece desabilitada com o motivo, em vez de sumir: quem procura a caixa
+   que já usa precisa entender por que ela não serve.
+3. Cria a caixa API **já com o webhook apontado** para o gateway, ou corrige o
+   webhook da caixa existente que você escolher.
 
-### 2. Pegue um token de acesso
+**Use um token de administrador.** Criar e editar caixa exige isso; com token de
+agente comum o Chatwoot devolve 403, e o assistente diz exatamente isso em vez de
+falhar em silêncio.
 
-**Perfil → Configurações → Token de acesso**. Ou crie um *agent bot*, se
-preferir que as ações não apareçam no nome de uma pessoa.
-
-### 3. Ligue no painel
-
-Aba **Integrações**, cartão do Chatwoot, escolha a sessão e preencha. O botão
-diz **Testar e ligar** porque ele testa mesmo: credencial errada é recusada
-antes de gravar, com a mensagem que o Chatwoot devolveu.
-
-Ou por API:
+### Pela API
 
 ```bash
-curl -X PUT http://localhost:2900/v1/sessions/$ID/integrations/chatwoot -H "Authorization: Bearer $AWAH_KEY" -H 'content-type: application/json' -d '{"baseUrl":"https://app.chatwoot.com","accountId":1,"inboxId":7,"apiAccessToken":"SEU_TOKEN"}'
+curl -X POST http://localhost:2900/v1/integrations/chatwoot/discover -H "Authorization: Bearer $AWAH_KEY" -H 'content-type: application/json' -d '{"baseUrl":"https://app.chatwoot.com","apiAccessToken":"SEU_TOKEN"}'
 ```
 
-### 4. Cadastre a URL de volta
+Devolve as contas. Repita com `accountId` para receber também as caixas. Depois:
 
-A resposta traz uma `webhookUrl`. Cole no Chatwoot, no campo **Webhook URL** da
-caixa API.
+```bash
+curl -X PUT http://localhost:2900/v1/sessions/$ID/integrations/chatwoot -H "Authorization: Bearer $AWAH_KEY" -H 'content-type: application/json' -d '{"baseUrl":"https://app.chatwoot.com","accountId":1,"apiAccessToken":"SEU_TOKEN","createInbox":"WhatsApp (AWAH)"}'
+```
 
-**Trate essa URL como senha.** O webhook de caixa API do Chatwoot não assina o
-corpo e não aceita cabeçalho próprio — o único lugar onde cabe um segredo é a
-própria URL, e é por isso que o gateway gera um token longo em vez de deixar
-você escolher. A rota confere também `account.id` do payload, porque dois pontos
-de conferência valem mais que um.
+`createInbox` cria a caixa; `inboxId` reaproveita uma existente e corrige o
+webhook dela. Passando `inboxId` com `apontarWebhook: false`, o gateway não toca
+na caixa e a resposta traz a URL para você colar na mão.
+
+### O segredo mora na URL
+
+Quando o gateway aponta o webhook sozinho, não há nada a fazer do outro lado. Se
+você configurar manualmente, **trate a URL como senha**: o webhook de caixa API
+do Chatwoot não assina o corpo e não aceita cabeçalho próprio, então a URL é o
+único segredo entre os dois. Por isso o gateway gera um token longo em vez de
+deixar você escolher, e por isso a rota confere também o `account.id` do payload.
 
 ### O que não é reenviado
 
@@ -78,14 +84,19 @@ produzir sai pela fila do gateway — herdando ordem, ritmo e reentrega.
 
 ### Ligar
 
-Precisa do endereço e do **ID do fluxo** (o `publicId`, o mesmo que aparece na
-URL de compartilhamento). Token só é necessário se o fluxo não for público.
+Cole o **link de compartilhamento** do fluxo — endereço e `publicId` saem dele.
+No Typebot: publique e copie em **Share**.
 
 ```bash
-curl -X PUT http://localhost:2900/v1/sessions/$ID/integrations/typebot -H "Authorization: Bearer $AWAH_KEY" -H 'content-type: application/json' -d '{"baseUrl":"https://typebot.io","typebotId":"meu-fluxo"}'
+curl -X PUT http://localhost:2900/v1/sessions/$ID/integrations/typebot -H "Authorization: Bearer $AWAH_KEY" -H 'content-type: application/json' -d '{"shareUrl":"https://typebot.io/meu-fluxo"}'
 ```
 
-Não há URL para cadastrar do outro lado: quem chama o Typebot é o gateway.
+Token só é necessário se o fluxo não for público. Não há URL para cadastrar do
+outro lado: quem chama o Typebot é o gateway.
+
+O engano mais provável é colar o endereço do **editor** — ele traz o id interno,
+que o Chat API não aceita. O gateway recusa esse link dizendo onde está o certo,
+em vez de aceitar e falhar depois, na primeira mensagem de um cliente real.
 
 ### Sessão de fluxo
 

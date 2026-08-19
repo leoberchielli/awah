@@ -115,6 +115,14 @@ export async function saveIntegration(
     kind: IntegrationKind
     config: ChatwootConfig | TypebotConfig
     active?: boolean
+    /**
+     * Id escolhido de fora.
+     *
+     * O Chatwoot precisa da URL do webhook — que contém este id — no mesmo
+     * momento em que a caixa é criada, antes de a linha existir. Escolher o id
+     * antes quebra esse ovo-e-galinha sem uma segunda escrita.
+     */
+    id?: string
   },
 ): Promise<IntegrationRow> {
   const cifrada = encrypt(JSON.stringify(input.config), encryptionKey)
@@ -122,6 +130,7 @@ export async function saveIntegration(
   const [linha] = await db
     .insert(schema.integrations)
     .values({
+      ...(input.id ? { id: input.id } : {}),
       orgId: input.orgId,
       sessionId: input.sessionId,
       kind: input.kind,

@@ -184,3 +184,28 @@ export interface IntegrationSaved {
   /** Só o Chatwoot devolve — é a URL que precisa ser cadastrada lá. */
   webhookUrl: string | null
 }
+
+export interface Bootstrap {
+  /** true enquanto não existir nenhuma organização nesta instância. */
+  needsSetup: boolean
+  openRegistration: boolean
+}
+
+export interface ContaChatwoot {
+  id: number
+  name: string
+  role: string
+}
+
+export interface CaixaChatwoot {
+  id: number
+  name: string
+  channelType: string
+  /** Só caixa do tipo API serve; as outras têm transporte próprio. */
+  usable: boolean
+}
+
+export interface DescobertaChatwoot {
+  accounts: ContaChatwoot[]
+  inboxes: CaixaChatwoot[] | null
+}

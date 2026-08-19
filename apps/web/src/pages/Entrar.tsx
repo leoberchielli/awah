@@ -1,7 +1,10 @@
 import { type FormEvent, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Marca } from '../components/Shell'
+import { useQuery } from '../hooks/useQuery'
+import type { Bootstrap } from '../lib/api'
 import { ApiError, post } from '../lib/api'
+import { PrimeiroAcesso } from './PrimeiroAcesso'
 
 /**
  * Entrada do dashboard.
@@ -12,6 +15,8 @@ import { ApiError, post } from '../lib/api'
  */
 export function Entrar() {
   const [params] = useSearchParams()
+  // Quem abre /entrar numa instância vazia precisa da tela de setup, não do login.
+  const bootstrap = useQuery<Bootstrap>('/v1/auth/bootstrap')
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
   const [erro, setErro] = useState<string | null>(null)
@@ -33,6 +38,8 @@ export function Entrar() {
       setEnviando(false)
     }
   }
+
+  if (bootstrap.data?.needsSetup) return <PrimeiroAcesso />
 
   return (
     <div className="grid min-h-dvh place-items-center bg-ground px-4">
@@ -78,9 +85,7 @@ export function Entrar() {
         </form>
 
         <p className="mt-4 text-center text-xs text-muted">
-          Primeira vez? A instância se abre com{' '}
-          <code className="font-mono text-[11px] text-ink">POST /v1/auth/register</code>, que fecha
-          sozinho assim que existir uma organização.
+          Sem conta? Peça um convite a quem administra esta instância.
         </p>
       </div>
     </div>

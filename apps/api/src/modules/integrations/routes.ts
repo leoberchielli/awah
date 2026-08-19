@@ -1,9 +1,10 @@
+import { randomUUID } from 'node:crypto'
 import type { IntegrationKind } from '@awah/db'
 import type { FastifyInstance } from 'fastify'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 import { z } from 'zod'
 import { requireAuth } from '../../auth/plugin'
-import { ChatwootClient } from '../../integrations/chatwoot/client'
+import { ChatwootClient, ChatwootError } from '../../integrations/chatwoot/client'
 import {
   type ChatwootConfig,
   deleteIntegration,
@@ -14,7 +15,7 @@ import {
   type TypebotConfig,
 } from '../../integrations/config'
 import { findLinkByExternal } from '../../integrations/links'
-import { TypebotClient } from '../../integrations/typebot/client'
+import { derivarDoLink, TypebotClient } from '../../integrations/typebot/client'
 import { randomToken, safeEqual } from '../../lib/crypto'
 import { badRequest, forbidden, notFound } from '../../lib/errors'
 import { OutboxRepository } from '../../repos/outbox'
@@ -63,6 +64,57 @@ export async function integrationRoutes(app: FastifyInstance) {
     return { detail: 'Fluxo alcançado e respondendo.' }
   }
 
+  /**
+   * Deixa a caixa pronta e devolve o id dela.
+   *
+   * Três caminhos: `createInbox` cria uma nova já com o webhook apontado;
+   * `inboxId` reaproveita uma existente e corrige o webhook dela; e sem nenhum
+   * dos dois, quem integra assume a configuração manual do outro lado.
+   */
+  async function prepararCaixa(
+    bruto: Record<string, unknown>,
+    webhookUrl: string,
+  ): Promise<unknown> {
+    const parcial = {
+      baseUrl: String(bruto.baseUrl ?? ''),
+      accountId: Number(bruto.accountId ?? 0),
+      apiAccessToken: String(bruto.apiAccessToken ?? ''),
+    }
+
+    if (!parcial.baseUrl || !parcial.accountId || !parcial.apiAccessToken) {
+      return bruto.inboxId
+    }
+
+    const cliente = new ChatwootClient(parcial as ChatwootConfig)
+
+    try {
+      if (typeof bruto.createInbox === 'string' && bruto.createInbox.trim()) {
+        const criada = await cliente.criarCaixa(bruto.createInbox.trim(), webhookUrl)
+        bruto.webhookConfigurado = true
+        return criada.id
+      }
+
+      if (bruto.inboxId && bruto.apontarWebhook !== false) {
+        await cliente.apontarWebhook(Number(bruto.inboxId), webhookUrl)
+        bruto.webhookConfigurado = true
+      }
+    } catch (erro) {
+      /**
+       * Criar e editar caixa exige token de administrador; agente comum leva
+       * 403. Dizer isso é a diferença entre a pessoa trocar o token e a pessoa
+       * desistir achando que o gateway está quebrado.
+       */
+      if (erro instanceof ChatwootError && (erro.status === 401 || erro.status === 403)) {
+        throw badRequest(
+          'Este token não tem permissão para criar ou editar caixas. Use um token de administrador, ou crie a caixa API no Chatwoot e cole a URL do webhook na mão.',
+        )
+      }
+      throw erro
+    }
+
+    return bruto.inboxId
+  }
+
   route.get(
     '/v1/integrations',
     {
@@ -77,6 +129,92 @@ export async function integrationRoutes(app: FastifyInstance) {
     async (request) => {
       const auth = requireAuth(request)
       return { integrations: await listIntegrations(app.db, auth.orgId) }
+    },
+  )
+
+  /**
+   * O que este token do Chatwoot alcança.
+   *
+   * O `accountId` fica escondido na URL do Chatwoot e o `inboxId` também: pedir
+   * que a pessoa copie os dois de lá é a primeira coisa que trava a adoção. O
+   * token já sabe as respostas, então o painel pergunta a ele e mostra uma
+   * lista para escolher.
+   *
+   * Não grava nada — é só leitura, e por isso pode ser chamada quantas vezes o
+   * assistente precisar enquanto a pessoa corrige o endereço.
+   */
+  route.post(
+    '/v1/integrations/chatwoot/discover',
+    {
+      preHandler: app.requirePermission('session:write'),
+      config: { rateLimit: { max: 20, timeWindow: '1 minute' } },
+      schema: {
+        tags: ['integrações'],
+        summary: 'Listar contas e caixas do Chatwoot',
+        description:
+          'Descobre o que o token alcança para o painel não precisar pedir accountId e inboxId digitados.',
+        body: z.object({
+          baseUrl: z.string().url(),
+          apiAccessToken: z.string().min(10),
+          accountId: z.coerce
+            .number()
+            .int()
+            .positive()
+            .optional()
+            .describe('Informe para receber também as caixas desta conta.'),
+        }),
+        response: {
+          200: z.object({
+            accounts: z.array(z.object({ id: z.number(), name: z.string(), role: z.string() })),
+            inboxes: z
+              .array(
+                z.object({
+                  id: z.number(),
+                  name: z.string(),
+                  channelType: z.string(),
+                  /** Só caixa do tipo API serve; as outras têm transporte próprio. */
+                  usable: z.boolean(),
+                }),
+              )
+              .nullable(),
+          }),
+        },
+      },
+    },
+    async (request) => {
+      const { baseUrl, apiAccessToken, accountId } = request.body
+
+      const cliente = new ChatwootClient({
+        baseUrl: baseUrl.replace(/\/+$/, ''),
+        accountId: accountId ?? 0,
+        apiAccessToken,
+      } as ChatwootConfig)
+
+      let accounts: Awaited<ReturnType<ChatwootClient['contas']>>
+      try {
+        accounts = await cliente.contas()
+      } catch (erro) {
+        if (erro instanceof ChatwootError && erro.status === 401) {
+          throw badRequest('O Chatwoot recusou este token. Confira se copiou o valor inteiro.')
+        }
+        throw badRequest(
+          erro instanceof Error
+            ? `Não consegui falar com o Chatwoot: ${erro.message}`
+            : 'Não consegui falar com o Chatwoot.',
+        )
+      }
+
+      if (!accountId) return { accounts, inboxes: null }
+
+      const caixas = await cliente.caixas()
+
+      return {
+        accounts,
+        inboxes: caixas.map((caixa) => ({
+          ...caixa,
+          usable: caixa.channelType === 'Channel::Api',
+        })),
+      }
     },
   )
 
@@ -113,6 +251,31 @@ export async function integrationRoutes(app: FastifyInstance) {
       const bruto = { ...request.body }
 
       /**
+       * O id vem antes da gravação.
+       *
+       * A URL do webhook contém este id, e o Chatwoot precisa dela no mesmo
+       * momento em que a caixa é criada — antes de a linha existir. Escolher o
+       * id aqui quebra esse ovo-e-galinha sem uma segunda escrita.
+       */
+      const integrationId = randomUUID()
+
+      if (kind === 'typebot' && typeof bruto.shareUrl === 'string') {
+        /**
+         * O link de compartilhamento no lugar de dois campos.
+         *
+         * Pedir "baseUrl" e "typebotId" separados obriga quem integra a saber o
+         * que é `publicId` e onde procurá-lo. O link já traz os dois, e é o que
+         * está na área de transferência de quem acabou de publicar um fluxo.
+         */
+        try {
+          Object.assign(bruto, derivarDoLink(bruto.shareUrl))
+        } catch (erro) {
+          throw badRequest(erro instanceof Error ? erro.message : 'Link do fluxo inválido.')
+        }
+        bruto.shareUrl = undefined
+      }
+
+      /**
        * O token do webhook é gerado aqui, não pedido a quem chama.
        *
        * O webhook de caixa API do Chatwoot não assina o corpo e não aceita
@@ -123,10 +286,24 @@ export async function integrationRoutes(app: FastifyInstance) {
         bruto.webhookToken = randomToken(24)
       }
 
+      const webhookUrl = `${base()}/webhooks/chatwoot/${integrationId}/${bruto.webhookToken}`
+
+      /**
+       * Cria ou reaproveita a caixa, e aponta o webhook sozinho.
+       *
+       * São os dois passos que mais travam a adoção: criar a caixa clicando no
+       * Chatwoot e depois voltar lá para colar a URL. Com `createInbox` ou
+       * `inboxId`, quem integra não abre a outra aba.
+       */
+      if (kind === 'chatwoot') {
+        bruto.inboxId = await prepararCaixa(bruto, webhookUrl)
+      }
+
       const config = parseConfig(kind, bruto)
       const { detail } = await verificar(kind, config)
 
       const integration = await saveIntegration(app.db, encryptionKey, {
+        id: integrationId,
         orgId: auth.orgId,
         sessionId,
         kind,
@@ -136,8 +313,12 @@ export async function integrationRoutes(app: FastifyInstance) {
       return reply.send({
         integration,
         detail,
+        /**
+         * Nulo quando o gateway já apontou o webhook sozinho — não há nada para
+         * a pessoa fazer, e mostrar uma URL sugeriria que há.
+         */
         webhookUrl:
-          kind === 'chatwoot'
+          kind === 'chatwoot' && !bruto.webhookConfigurado
             ? `${base()}/webhooks/chatwoot/${integration.id}/${(config as ChatwootConfig).webhookToken}`
             : null,
       })

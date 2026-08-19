@@ -32,6 +32,37 @@ export async function authRoutes(app: FastifyInstance) {
   }
 
   /**
+   * Se a instância ainda precisa ser inicializada.
+   *
+   * Público de propósito, e não vaza nada: quem alcança a porta descobriria o
+   * mesmo tentando o registro. Existe para o painel poder mostrar a tela de
+   * primeira execução em vez de um formulário de login que ninguém consegue
+   * usar ainda — a alternativa era o usuário ler o README e montar um curl.
+   */
+  route.get(
+    '/v1/auth/bootstrap',
+    {
+      config: { rateLimit: { max: 30, timeWindow: '1 minute' } },
+      schema: {
+        tags: ['autenticação'],
+        summary: 'A instância já foi inicializada?',
+        response: {
+          200: z.object({
+            needsSetup: z.boolean().describe('true enquanto não existir nenhuma organização.'),
+            openRegistration: z
+              .boolean()
+              .describe('false quando ALLOW_OPEN_REGISTRATION está desligado.'),
+          }),
+        },
+      },
+    },
+    async () => ({
+      needsSetup: (await identity.organizationCount()) === 0,
+      openRegistration: app.env.ALLOW_OPEN_REGISTRATION,
+    }),
+  )
+
+  /**
    * Bootstrap da instância: cria a primeira organização e o seu owner.
    *
    * Fecha sozinho assim que existir qualquer organização — mesmo com

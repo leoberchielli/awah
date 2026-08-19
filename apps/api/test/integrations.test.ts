@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { ChatwootClient, ChatwootError } from '../src/integrations/chatwoot/client'
 import { chatwootConfigSchema, typebotConfigSchema } from '../src/integrations/config'
-import { TypebotClient, TypebotError } from '../src/integrations/typebot/client'
+import { derivarDoLink, TypebotClient, TypebotError } from '../src/integrations/typebot/client'
 
 function resposta(body: unknown, status = 200): Response {
   const semCorpo = status === 204 || status === 304
@@ -266,5 +266,156 @@ describe('cliente do Typebot', () => {
       { fetch: fetchImpl as unknown as typeof fetch },
     ).iniciar()
     expect(semToken[1]?.authorization).toBe('Bearer token-do-typebot')
+  })
+})
+
+describe('link de compartilhamento do Typebot', () => {
+  it('deriva endereço e id do fluxo', () => {
+    expect(derivarDoLink('https://typebot.io/meu-fluxo')).toEqual({
+      baseUrl: 'https://typebot.io',
+      typebotId: 'meu-fluxo',
+    })
+  })
+
+  it('funciona com instância própria', () => {
+    expect(derivarDoLink('https://bot.minhaempresa.com.br/atendimento')).toEqual({
+      baseUrl: 'https://bot.minhaempresa.com.br',
+      typebotId: 'atendimento',
+    })
+  })
+
+  it('tolera espaço e barra sobrando', () => {
+    expect(derivarDoLink('  https://typebot.io/meu-fluxo  ').typebotId).toBe('meu-fluxo')
+  })
+
+  /**
+   * O engano mais provável de quem está com o Typebot aberto: copiar da barra de
+   * endereços do editor. Sem esta conferência a integração é aceita e só falha
+   * depois, na primeira mensagem de um cliente real.
+   */
+  it('recusa a URL do editor, explicando onde está a certa', () => {
+    expect(() => derivarDoLink('https://app.typebot.io/typebots/abc123/edit')).toThrow(
+      /link de compartilhamento/i,
+    )
+  })
+
+  it('recusa endereço sem fluxo', () => {
+    expect(() => derivarDoLink('https://typebot.io')).toThrow(/id do fluxo/i)
+  })
+
+  it('recusa o que não é URL', () => {
+    expect(() => derivarDoLink('meu-fluxo')).toThrow(/URL/i)
+  })
+})
+
+describe('descoberta no Chatwoot', () => {
+  /**
+   * O `accountId` fica escondido na URL do Chatwoot, e pedir que a pessoa o
+   * copie de lá é a primeira coisa que trava a adoção. O token já sabe.
+   */
+  it('lista as contas que o token alcança', async () => {
+    const urls: string[] = []
+    const fetchImpl = vi.fn(async (url: string | URL) => {
+      urls.push(String(url))
+      return resposta({
+        accounts: [
+          { id: 1, name: 'Minha Empresa', role: 'administrator' },
+          { id: 2, name: 'Cliente X', role: 'agent' },
+        ],
+      })
+    })
+
+    const contas = await new ChatwootClient(CHATWOOT, {
+      fetch: fetchImpl as unknown as typeof fetch,
+    }).contas()
+
+    // O perfil não vive sob /accounts/{id} — é o único caminho absoluto.
+    expect(urls[0]).toBe('https://chat.exemplo.com/api/v1/profile')
+    expect(contas).toEqual([
+      { id: 1, name: 'Minha Empresa', role: 'administrator' },
+      { id: 2, name: 'Cliente X', role: 'agent' },
+    ])
+  })
+
+  it('descarta conta sem id em vez de estourar', async () => {
+    const fetchImpl = vi.fn(async () => resposta({ accounts: [{ name: 'sem id' }, { id: 3 }] }))
+
+    const contas = await new ChatwootClient(CHATWOOT, {
+      fetch: fetchImpl as unknown as typeof fetch,
+    }).contas()
+
+    expect(contas).toEqual([{ id: 3, name: 'Conta 3', role: 'agent' }])
+  })
+
+  it('lista as caixas com o tipo, para o painel marcar as que não servem', async () => {
+    const fetchImpl = vi.fn(async () =>
+      resposta({
+        payload: [
+          { id: 7, name: 'WhatsApp', channel_type: 'Channel::Api' },
+          { id: 8, name: 'Site', channel_type: 'Channel::WebWidget' },
+        ],
+      }),
+    )
+
+    const caixas = await new ChatwootClient(CHATWOOT, {
+      fetch: fetchImpl as unknown as typeof fetch,
+    }).caixas()
+
+    expect(caixas).toEqual([
+      { id: 7, name: 'WhatsApp', channelType: 'Channel::Api' },
+      { id: 8, name: 'Site', channelType: 'Channel::WebWidget' },
+    ])
+  })
+
+  /**
+   * Criar a caixa e voltar ao Chatwoot para colar a URL eram os dois passos que
+   * mais faziam gente desistir. Uma chamada resolve os dois.
+   */
+  it('cria a caixa já com o webhook apontado', async () => {
+    let corpo: Record<string, unknown> = {}
+    const fetchImpl = vi.fn(async (_url: string | URL, init?: RequestInit) => {
+      corpo = JSON.parse(String(init?.body))
+      return resposta({ id: 12, name: 'WhatsApp (AWAH)' })
+    })
+
+    const criada = await new ChatwootClient(CHATWOOT, {
+      fetch: fetchImpl as unknown as typeof fetch,
+    }).criarCaixa('WhatsApp (AWAH)', 'https://gateway/webhooks/chatwoot/abc/token')
+
+    expect(criada).toEqual({ id: 12, name: 'WhatsApp (AWAH)' })
+    expect(corpo.channel).toEqual({
+      type: 'api',
+      webhook_url: 'https://gateway/webhooks/chatwoot/abc/token',
+    })
+  })
+
+  it('corrige o webhook de uma caixa que já existia', async () => {
+    const chamadas: Array<{ url: string; method?: string; body: unknown }> = []
+    const fetchImpl = vi.fn(async (url: string | URL, init?: RequestInit) => {
+      chamadas.push({
+        url: String(url),
+        method: init?.method,
+        body: init?.body ? JSON.parse(String(init.body)) : null,
+      })
+      return resposta({ id: 7 })
+    })
+
+    await new ChatwootClient(CHATWOOT, {
+      fetch: fetchImpl as unknown as typeof fetch,
+    }).apontarWebhook(7, 'https://gateway/webhooks/chatwoot/abc/token')
+
+    expect(chamadas[0]?.method).toBe('PATCH')
+    expect(chamadas[0]?.url).toContain('/accounts/1/inboxes/7')
+  })
+
+  it('propaga 403 para a rota poder falar de permissão', async () => {
+    const fetchImpl = vi.fn(async () => resposta({ message: 'sem permissão' }, 403))
+
+    await expect(
+      new ChatwootClient(CHATWOOT, { fetch: fetchImpl as unknown as typeof fetch }).criarCaixa(
+        'x',
+        'https://gateway/hook',
+      ),
+    ).rejects.toMatchObject({ status: 403, isPermanente: true })
   })
 })

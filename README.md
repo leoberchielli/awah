@@ -24,7 +24,7 @@ número"**.
 
 ## Estado
 
-**Ondas 0 a 9 concluídas.** A sessão conecta e pareia, o envio passa por uma fila
+**Ondas 0 a 10 concluídas.** A sessão conecta e pareia, o envio passa por uma fila
 durável com ordem garantida por conversa, o motor de risco regula o ritmo para
 proteger o número, os eventos saem por webhooks assinados, o gateway roda em
 várias réplicas com failover automático, a operação é mensurável por um painel
@@ -45,17 +45,19 @@ real.**
 | 7 | Adapter Cloud API atrás do mesmo contrato | ✅ |
 | 8 | Documentação, SDK TypeScript, hardening | ✅ |
 | 9 | Conectores nativos de Chatwoot e Typebot | ✅ |
+| 10 | Adoção sem curl: setup no painel e assistentes de conexão | ✅ |
 
 > Nada além do pareamento foi exercitado contra um número real de ponta a ponta:
 > o QR é gerado e o socket conecta, mas o funil de entrega, os limites do motor
 > de risco em carga e o failover com sessão conectada ainda não passaram por um
 > aparelho de verdade. Os números do painel vêm dos agregados; a mecânica é
-> coberta por 334 testes, e ainda assim é teste, não produção.
+> coberta por 349 testes, e ainda assim é teste, não produção.
 
 ## Documentação
 
 | Documento | Sobre |
 | --- | --- |
+| [docs/comecando.md](docs/comecando.md) | Do zero a uma conversa no Chatwoot, sem curl nenhum |
 | Este README | O que o projeto faz e como usar cada parte |
 | [docs/integracoes.md](docs/integracoes.md) | Ligar Chatwoot e Typebot, e o que o gateway acrescenta a eles |
 | [docs/producao.md](docs/producao.md) | Subir e não se arrepender: TLS, backup, réplicas, monitoramento |
@@ -73,14 +75,15 @@ docker compose up -d
 ```
 
 Isso levanta Postgres, Redis, aplica as migrations e sobe a API em
-`http://localhost:2900`. O painel fica na raiz, a documentação interativa em
+`http://localhost:2900`. Abra no navegador: a primeira vez mostra a tela de
+setup, onde você cria a organização e o seu usuário. Ela fecha sozinha depois
+disso, e novos usuários passam a entrar por convite.
+
+Daí em diante são três passos, todos no painel: parear o número na aba
+**Sessões**, ligar a ferramenta na aba **Integrações**, e acompanhar em
+**Operação**. O passo a passo completo está em
+[docs/comecando.md](docs/comecando.md); a documentação interativa da API, em
 `/docs`.
-
-Crie a primeira organização (só funciona enquanto não existir nenhuma):
-
-```bash
-curl -X POST http://localhost:2900/v1/auth/register -H 'content-type: application/json' -d '{"organizationName":"Minha Empresa","name":"Leandro","email":"eu@exemplo.com","password":"uma-senha-bem-longa"}'
-```
 
 ## Desenvolvimento
 
@@ -445,13 +448,21 @@ que falta aos dois é justamente o que o gateway tem:
 | Reentrega duplicada | manda de novo | idempotência por chave |
 | Estado de entrega | "enviei" | funil sent → delivered → read |
 
-```bash
-curl -X PUT http://localhost:2900/v1/sessions/$ID/integrations/chatwoot -H "Authorization: Bearer $AWAH_KEY" -H 'content-type: application/json' -d '{"baseUrl":"https://app.chatwoot.com","accountId":1,"inboxId":7,"apiAccessToken":"SEU_TOKEN"}'
-```
+Ligar leva dois campos: o endereço do Chatwoot e um token de acesso. O gateway
+descobre o resto — a conta, as caixas que existem — e **cria a caixa API já com o
+webhook apontado para ele**. Descobrir o `accountId` na URL, descobrir o
+`inboxId` na URL e voltar lá para colar o webhook eram os três passos que mais
+faziam gente desistir; nenhum deles existe mais.
 
-A conexão é **testada antes de gravar** — credencial errada guardada em silêncio
-só apareceria na primeira mensagem de um cliente real. A resposta traz a URL para
-cadastrar no Chatwoot, e a aba **Integrações** do painel faz o mesmo sem curl.
+A conexão é testada antes de gravar: credencial errada guardada em silêncio só
+apareceria na primeira mensagem de um cliente real.
+
+O Typebot pede só o **link de compartilhamento** do fluxo — endereço e id saem
+dele.
+
+```bash
+curl -X PUT http://localhost:2900/v1/sessions/$ID/integrations/typebot -H "Authorization: Bearer $AWAH_KEY" -H 'content-type: application/json' -d '{"shareUrl":"https://typebot.io/meu-fluxo"}'
+```
 
 Os dois convivem na mesma sessão, que é o arranjo mais útil: o Typebot atende
 primeiro, e quando o cliente digita **atendente** o fluxo se cala e o agente

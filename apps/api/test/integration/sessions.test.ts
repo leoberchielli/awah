@@ -312,3 +312,50 @@ describe.skipIf(!hasInfra)('rotas de sessão', () => {
     })
   })
 })
+
+describe.skipIf(!hasInfra)('primeira execução', () => {
+  let app: FastifyInstance
+
+  beforeAll(async () => {
+    app = await buildApp(loadEnv())
+    await app.ready()
+  })
+
+  afterAll(async () => {
+    await app?.close()
+  })
+
+  /**
+   * Sem esta rota o painel não tinha como saber que deve mostrar a tela de
+   * setup, e o primeiro acesso caía num login que ninguém conseguia usar — com
+   * a saída escondida num curl do README.
+   */
+  it('responde sem credencial nenhuma', async () => {
+    const resposta = await app.inject({ method: 'GET', url: '/v1/auth/bootstrap' })
+
+    expect(resposta.statusCode).toBe(200)
+    expect(resposta.json()).toHaveProperty('needsSetup')
+    expect(resposta.json()).toHaveProperty('openRegistration')
+  })
+
+  it('diz que já foi inicializada quando existe organização', async () => {
+    // A suíte inteira cria organizações, então aqui sempre existe pelo menos uma.
+    const resposta = await app.inject({ method: 'GET', url: '/v1/auth/bootstrap' })
+    expect(resposta.json().needsSetup).toBe(false)
+  })
+
+  it('o registro fica fechado depois da primeira organização', async () => {
+    const resposta = await app.inject({
+      method: 'POST',
+      url: '/v1/auth/register',
+      payload: {
+        organizationName: 'Tentativa',
+        name: 'Alguém',
+        email: `tarde-${Date.now()}@exemplo.com`,
+        password: 'uma-senha-bem-longa-mesmo',
+      },
+    })
+
+    expect(resposta.statusCode).toBe(403)
+  })
+})
