@@ -234,9 +234,23 @@ export async function buildApp(env: Env): Promise<FastifyInstance> {
       })
     }
 
+    /**
+     * Erro do cliente é aviso; erro nosso é erro.
+     *
+     * Corpo grande demais, JSON malformado e afins chegam aqui com 4xx. Gravar
+     * cada um como "erro não tratado" enche o log de coisa que não é problema do
+     * servidor — e afoga o que é.
+     */
+    if (statusCode && statusCode >= 400 && statusCode < 500) {
+      request.log.warn({ err: error }, 'requisição recusada')
+      return reply.code(statusCode).send({
+        error: { code: 'bad_request', message: 'Requisição inválida.' },
+      })
+    }
+
     // Erro não previsto: registra o detalhe, devolve o genérico.
     request.log.error({ err: error }, 'erro não tratado')
-    return reply.code(statusCode && statusCode < 500 ? statusCode : 500).send({
+    return reply.code(500).send({
       error: { code: 'internal_error', message: 'Erro interno.' },
     })
   })

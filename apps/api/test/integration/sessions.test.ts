@@ -316,12 +316,24 @@ describe.skipIf(!hasInfra)('rotas de sessão', () => {
 describe.skipIf(!hasInfra)('primeira execução', () => {
   let app: FastifyInstance
 
+  /**
+   * A organização é criada aqui, e não herdada da suíte.
+   *
+   * A primeira versão deste teste assumia que "sempre existe alguma org porque
+   * os outros arquivos criam" — e passava na minha máquina, onde o banco de
+   * desenvolvimento tem uma permanente. No CI, com banco limpo e cada arquivo
+   * limpando o que criou, a suposição caiu na primeira execução.
+   */
+  let org: SeededOrg
+
   beforeAll(async () => {
     app = await buildApp(loadEnv())
     await app.ready()
+    org = await seedOrg(app.db)
   })
 
   afterAll(async () => {
+    await org?.cleanup()
     await app?.close()
   })
 
@@ -339,7 +351,6 @@ describe.skipIf(!hasInfra)('primeira execução', () => {
   })
 
   it('diz que já foi inicializada quando existe organização', async () => {
-    // A suíte inteira cria organizações, então aqui sempre existe pelo menos uma.
     const resposta = await app.inject({ method: 'GET', url: '/v1/auth/bootstrap' })
     expect(resposta.json().needsSetup).toBe(false)
   })
