@@ -5,8 +5,9 @@ import { generateApiKey } from '../../auth/api-key'
 import { requireAuth } from '../../auth/plugin'
 import { ROLES, roleAtLeast } from '../../auth/rbac'
 import { hashToken } from '../../lib/crypto'
-import { forbidden, notFound } from '../../lib/errors'
+import { badRequest, forbidden, notFound } from '../../lib/errors'
 import { ApiKeyRepository } from '../../repos/api-keys'
+import { SessionRepository } from '../../repos/sessions'
 
 const keySchema = z.object({
   id: z.string(),
@@ -53,7 +54,12 @@ export async function apiKeyRoutes(app: FastifyInstance) {
         body: z.object({
           name: z.string().min(2).max(120),
           role: z.enum(ROLES).default('operator'),
-          sessionScope: z.array(z.string().uuid()).nullish(),
+          sessionScope: z
+            .array(z.string().uuid())
+            .nullish()
+            .describe(
+              'Restringe a chave a estas sessões. Omita para a chave valer em toda a organização — o UUID que este formulário sugere é só um exemplo de formato, não um id real.',
+            ),
           expiresInDays: z.number().int().positive().max(3650).nullish(),
         }),
         response: {
@@ -74,6 +80,37 @@ export async function apiKeyRoutes(app: FastifyInstance) {
        */
       if (!roleAtLeast(auth.role, role)) {
         throw forbidden(`Você não pode emitir uma chave com papel acima do seu (${auth.role}).`)
+      }
+
+      /**
+       * Escopo precisa apontar para sessão que existe nesta organização.
+       *
+       * Sem esta conferência dá para emitir uma chave que não alcança nada, e a
+       * falha só aparece no primeiro envio — como um 404 dizendo "sessão não
+       * encontrada", que culpa a sessão em vez da chave e manda o operador
+       * procurar no lugar errado. O caso real foi alguém usar o "Try it" da
+       * documentação e deixar no campo o UUID de exemplo que o formulário
+       * sugere.
+       *
+       * Conferir aqui não vaza nada: são as sessões da própria organização de
+       * quem está emitindo a chave.
+       */
+      if (sessionScope) {
+        if (sessionScope.length === 0) {
+          throw badRequest(
+            'Escopo vazio não alcança nenhuma sessão. Omita `sessionScope` para a chave valer em toda a organização.',
+          )
+        }
+
+        const existentes = await new SessionRepository(app.db, auth.orgId).list(sessionScope)
+        const conhecidas = new Set(existentes.map((sessao) => sessao.id))
+        const ausentes = sessionScope.filter((id) => !conhecidas.has(id))
+
+        if (ausentes.length > 0) {
+          throw badRequest(
+            `Escopo aponta para sessão que não existe nesta organização: ${ausentes.join(', ')}.`,
+          )
+        }
       }
 
       const generated = generateApiKey()
