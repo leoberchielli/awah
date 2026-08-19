@@ -1,0 +1,86 @@
+name: Imagem
+
+# Publica a imagem no registro do GitHub.
+#
+# O CI já construía a imagem para provar que o Dockerfile compila, mas jogava o
+# resultado fora. Isso obrigava quem quisesse experimentar o AWAH a clonar o
+# repositório e compilar — vários minutos e uma cadeia de ferramentas inteira
+# antes de ver a primeira tela. Aqui a imagem passa a existir para o mundo.
+
+on:
+  push:
+    branches: [main, master]
+    tags: ['v*']
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE: ${{ github.repository }}
+
+jobs:
+  publicar:
+    name: Construir e publicar
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+      # Necessária para a attestation de proveniência assinada.
+      id-token: write
+      attestations: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Emulação para construir a variante arm64 no runner x86.
+      #
+      # Não é preciosismo: metade dos VPS baratos hoje é ARM, e todo Mac com
+      # Apple Silicon roda Docker em arm64. Publicar só amd64 faria essa gente
+      # rodar sob emulação, lenta o bastante para o pareamento estourar timeout.
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE }}
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=sha,format=short
+            # `edge` é sempre a ponta da branch principal; `latest` só sai em tag.
+            type=raw,value=edge,enable={{is_default_branch}}
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+
+      - id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            AWAH_VERSION=${{ steps.meta.outputs.version }}
+            AWAH_REVISION=${{ github.sha }}
+            AWAH_BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+
+      # Prova verificável de que esta imagem saiu deste commit, por este
+      # workflow. Quem roda um gateway de WhatsApp com as credenciais dos
+      # próprios clientes dentro tem motivo de sobra para conferir a origem do
+      # binário antes de subir.
+      - uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true

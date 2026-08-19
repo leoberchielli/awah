@@ -1,7 +1,21 @@
 name: awah
 
+# Este arquivo roda sozinho, sem o código-fonte.
+#
+#   curl -O https://raw.githubusercontent.com/leandroberchielli/awah/main/docker-compose.yml
+#   docker compose up -d
+#
+# A imagem vem pronta do registro. Para construir a partir do código, junte o
+# override de desenvolvimento:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+#
 # Valores padrão servem apenas para desenvolvimento local. Em produção defina
 # tudo por .env — as chaves abaixo são públicas e estão no repositório.
+
+# Um lugar só para a imagem. AWAH_IMAGE aponta para outro registro ou outra tag
+# sem editar as três ocorrências.
+x-image: &image ${AWAH_IMAGE:-ghcr.io/leandroberchielli/awah:latest}
 x-api-env: &api-env
   NODE_ENV: ${NODE_ENV:-development}
   PORT: "2900"
@@ -27,7 +41,7 @@ services:
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
-      - ./.docker-data/postgres:/var/lib/postgresql/data
+      - awah-postgres:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U awah -d awah"]
       interval: 5s
@@ -40,7 +54,7 @@ services:
     ports:
       - "${REDIS_PORT:-6379}:6379"
     volumes:
-      - ./.docker-data/redis:/data
+      - awah-redis:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -49,7 +63,7 @@ services:
 
   # Passo único: aplica as migrations e sai. A API espera esta conclusão.
   migrate:
-    build: .
+    image: *image
     command: ["node", "apps/api/dist/migrate.js"]
     environment: *api-env
     depends_on:
@@ -58,7 +72,7 @@ services:
     restart: "no"
 
   api:
-    build: .
+    image: *image
     environment:
       <<: *api-env
       NODE_ID: awah-1
@@ -85,7 +99,7 @@ services:
   # produção seriam N réplicas atrás de um balanceador, com a mesma configuração.
   api2:
     profiles: ["cluster"]
-    build: .
+    image: *image
     environment:
       <<: *api-env
       NODE_ID: awah-2
@@ -105,3 +119,9 @@ services:
       retries: 6
       start_period: 15s
     restart: unless-stopped
+
+# Volumes nomeados, e não pastas do repositório: quem baixou só o compose não
+# tem repositório nenhum, e o Docker cuida das permissões sozinho.
+volumes:
+  awah-postgres:
+  awah-redis:

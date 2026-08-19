@@ -25,6 +25,12 @@ pnpm install
 docker compose up -d postgres redis
 ```
 
+Para rodar a pilha inteira a partir do seu código, e não da imagem publicada:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+```
+
 ```bash
 cp .env.example .env
 ```

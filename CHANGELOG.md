@@ -125,6 +125,22 @@ quando o conjunto estiver exercitado contra tráfego real.
 - Botão de teste que manda um evento de exemplo e mostra status, tempo, corpo
   cru e o que seria enviado.
 
+**Distribuição**
+
+- Imagem publicada em `ghcr.io/leandroberchielli/awah`, multi-arquitetura
+  (amd64 e arm64). O CI já construía a imagem para provar que o Dockerfile
+  compila e jogava o resultado fora — o que obrigava quem quisesse experimentar a
+  clonar o repositório e compilar antes de ver a primeira tela.
+- O `docker-compose.yml` passa a puxar a imagem em vez de construir, e roda
+  sozinho: baixar esse arquivo e subir é o caminho completo. Construir a partir do
+  código virou o override `docker-compose.dev.yml`.
+- Dados em volumes nomeados, não em pastas do repositório — quem baixou só o
+  compose não tem repositório nenhum.
+- Rótulos OCI, e `GET /health` devolvendo versão e commit da imagem: a primeira
+  pergunta de qualquer suporte, respondida sem abrir o contêiner.
+- Attestation de proveniência assinada em cada publicação, verificável com
+  `gh attestation verify`.
+
 ### Segurança
 
 - Em `NODE_ENV=production`, a API se recusa a subir com os segredos de

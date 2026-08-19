@@ -1,0 +1,29 @@
+# Override de desenvolvimento: constrói a imagem a partir do código-fonte.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+#
+# Ou, para não repetir os -f a cada comando, ponha no seu .env:
+#
+#   COMPOSE_FILE=docker-compose.yml:docker-compose.dev.yml
+#
+# O `docker-compose.yml` sozinho puxa a imagem publicada — é o caminho de quem
+# só quer experimentar, e por isso é ele que fica como padrão.
+
+x-build: &build
+  build:
+    context: .
+    args:
+      AWAH_VERSION: dev
+
+services:
+  migrate:
+    <<: *build
+    image: awah-api:dev
+
+  api:
+    <<: *build
+    image: awah-api:dev
+
+  api2:
+    <<: *build
+    image: awah-api:dev

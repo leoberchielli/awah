@@ -10,6 +10,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/api/package.json ./apps/api/
 COPY apps/web/package.json ./apps/web/
 COPY packages/db/package.json ./packages/db/
+COPY packages/sdk/package.json ./packages/sdk/
 RUN pnpm install --frozen-lockfile
 
 # ---- build ----
@@ -26,6 +27,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/api/package.json ./apps/api/
 COPY apps/web/package.json ./apps/web/
 COPY packages/db/package.json ./packages/db/
+COPY packages/sdk/package.json ./packages/sdk/
 # O dashboard já saiu compilado do estágio de build; as dependências dele não
 # entram no runtime. O package.json vem junto só para o lockfile continuar
 # batendo com o workspace — sem ele, --frozen-lockfile recusa a instalação.
@@ -33,9 +35,28 @@ RUN pnpm install --frozen-lockfile --prod --filter @awah/api...
 
 # ---- runtime ----
 FROM base AS runtime
+
+# Preenchidos pelo CI. Ficam nos rótulos e no /health, para quem dá suporte
+# saber o que está rodando sem precisar perguntar.
+ARG AWAH_VERSION=dev
+ARG AWAH_REVISION=unknown
+ARG AWAH_BUILD_DATE=unknown
+
+LABEL org.opencontainers.image.title="AWAH"
+LABEL org.opencontainers.image.description="Gateway de WhatsApp com fila durável, motor de risco e sessões em cluster"
+LABEL org.opencontainers.image.licenses="MIT"
+LABEL org.opencontainers.image.source="https://github.com/leandroberchielli/awah"
+LABEL org.opencontainers.image.documentation="https://github.com/leandroberchielli/awah#readme"
+LABEL org.opencontainers.image.version="${AWAH_VERSION}"
+LABEL org.opencontainers.image.revision="${AWAH_REVISION}"
+LABEL org.opencontainers.image.created="${AWAH_BUILD_DATE}"
+
 ENV NODE_ENV=production
+ENV AWAH_VERSION=${AWAH_VERSION}
+ENV AWAH_REVISION=${AWAH_REVISION}
 # Explícito: o processo roda a partir de /app, e o painel fica ao lado do bundle.
 ENV DASHBOARD_DIR=/app/apps/api/public
+
 RUN apk add --no-cache tini
 
 COPY --from=prod-deps /app/node_modules ./node_modules

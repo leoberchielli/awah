@@ -24,7 +24,7 @@ número"**.
 
 ## Estado
 
-**Ondas 0 a 11 concluídas.** A sessão conecta e pareia, o envio passa por uma fila
+**Ondas 0 a 12 concluídas.** A sessão conecta e pareia, o envio passa por uma fila
 durável com ordem garantida por conversa, o motor de risco regula o ritmo para
 proteger o número, os eventos saem por webhooks assinados, o gateway roda em
 várias réplicas com failover automático, a operação é mensurável por um painel
@@ -47,6 +47,7 @@ real.**
 | 9 | Conectores nativos de Chatwoot e Typebot | ✅ |
 | 10 | Adoção sem curl: setup no painel e assistentes de conexão | ✅ |
 | 11 | Conector HTTP: plugar qualquer plataforma sem conector novo | ✅ |
+| 12 | Imagem publicada, multi-arquitetura, com proveniência | ✅ |
 
 > Nada além do pareamento foi exercitado contra um número real de ponta a ponta:
 > o QR é gerado e o socket conecta, mas o funil de entrega, os limites do motor
@@ -72,9 +73,18 @@ Com a instância no ar, `/docs` traz a referência interativa de todas as rotas.
 
 ## Subir
 
+Sem clonar nada:
+
+```bash
+curl -O https://raw.githubusercontent.com/leandroberchielli/awah/main/docker-compose.yml
+```
+
 ```bash
 docker compose up -d
 ```
+
+A imagem vem pronta do registro — multi-arquitetura, amd64 e arm64, então roda
+igual num VPS barato, num Mac com Apple Silicon ou num Raspberry Pi.
 
 Isso levanta Postgres, Redis, aplica as migrations e sobe a API em
 `http://localhost:2900`. Abra no navegador: a primeira vez mostra a tela de
@@ -118,6 +128,18 @@ Aplique as migrations e suba:
 ```bash
 pnpm db:migrate && pnpm dev
 ```
+
+### Rodar a partir do código
+
+O `docker-compose.yml` puxa a imagem publicada, que é o caminho de quem só quer
+experimentar. Para construir a sua, junte o override:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+```
+
+Ou ponha `COMPOSE_FILE=docker-compose.yml:docker-compose.dev.yml` no seu `.env`
+e volte a usar `docker compose up -d` normalmente.
 
 ### Comandos
 
@@ -541,6 +563,31 @@ vai olhar um trace. Quem quiser, pluga no boot:
 ```bash
 node --require ./otel.js apps/api/dist/index.js
 ```
+
+## A imagem
+
+`ghcr.io/leandroberchielli/awah` — multi-arquitetura (amd64 e arm64), publicada
+pelo CI a cada push.
+
+| Tag | O que é |
+| --- | --- |
+| `latest` | Última versão marcada com tag. É a que você quer. |
+| `edge` | Ponta da branch principal. Pode quebrar. |
+| `1.2.3`, `1.2`, `1` | Versão exata e as faixas dela |
+| `sha-abc1234` | Commit específico, para fixar sem ambiguidade |
+
+Cada publicação carrega uma **attestation de proveniência** assinada, verificável
+com o `gh`:
+
+```bash
+gh attestation verify oci://ghcr.io/leandroberchielli/awah:latest --owner leandroberchielli
+```
+
+Não é cerimônia: quem roda um gateway de WhatsApp tem as credenciais dos próprios
+clientes dentro dele, e conferir de onde veio o binário antes de subir é o mínimo.
+
+`GET /health` devolve a versão e o commit da imagem — a primeira pergunta de
+qualquer suporte, respondida sem abrir o contêiner.
 
 ## Cluster
 

@@ -12,6 +12,7 @@
   "scripts": {
     "dev": "pnpm --filter @awah/api dev",
     "dev:web": "pnpm --filter @awah/web dev",
+    "docker:dev": "docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build",
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",

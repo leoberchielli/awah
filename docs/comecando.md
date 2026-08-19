@@ -8,11 +8,17 @@ Do zero a uma conversa no Chatwoot. São cinco passos e nenhum `curl`.
 
 ## 1. Subir
 
+Você não precisa do código-fonte. Só de um arquivo:
+
+```bash
+curl -O https://raw.githubusercontent.com/leandroberchielli/awah/main/docker-compose.yml
+```
+
 ```bash
 docker compose up -d
 ```
 
-Levanta Postgres, Redis, aplica as migrations e sobe a API em
+Levanta Postgres, Redis, puxa a imagem, aplica as migrations e sobe a API em
 `http://localhost:2900`. Espere uns segundos e abra no navegador.
 
 ## 2. Criar a organização
@@ -91,6 +97,16 @@ Leia [producao.md](producao.md) antes. Resumo do que não pode faltar: gerar seu
 próprios segredos (a API se recusa a subir em produção com os deste
 repositório), definir `METRICS_TOKEN`, configurar `TRUST_PROXY` conforme a sua
 topologia, e não publicar as portas do Postgres e do Redis.
+
+### Quero fixar a versão
+
+O padrão é `latest`. Para fixar, aponte `AWAH_IMAGE` no seu `.env`:
+
+```bash
+AWAH_IMAGE=ghcr.io/leandroberchielli/awah:1.0.0
+```
+
+`GET /health` diz qual versão está rodando.
 
 ### Não quero usar Docker
 

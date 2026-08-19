@@ -34,9 +34,15 @@ TRUST_PROXY=10.0.0.0/8,172.16.0.0/12
 lugar. Se alguém alcançar a porta da aplicação sem passar pelo proxy, escolhe o
 próprio IP a cada requisição e nunca bate no rate limit.
 
-**Postgres e Redis fora da internet.** O `docker-compose.yml` deste repositório
-publica as duas portas para facilitar desenvolvimento. Em produção, remova os
-blocos `ports` dos dois serviços.
+**Postgres e Redis fora da internet.** O `docker-compose.yml` publica as duas
+portas para facilitar desenvolvimento. Em produção, remova os blocos `ports` dos
+dois serviços.
+
+**Os dados vivem em volumes nomeados** (`awah_awah-postgres`, `awah_awah-redis`),
+e não em pastas do repositório — quem baixou só o compose não tem repositório
+nenhum. É de `awah_awah-postgres` que sai o backup, e é ele que precisa
+sobreviver a qualquer `docker compose down`. **Nunca use `down -v`**: a flag
+apaga os volumes, e com eles o auth state de todas as sessões.
 
 ## A perda que dói
 
@@ -45,7 +51,7 @@ Backup do Postgres não é sobre mensagens — é sobre **`session_auth` e
 números na mão, com um aparelho por vez.
 
 ```bash
-pg_dump --format=custom --file=awah-$(date +%F).dump "$DATABASE_URL"
+docker compose exec -T postgres pg_dump -U awah --format=custom awah > awah-$(date +%F).dump
 ```
 
 Restaure num banco vazio de vez em quando e suba a API apontando para ele. Backup
@@ -124,11 +130,24 @@ importa é essa.
 ## Atualizar
 
 ```bash
-docker compose pull && pnpm db:migrate && docker compose up -d
+docker compose pull && docker compose up -d
 ```
 
-Nessa ordem. As migrations são aditivas e o código novo tolera schema velho por
-uma versão, mas o contrário não vale.
+O serviço `migrate` roda antes da API e é ele que aplica as migrations — a API
+só sobe depois de ele terminar com sucesso. As migrations são aditivas e o código
+novo tolera schema velho por uma versão; o contrário não vale, então nunca rode
+uma imagem antiga contra um banco já migrado.
+
+**Fixe a versão em produção.** O padrão do compose é `latest`, que é conveniente
+para experimentar e ruim para operar — um `docker compose pull` pode trazer uma
+versão que você não revisou.
+
+```bash
+AWAH_IMAGE=ghcr.io/leandroberchielli/awah:1.0.0
+```
+
+`GET /health` devolve a versão e o commit que estão rodando, para não haver
+dúvida sobre o que está no ar.
 
 Com várias réplicas, atualize uma por vez. Enquanto uma reinicia, o lease das
 sessões dela expira em 15 s e outra assume — a janela é a mesma do failover.
@@ -136,6 +155,16 @@ sessões dela expira em 15 s e outra assume — a janela é a mesma do failover.
 Desligamento é ordenado: `SIGTERM` para de aceitar conexão nova, drena o que está
 em voo, solta os leases e só então fecha Postgres e Redis. Dê ao orquestrador ao
 menos 30 s de `terminationGracePeriod`.
+
+### Confira de onde veio a imagem
+
+```bash
+gh attestation verify oci://ghcr.io/leandroberchielli/awah:1.0.0 --owner leandroberchielli
+```
+
+A attestation prova que aquela imagem saiu daquele commit, por aquele workflow.
+Quem roda um gateway com as credenciais dos próprios clientes dentro tem motivo
+de sobra para conferir isso antes de subir.
 
 ## O que monitorar
 

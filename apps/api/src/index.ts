@@ -73,7 +73,15 @@ async function main() {
   try {
     await app.listen({ port: env.PORT, host: env.HOST })
     const base = env.PUBLIC_URL ?? `http://localhost:${env.PORT}`
-    app.log.info({ nodeId: env.NODE_ID, painel: base, docs: `${base}/docs` }, 'AWAH no ar')
+    app.log.info(
+      {
+        versao: process.env.AWAH_VERSION ?? 'dev',
+        nodeId: env.NODE_ID,
+        painel: base,
+        docs: `${base}/docs`,
+      },
+      'AWAH no ar',
+    )
   } catch (error) {
     app.log.error({ err: error }, 'falha ao subir o servidor')
     process.exit(1)
