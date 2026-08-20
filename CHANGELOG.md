@@ -212,6 +212,17 @@ read-only for the dashboard: reporting on a budget must not consume it.
 Anyone running this before now should assume their numbers were sending faster
 than the limits they configured.
 
+**Failover skipped the simulator, so failover went untested.**
+
+The scanner that adopts orphaned sessions selected `engine = 'baileys'`. That
+is right for the Cloud API — stateless HTTP holds no socket and there is
+nothing to adopt — but it also excluded the simulator, which does hold one. The
+practical effect was circular: the only engine that could exercise failover
+without a real handset was the one engine failover ignored, so the path stayed
+unverified. It now selects the engines that hold a socket, and a live run kills
+the owning replica and watches the other take the session over and send through
+it.
+
 ### Notes
 
 The delivery funnel, the risk engine under load and the retry path have now been

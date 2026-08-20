@@ -94,6 +94,29 @@ Every number comes from the `simulator` engine, which stands in for the last
 hop only. They describe the gateway; they do not describe WhatsApp. The report
 says so at the top and explains what is still unmeasured.
 
+### And the ones that are not about speed
+
+A second script asks whether the guarantees hold at all, and records what it
+saw rather than only whether it was happy:
+
+```bash
+node scripts/verify.mjs --url http://localhost:2900 --key "$AWAH_KEY" \
+  --email you@example.com --password ...
+node scripts/verify-cluster.mjs --key "$AWAH_KEY"   # needs the cluster profile
+```
+
+**[docs/VERIFICATION.md](docs/VERIFICATION.md)** — 41 checks over eight groups,
+each with its evidence: a viewer key refused a session, a scoped key answered
+404 rather than 403 for a session outside its scope, a webhook signature
+recomputed from the body and the secret, a delivery refused twice and landed on
+the third attempt, sixty messages surviving `docker kill` mid-drain with none
+stuck and none lost, and a session taken over by the surviving replica after
+its owner was killed.
+
+The second script drives Docker, because durability and failover cannot be
+checked without stopping a process — and a graceful stop is the easy case, so
+it uses SIGKILL.
+
 ## Documentation
 
 | Document | About |

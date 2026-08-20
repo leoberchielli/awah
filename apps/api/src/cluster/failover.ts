@@ -60,13 +60,22 @@ export class FailoverScanner {
     this.timer.unref()
   }
 
-  /** Candidates: they want to be up and they are not running here. */
+  /**
+   * Candidates: they want to be up and they are not running here.
+   *
+   * Only the engines that hold a live socket. A Cloud API session is stateless
+   * HTTP — there is nothing to adopt, because there was never anything to lose
+   * when the node died. Baileys holds a socket and so does the simulator, which
+   * is the whole reason the simulator can stand in for it here: a failover path
+   * that skipped the simulator would be a failover path nobody could test
+   * without a real handset, which is how it went untested in the first place.
+   */
   private async candidates(): Promise<OrphanRow[]> {
     const result = await this.deps.db.execute(sql`
       SELECT id, org_id, name
       FROM sessions
       WHERE desired_state = 'running'
-        AND engine = 'baileys'
+        AND engine IN ('baileys', 'simulator')
         AND status <> 'logged_out'
         AND status <> 'banned'
       ORDER BY updated_at

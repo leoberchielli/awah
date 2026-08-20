@@ -214,6 +214,16 @@ segue somente de leitura para o painel: relatar um orçamento não pode consumi-
 Quem já rodava isto deve assumir que seus números vinham enviando mais rápido
 do que os limites configurados.
 
+**O failover pulava o simulador, então o failover ficou sem teste.**
+
+A varredura que adota sessões órfãs selecionava `engine = 'baileys'`. Está
+certo para a Cloud API — HTTP sem estado não segura socket nenhum e não há o
+que adotar —, mas isso também excluía o simulador, que segura. O efeito era
+circular: o único engine capaz de exercitar failover sem um aparelho de
+verdade era justamente o que o failover ignorava, então o caminho seguiu sem
+verificação. Agora ela seleciona os engines que seguram socket, e uma execução
+ao vivo mata a réplica dona e vê a outra assumir a sessão e enviar por ela.
+
 ### Notas
 
 Nada além do pareamento foi exercitado contra um número real de ponta a ponta. O
