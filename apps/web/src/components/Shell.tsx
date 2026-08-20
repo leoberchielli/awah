@@ -117,7 +117,7 @@ function CabecalhoMovel() {
   const t = useT()
 
   return (
-    <div className="mb-3 flex flex-col gap-3 sm:hidden">
+    <div className="chrome sticky top-0 z-20 -mx-3 mb-3 flex flex-col gap-3 px-3 py-3 sm:hidden">
       <div className="flex items-center justify-between">
         <Marca />
         <button
@@ -142,8 +142,8 @@ function CabecalhoMovel() {
               cx(
                 'flex shrink-0 items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors',
                 isActive
-                  ? 'bg-accent-soft font-medium text-accent'
-                  : 'border border-line bg-surface text-muted',
+                  ? 'border border-accent/30 bg-accent-soft font-medium text-accent shadow-sm'
+                  : 'border border-line/70 bg-surface/60 text-muted backdrop-blur-sm',
               )
             }
           >
@@ -164,7 +164,7 @@ function Rail() {
   return (
     <nav
       aria-label={t('common.sections')}
-      className="sticky top-0 hidden h-dvh w-48 shrink-0 flex-col gap-1 border-r border-line py-5 pr-4 sm:flex"
+      className="chrome sticky top-0 z-20 hidden h-dvh w-48 shrink-0 flex-col gap-1 border-e border-line/70 py-5 pe-4 sm:flex"
     >
       <div className="mb-5 px-2">
         <Marca />
@@ -178,8 +178,8 @@ function Rail() {
             cx(
               'flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors',
               isActive
-                ? 'bg-accent-soft font-medium text-accent'
-                : 'text-muted hover:bg-surface-2 hover:text-ink',
+                ? 'bg-accent-soft font-medium text-accent shadow-[inset_0_0_0_1px_rgb(var(--glass-edge))]'
+                : 'text-muted hover:bg-surface-2/70 hover:text-ink',
             )
           }
         >
@@ -213,7 +213,7 @@ export function Marca() {
     <span className="flex items-center gap-2">
       <span
         aria-hidden
-        className="grid size-7 place-items-center rounded-lg bg-accent font-mono text-[13px] font-medium text-white"
+        className="grid size-7 place-items-center rounded-lg bg-accent font-mono text-[13px] font-medium text-on-fill"
       >
         A
       </span>
@@ -227,13 +227,13 @@ function TopBar({ acoes }: { acoes?: ReactNode }) {
   const t = useT()
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-3">
+    <div className="chrome sticky top-0 z-10 -mx-3 flex flex-wrap items-center justify-between gap-3 border-b border-line/70 px-3 py-3 sm:-mx-5 sm:px-5">
       <div className="flex flex-1 flex-wrap items-center gap-2">
         {/* biome-ignore lint/a11y/useSemanticElements: fieldset exige legend visível e traz layout próprio; aqui são botões de alternância, não campos de formulário */}
         <div
           role="group"
           aria-label={t('common.timeWindow')}
-          className="flex overflow-hidden rounded-md border border-line bg-surface"
+          className="flex overflow-hidden rounded-lg border border-line/70 bg-surface/60 backdrop-blur-sm"
         >
           {JANELAS.map((janela) => (
             <button
@@ -278,7 +278,7 @@ function AlternadorDeTema() {
     <div
       role="group"
       aria-label={t('common.theme')}
-      className="flex overflow-hidden rounded-md border border-line bg-surface"
+      className="flex overflow-hidden rounded-lg border border-line/70 bg-surface/60 backdrop-blur-sm"
     >
       {opcoes.map(({ valor, Icone, chave }) => (
         <button
@@ -311,7 +311,7 @@ export function FiltroDeSessao({ sessoes }: { sessoes: Array<{ id: string; name:
       <select
         value={sessao ?? ''}
         onChange={(evento) => definirSessao(evento.target.value || null)}
-        className="rounded-md border border-line bg-surface px-2 py-[7px] text-xs text-ink"
+        className="rounded-lg border border-line/70 bg-surface/60 px-2 py-[7px] text-xs text-ink backdrop-blur-sm"
       >
         <option value="">{t('common.allSessions')}</option>
         {sessoes.map((s) => (

@@ -82,7 +82,7 @@ export function Entrar() {
           <button
             type="submit"
             disabled={enviando}
-            className="rounded-md bg-accent px-3 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+            className="rounded-md bg-accent px-3 py-2 text-sm font-medium text-on-fill transition-opacity hover:opacity-90 disabled:opacity-50"
           >
             {enviando ? t('login.submitting') : t('login.submit')}
           </button>

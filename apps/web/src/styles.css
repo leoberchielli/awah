@@ -13,68 +13,112 @@
 @import "@fontsource/ibm-plex-mono/latin-500.css";
 
 /*
- * Painel de instrumentos, não página de marketing.
+ * Instrumento sob vidro.
  *
- * Cor: neutros levemente frios, um único acento (íris) e três cores semânticas
- * que nunca são usadas como enfeite — verde é sessão conectada, âmbar é
- * segurada, vermelho é falha. Quem olha de longe deve conseguir dizer se está
- * tudo bem sem ler um número sequer.
+ * O painel é lido por quem está com um incidente na mão, então a regra que
+ * ordena todo o resto é: o efeito nunca pode custar legibilidade do dado. O
+ * vidro fica no cromo e nos cartões — superfícies grandes e poucas. Linha de
+ * lista, pílula e célula de tabela continuam opacas, porque `backdrop-filter`
+ * em centenas de elementos é o que transforma "moderno" em "travado".
  *
- * Tipo: IBM Plex Sans na interface e IBM Plex Mono em tudo que é número, id ou
- * código. Dígito monoespaçado alinha em coluna e é o que faz uma tabela de
- * métricas parecer um instrumento em vez de um texto.
+ * Para o vidro parecer vidro precisa haver algo atrás dele. Daí a camada
+ * ambiente: dois halos de cor que se movem devagar e dão ao desfoque o que
+ * refratar. Sem ela, translucidez sobre cor chapada é só opacidade mal
+ * resolvida.
+ *
+ * Cor: um acento (íris) e um segundo tom (turquesa) só no ambiente, nunca em
+ * dado. As três semânticas seguem intocadas — verde é conectada, âmbar é
+ * segurada, vermelho é falha —, porque elas carregam significado e não estilo.
  */
 :root {
-  --ground: #faf9f7;
+  --ground: #f4f5fa;
   --surface: #ffffff;
-  --surface-2: #f4f3f0;
-  --line: #e5e3de;
-  --line-strong: #d2cfc8;
-  --ink: #17191c;
-  --muted: #6a6e76;
-  --accent: #5b5bd6;
-  --accent-soft: #ececfb;
-  --ok: #12a150;
-  --warn: #b87503;
-  --crit: #d13438;
-  --hold: #7a7f89;
-  --shadow: 0 1px 2px rgb(23 25 28 / 0.06), 0 4px 12px rgb(23 25 28 / 0.04);
+  --surface-2: #eff0f6;
+  --line: #dedfe9;
+  --line-strong: #c6c8d6;
+  --ink: #15171d;
+  --muted: #61656f;
+  --accent: #5959d2;
+  --accent-soft: #e9e9fb;
+  --ok: #0f8f47;
+  --warn: #a86a03;
+  --crit: #c62c30;
+  --hold: #6f747f;
+  /* Tinta sobre preenchimento sólido. Branco só sobrevive no claro:
+     no escuro os sólidos são claros, e o par se inverte. */
+  --on-fill: #ffffff;
+
+  /* Vidro: tinta opaca o bastante para o texto sobreviver ao que passa atrás. */
+  --glass: 255 255 255 / 0.76;
+  --glass-strong: 255 255 255 / 0.88;
+  --glass-edge: 255 255 255 / 0.9;
+  --glass-line: 21 23 29 / 0.08;
+  --blur: 20px;
+
+  /* Halos do fundo. Em claro ficam discretos; o dado é que precisa saltar. */
+  --halo-1: 89 89 210 / 0.16;
+  --halo-2: 16 155 165 / 0.13;
+
+  --shadow: 0 1px 2px rgb(21 23 29 / 0.04), 0 8px 24px -8px rgb(21 23 29 / 0.12);
+  --shadow-lift: 0 2px 4px rgb(21 23 29 / 0.05), 0 16px 40px -12px rgb(21 23 29 / 0.2);
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --ground: #0f1113;
-    --surface: #17191d;
-    --surface-2: #1e2126;
-    --line: #282b31;
-    --line-strong: #3a3e46;
-    --ink: #e7e8ea;
-    --muted: #8d929b;
+    --ground: #0a0b10;
+    --surface: #14161d;
+    --surface-2: #1b1e27;
+    --line: #272b36;
+    --line-strong: #3a3f4d;
+    --ink: #e9eaee;
+    --muted: #949aa6;
     --accent: #8b8bf0;
-    --accent-soft: #21223a;
+    --accent-soft: #1e1f38;
     --ok: #35c07a;
     --warn: #e0a12a;
     --crit: #ef6a6d;
-    --hold: #7f858f;
-    --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 14px rgb(0 0 0 / 0.28);
+    --hold: #898f98;
+    --on-fill: #0a0b10;
+
+    --glass: 22 25 33 / 0.66;
+    --glass-strong: 22 25 33 / 0.82;
+    --glass-edge: 255 255 255 / 0.12;
+    --glass-line: 255 255 255 / 0.08;
+
+    --halo-1: 116 116 255 / 0.2;
+    --halo-2: 24 190 200 / 0.14;
+
+    --shadow: 0 1px 2px rgb(0 0 0 / 0.5), 0 8px 28px -8px rgb(0 0 0 / 0.55);
+    --shadow-lift: 0 2px 6px rgb(0 0 0 / 0.5), 0 20px 48px -12px rgb(0 0 0 / 0.65);
   }
 }
 
 :root[data-theme="dark"] {
-  --ground: #0f1113;
-  --surface: #17191d;
-  --surface-2: #1e2126;
-  --line: #282b31;
-  --line-strong: #3a3e46;
-  --ink: #e7e8ea;
-  --muted: #8d929b;
+  --ground: #0a0b10;
+  --surface: #14161d;
+  --surface-2: #1b1e27;
+  --line: #272b36;
+  --line-strong: #3a3f4d;
+  --ink: #e9eaee;
+  --muted: #949aa6;
   --accent: #8b8bf0;
-  --accent-soft: #21223a;
+  --accent-soft: #1e1f38;
   --ok: #35c07a;
   --warn: #e0a12a;
   --crit: #ef6a6d;
-  --hold: #7f858f;
-  --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 14px rgb(0 0 0 / 0.28);
+  --hold: #898f98;
+  --on-fill: #0a0b10;
+
+  --glass: 22 25 33 / 0.66;
+  --glass-strong: 22 25 33 / 0.82;
+  --glass-edge: 255 255 255 / 0.12;
+  --glass-line: 255 255 255 / 0.08;
+
+  --halo-1: 116 116 255 / 0.2;
+  --halo-2: 24 190 200 / 0.14;
+
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.5), 0 8px 28px -8px rgb(0 0 0 / 0.55);
+  --shadow-lift: 0 2px 6px rgb(0 0 0 / 0.5), 0 20px 48px -12px rgb(0 0 0 / 0.65);
 }
 
 @theme {
@@ -91,11 +135,12 @@
   --color-warn: var(--warn);
   --color-crit: var(--crit);
   --color-hold: var(--hold);
+  --color-on-fill: var(--on-fill);
 
   --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
 
-  --radius-card: 10px;
+  --radius-card: 16px;
 }
 
 @layer base {
@@ -108,6 +153,38 @@
     color: var(--ink);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
+    /* O ambiente é `fixed`; sem isto ele rolaria junto e perderia o efeito. */
+    position: relative;
+    min-height: 100dvh;
+  }
+
+  /*
+   * A camada que o vidro refrata.
+   *
+   * Fica atrás de tudo, não recebe evento de ponteiro e não entra na ordem de
+   * leitura. A deriva é lenta de propósito: movimento perceptível num painel
+   * que fica aberto o dia todo cansa mais do que impressiona.
+   */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: -20%;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(46% 38% at 18% 12%, rgb(var(--halo-1)) 0%, transparent 68%),
+      radial-gradient(42% 40% at 84% 24%, rgb(var(--halo-2)) 0%, transparent 66%),
+      radial-gradient(52% 44% at 62% 92%, rgb(var(--halo-1)) 0%, transparent 70%);
+    animation: deriva 42s ease-in-out infinite alternate;
+  }
+
+  @keyframes deriva {
+    from {
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+    to {
+      transform: translate3d(2.5%, -2%, 0) scale(1.06);
+    }
   }
 
   /* Dígito não dança quando o número muda. */
@@ -120,16 +197,57 @@
   :focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
-    border-radius: 4px;
+    border-radius: 6px;
   }
 }
 
 @layer components {
+  /*
+   * O vidro.
+   *
+   * A borda superior mais clara que as outras é o que o olho lê como "aresta
+   * pegando luz" — sem ela o cartão parece translúcido, não vítreo. O
+   * `saturate` compensa a lavagem que o desfoque causa nas cores atrás.
+   */
   .card {
-    background-color: var(--surface);
-    border: 1px solid var(--line);
+    position: relative;
+    background-color: rgb(var(--glass));
+    /* Sem prefixo manual: o Lightning CSS prefixa conforme os alvos, e
+       declarar `-webkit-` à mão fazia ele descartar a propriedade padrão. */
+    backdrop-filter: blur(var(--blur)) saturate(150%);
+    border: 1px solid rgb(var(--glass-line));
     border-radius: var(--radius-card);
     box-shadow: var(--shadow);
+    transition:
+      box-shadow 260ms ease,
+      transform 260ms ease;
+  }
+
+  .card::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto;
+    height: 1px;
+    border-radius: var(--radius-card) var(--radius-card) 0 0;
+    background: linear-gradient(90deg, transparent, rgb(var(--glass-edge)), transparent);
+    pointer-events: none;
+  }
+
+  /*
+   * Só o que é clicável levanta. Cartão de gráfico subindo ao passar o mouse
+   * seria movimento sem significado.
+   */
+  .card-hover:hover {
+    box-shadow: var(--shadow-lift);
+    transform: translateY(-2px);
+  }
+
+  /* Cromo: mesma receita, tinta mais firme, porque conteúdo rola por baixo. */
+  .chrome {
+    background-color: rgb(var(--glass-strong));
+    /* Sem prefixo manual: o Lightning CSS prefixa conforme os alvos, e
+       declarar `-webkit-` à mão fazia ele descartar a propriedade padrão. */
+    backdrop-filter: blur(var(--blur)) saturate(150%);
   }
 
   /* Rótulo de seção: caixa alta pequena com respiro entre letras. */
@@ -139,6 +257,15 @@
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--muted);
+  }
+
+  /*
+   * O número que importa ganha um halo da própria cor. É o único brilho do
+   * painel, e existe para que a leitura de longe encontre o dado antes do
+   * rótulo.
+   */
+  .stat-glow {
+    text-shadow: 0 0 28px color-mix(in oklab, currentColor 35%, transparent);
   }
 }
 

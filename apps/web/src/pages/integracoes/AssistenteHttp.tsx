@@ -162,7 +162,7 @@ export function AssistenteHttp({
           <button
             type="submit"
             disabled={ocupado !== null}
-            className="flex-1 rounded-md bg-accent px-3 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+            className="flex-1 rounded-md bg-accent px-3 py-2 text-sm font-medium text-on-fill transition-opacity hover:opacity-90 disabled:opacity-50"
           >
             {ocupado === 'salvar' ? t('http.connecting') : t('http.connect')}
           </button>

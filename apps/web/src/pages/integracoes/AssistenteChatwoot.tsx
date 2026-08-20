@@ -370,7 +370,7 @@ function Acao({
     <button
       type="submit"
       disabled={ocupado}
-      className="mt-1 rounded-md bg-accent px-3 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+      className="mt-1 rounded-md bg-accent px-3 py-2 text-sm font-medium text-on-fill transition-opacity hover:opacity-90 disabled:opacity-50"
     >
       {ocupado ? carregando : rotulo}
     </button>

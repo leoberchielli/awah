@@ -248,7 +248,7 @@ function Emissor({
         <button
           type="submit"
           disabled={ocupado || escopoVazio}
-          className="mt-1 self-start rounded-md bg-accent px-3 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+          className="mt-1 self-start rounded-md bg-accent px-3 py-2 text-sm font-medium text-on-fill transition-opacity hover:opacity-90 disabled:opacity-50"
         >
           {ocupado ? t('keys.submitting') : t('keys.submit')}
         </button>
@@ -298,7 +298,7 @@ function TokenRecemNascido({
                 setCopia('falhou')
               }
             }}
-            className="rounded-md bg-accent px-3 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
+            className="rounded-md bg-accent px-3 py-2 text-sm font-medium text-on-fill transition-opacity hover:opacity-90"
           >
             {copia === 'copiado' ? t('keys.created.copied') : t('keys.created.copy')}
           </button>
@@ -384,7 +384,7 @@ function LinhaDeChave({
                 await del(`/v1/keys/${chave.id}`).catch(() => undefined)
                 aoRevogar()
               }}
-              className="rounded-md bg-crit px-2.5 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+              className="rounded-md bg-crit px-2.5 py-1.5 text-xs font-medium text-on-fill disabled:opacity-50"
             >
               {ocupado ? t('keys.revoking') : t('common.confirm')}
             </button>

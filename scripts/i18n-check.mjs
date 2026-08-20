@@ -27,7 +27,6 @@ const LOCALES_DIR = join(
   'locales',
 )
 
-const ENTRY = /^\s{2}'([^']+)':\s*(?:\n\s*)?((?:'|")[\s\S]*?)(?:,|\n\s*\})/gm
 const PLACEHOLDER = /\{(\w+)\}/g
 
 /** Key → the raw literal, so placeholders can be compared without evaluating. */

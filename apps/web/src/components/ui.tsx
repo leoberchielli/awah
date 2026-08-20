@@ -20,7 +20,7 @@ export function Card({
   return (
     <section className={cx('card flex flex-col overflow-hidden', className)}>
       {title && (
-        <header className="flex items-start justify-between gap-3 border-b border-line px-4 py-3">
+        <header className="flex items-start justify-between gap-3 border-b border-line/60 px-4 py-3">
           <div>
             <h2 className="text-[13px] font-semibold text-ink">{title}</h2>
             {hint && <p className="mt-0.5 text-xs text-muted">{hint}</p>}
@@ -62,7 +62,7 @@ export function Stat({
   return (
     <div className="flex flex-col gap-1">
       <span className="eyebrow">{label}</span>
-      <span className={cx('font-mono text-2xl leading-none font-medium tnum', cor)}>
+      <span className={cx('stat-glow font-mono text-[26px] leading-none font-semibold tnum', cor)}>
         {value}
         {unit && <span className="ml-1 text-sm text-muted">{unit}</span>}
       </span>
@@ -85,7 +85,7 @@ export function Pill({ tone, children }: { tone: Tone; children: ReactNode }) {
   return (
     <span
       className={cx(
-        'inline-flex items-center gap-1.5 rounded-full border border-line bg-surface-2 px-2 py-0.5 text-xs font-medium',
+        'inline-flex items-center gap-1.5 rounded-full border border-line/70 bg-surface-2/70 px-2.5 py-0.5 text-xs font-medium',
         TONES[tone],
       )}
     >
@@ -97,12 +97,12 @@ export function Pill({ tone, children }: { tone: Tone; children: ReactNode }) {
 
 export function Empty({ children }: { children: ReactNode }) {
   return (
-    <div className="flex min-h-24 items-center justify-center rounded-md border border-dashed border-line px-4 py-6 text-center text-sm text-muted">
+    <div className="flex min-h-24 items-center justify-center rounded-xl border border-dashed border-line/80 bg-surface/30 px-4 py-6 text-center text-sm text-muted">
       {children}
     </div>
   )
 }
 
 export function Skeleton({ className }: { className?: string }) {
-  return <div className={cx('animate-pulse rounded bg-surface-2', className)} />
+  return <div className={cx('animate-pulse rounded-lg bg-surface-2/70', className)} />
 }

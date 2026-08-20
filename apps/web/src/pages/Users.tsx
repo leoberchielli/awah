@@ -170,7 +170,7 @@ function Convite({
         <button
           type="submit"
           disabled={ocupado || senhaCurta}
-          className="mt-1 self-start rounded-md bg-accent px-3 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+          className="mt-1 self-start rounded-md bg-accent px-3 py-2 text-sm font-medium text-on-fill transition-opacity hover:opacity-90 disabled:opacity-50"
         >
           {ocupado ? t('users.adding') : t('users.add.submit')}
         </button>
@@ -260,7 +260,7 @@ function LinhaDeMembro({
               type="button"
               disabled={ocupado}
               onClick={() => agir(() => del(`/v1/org/members/${membro.userId}`))}
-              className="rounded-md bg-crit px-2.5 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+              className="rounded-md bg-crit px-2.5 py-1.5 text-xs font-medium text-on-fill disabled:opacity-50"
             >
               {ocupado ? t('users.removing') : t('common.confirm')}
             </button>

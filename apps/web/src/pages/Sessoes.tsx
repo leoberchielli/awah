@@ -258,7 +258,7 @@ function Botao({
 }) {
   const estilo = {
     neutro: 'border-line bg-surface text-ink hover:bg-surface-2',
-    primario: 'border-transparent bg-accent text-white hover:opacity-90',
+    primario: 'border-transparent bg-accent text-on-fill hover:opacity-90',
     perigo: 'border-line bg-surface text-crit hover:bg-surface-2',
   }[tom]
 
