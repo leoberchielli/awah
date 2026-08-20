@@ -1,6 +1,7 @@
 import { AreaSeries, BarrasHorizontais, Funnel, SeriesPoint } from '../components/charts'
+import { ClockIcon, HoldIcon, QueueIcon, SendIcon, SessionIcon } from '../components/icons'
 import { SessionFilter, Shell, useFilter } from '../components/Shell'
-import { Card, Empty, Pill, Skeleton, Stat } from '../components/ui'
+import { Card, Empty, Pill, Skeleton, Stat, Tile } from '../components/ui'
 import { useQuery } from '../hooks/useQuery'
 import { useT } from '../i18n'
 import type { KpiDelivery, KpiRisk, KpiSessions, SessionRow } from '../lib/api'
@@ -35,7 +36,12 @@ export function Operations() {
         />
 
         <div className="grid gap-4 lg:grid-cols-3">
-          <Card title={t('ops.funnel')} hint={t('ops.funnelHint')} className="lg:col-span-1">
+          <Card
+            title={t('ops.funnel')}
+            hint={t('ops.funnelHint')}
+            tone="data-1"
+            className="lg:col-span-1"
+          >
             {delivery.data ? (
               <Funnel
                 steps={[
@@ -75,6 +81,7 @@ export function Operations() {
           <Card
             title={t('ops.throughput')}
             hint={t('ops.throughputHint')}
+            tone="data-2"
             className="lg:col-span-2"
           >
             {delivery.data ? (
@@ -204,11 +211,9 @@ function SummaryStrip({
   const t = useT()
   if (loading) {
     return (
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         {[0, 1, 2, 3, 4].map((i) => (
-          <div key={i} className="card p-4">
-            <Skeleton className="h-12" />
-          </div>
+          <Skeleton key={i} className="h-[104px]" />
         ))}
       </div>
     )
@@ -216,53 +221,59 @@ function SummaryStrip({
 
   const deliveryRate = delivery?.funnel.deliveryRate ?? 0
   const p95 = delivery?.latencyMs.p95 ?? null
+  const queued = delivery?.queue.queued ?? 0
   const held = risk?.decisions.held ?? 0
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-      <div className="card p-4">
-        <Stat
-          label={t('ops.connectedSessions')}
-          value={`${connected}/${wantsToRun}`}
-          tone={connected === wantsToRun ? 'ok' : connected === 0 ? 'crit' : 'warn'}
-          hint={wantsToRun === 0 ? t('ops.noneRunning') : t('ops.ofWhatShouldRun')}
-        />
-      </div>
-      <div className="card p-4">
-        <Stat
-          label={t('ops.deliveryRate')}
-          value={pct(deliveryRate)}
-          tone={deliveryRate >= 0.95 ? 'ok' : deliveryRate >= 0.85 ? 'warn' : 'crit'}
-          hint={t('ops.ofTotal', {
-            delivered: num(delivery?.funnel.delivered ?? 0),
-            sent: num(delivery?.funnel.sent ?? 0),
-          })}
-        />
-      </div>
-      <div className="card p-4">
-        <Stat
-          label={t('ops.latencyP95')}
-          value={duration(p95)}
-          tone={p95 === null ? 'neutral' : p95 < 5000 ? 'ok' : p95 < 20000 ? 'warn' : 'crit'}
-          hint={t('ops.latencyHint')}
-        />
-      </div>
-      <div className="card p-4">
-        <Stat
-          label={t('ops.inQueue')}
-          value={num(delivery?.queue.queued ?? 0)}
-          tone={(delivery?.queue.queued ?? 0) > 500 ? 'warn' : 'neutral'}
-          hint={t('ops.sendingNow', { n: num(delivery?.queue.sending ?? 0) })}
-        />
-      </div>
-      <div className="card p-4">
-        <Stat
-          label={t('ops.heldByRisk')}
-          value={num(held)}
-          tone={held > 0 ? 'warn' : 'ok'}
-          hint={t('ops.newContacts', { n: num(risk?.newContacts ?? 0) })}
-        />
-      </div>
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+      <Tile
+        label={t('ops.connectedSessions')}
+        value={`${connected}/${wantsToRun}`}
+        hue="fill-1"
+        Icon={SessionIcon}
+        tone={connected === wantsToRun ? 'ok' : connected === 0 ? 'crit' : 'warn'}
+        hint={wantsToRun === 0 ? t('ops.noneRunning') : t('ops.ofWhatShouldRun')}
+      />
+      <Tile
+        label={t('ops.deliveryRate')}
+        value={pct(deliveryRate)}
+        hue="fill-2"
+        Icon={SendIcon}
+        tone={deliveryRate >= 0.95 ? 'ok' : deliveryRate >= 0.85 ? 'warn' : 'crit'}
+        hint={t('ops.ofTotal', {
+          delivered: num(delivery?.funnel.delivered ?? 0),
+          sent: num(delivery?.funnel.sent ?? 0),
+        })}
+      />
+      <Tile
+        label={t('ops.latencyP95')}
+        value={duration(p95)}
+        hue="fill-4"
+        Icon={ClockIcon}
+        tone={p95 === null ? 'neutral' : p95 < 5000 ? 'ok' : p95 < 20000 ? 'warn' : 'crit'}
+        hint={t('ops.latencyHint')}
+      />
+      <Tile
+        label={t('ops.inQueue')}
+        value={num(queued)}
+        hue="fill-3"
+        Icon={QueueIcon}
+        tone={queued > 500 ? 'warn' : 'neutral'}
+        hint={t('ops.sendingNow', { n: num(delivery?.queue.sending ?? 0) })}
+      />
+      {/*
+        Held is the one tile that rests in slate rather than in a colour of its
+        own. Nothing held is the ordinary state and deserves no attention; the
+        moment something is, the tile goes amber and earns the glance.
+      */}
+      <Tile
+        label={t('ops.heldByRisk')}
+        value={num(held)}
+        hue="fill-hold"
+        Icon={HoldIcon}
+        tone={held > 0 ? 'warn' : 'neutral'}
+        hint={t('ops.newContacts', { n: num(risk?.newContacts ?? 0) })}
+      />
     </div>
   )
 }
@@ -289,7 +300,7 @@ function HealthTable({ rows }: { rows: KpiSessions['sessions'] }) {
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={row.sessionId} className="border-b border-line/60 last:border-0">
+            <tr key={row.sessionId} className="border-b border-line last:border-0">
               <td className="py-2.5 pr-3 font-medium text-ink">{row.name}</td>
               <td className="py-2.5 pr-3">
                 <Pill tone={statusTone(row.status)}>{statusLabel(t, row.status)}</Pill>

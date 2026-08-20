@@ -29,6 +29,10 @@ export const WINDOWS = [
   { hours: 720, value: 30, unit: 'day' },
 ] as const satisfies ReadonlyArray<{ hours: number; value: number; unit: 'hour' | 'day' }>
 
+/** Width of the side bar. Referenced twice, so it lives in one place. */
+const RAIL = 'sm:w-[232px]'
+const RAIL_OFFSET = 'sm:ps-[232px]'
+
 /**
  * The window and the session filter live in the URL.
  *
@@ -91,45 +95,108 @@ function useTabs() {
   return TABS.filter((tab) => !tab.floor || roleAtLeast(me.role, tab.floor))
 }
 
+async function signOut() {
+  await post('/v1/auth/logout').catch(() => undefined)
+  window.location.assign('/signin')
+}
+
 export function Shell({ children, actions }: { children: ReactNode; actions?: ReactNode }) {
   return (
     <div className="min-h-dvh bg-ground">
-      <div className="mx-auto flex w-full max-w-[1400px] px-3 sm:px-5">
-        <Rail />
-        <div className="min-w-0 flex-1 py-4 sm:pl-5">
-          <CabecalhoMovel />
-          <TopBar actions={actions} />
-          <main className="mt-4 pb-12">{children}</main>
-        </div>
+      <Rail />
+      <div className={cx('flex min-h-dvh min-w-0 flex-col', RAIL_OFFSET)}>
+        <MobileHeader />
+        <TopBar actions={actions} />
+        <main className="flex-1 px-3 pt-4 pb-10 sm:px-5">{children}</main>
       </div>
     </div>
   )
 }
 
 /**
- * Navigation on a phone.
+ * The side bar.
  *
- * The side rail does not fit on a narrow screen, and hiding it with nothing in
- * its place would leave the other two tabs out of reach — the panel would
- * become a single screen for whoever opens it on a phone, which is exactly the
- * person who is out of the office with an incident on their hands.
+ * Dark in both themes, and the only dark thing on the screen in the light one.
+ * That is what makes it read as chrome rather than as content: it frames the
+ * data instead of taking part in it, and the eye stops treating it as
+ * something to scan every time the page changes.
  */
-function CabecalhoMovel() {
+function Rail() {
   const { search } = useLocation()
   const tabs = useTabs()
   const t = useT()
 
   return (
-    <div className="chrome sticky top-0 z-20 -mx-3 mb-3 flex flex-col gap-3 px-3 py-3 sm:hidden">
-      <div className="flex items-center justify-between">
-        <Brand />
+    <nav
+      aria-label={t('common.sections')}
+      className={cx(
+        'fixed inset-y-0 start-0 z-30 hidden w-0 flex-col bg-nav sm:flex',
+        'shadow-[1px_0_0_0_var(--color-nav-line)]',
+        RAIL,
+      )}
+    >
+      <div className="flex h-[52px] shrink-0 items-center border-b border-nav-line px-4">
+        <Brand onDark />
+      </div>
+
+      <div className="flex-1 overflow-y-auto py-3">
+        {tabs.map(({ to, key, Icon }) => (
+          <NavLink
+            key={to}
+            to={{ pathname: to, search }}
+            className={({ isActive }) =>
+              cx(
+                'mx-2 mb-0.5 flex items-center gap-3 rounded px-3 py-2 text-sm transition-colors',
+                isActive
+                  ? 'bg-accent font-medium text-on-fill shadow-sm'
+                  : 'text-nav-ink hover:bg-nav-2 hover:text-nav-ink-strong',
+              )
+            }
+          >
+            <Icon width={17} height={17} />
+            {t(key)}
+          </NavLink>
+        ))}
+      </div>
+
+      <div className="flex shrink-0 flex-col items-start gap-0.5 border-t border-nav-line px-4 py-3">
+        <a href="/docs" className="py-1 text-xs text-nav-ink hover:text-nav-ink-strong">
+          {t('common.apiDocs')}
+        </a>
         <button
           type="button"
-          onClick={async () => {
-            await post('/v1/auth/logout').catch(() => undefined)
-            window.location.assign('/signin')
-          }}
-          className="flex items-center gap-1.5 text-xs text-muted"
+          onClick={signOut}
+          className="flex items-center gap-2 py-1 text-xs text-nav-ink hover:text-nav-ink-strong"
+        >
+          <SignOutIcon width={14} height={14} />
+          {t('common.signOut')}
+        </button>
+      </div>
+    </nav>
+  )
+}
+
+/**
+ * Navigation on a phone.
+ *
+ * The side bar does not fit on a narrow screen, and hiding it with nothing in
+ * its place would leave the other tabs out of reach — the panel would become a
+ * single screen for whoever opens it on a phone, which is exactly the person
+ * who is out of the office with an incident on their hands.
+ */
+function MobileHeader() {
+  const { search } = useLocation()
+  const tabs = useTabs()
+  const t = useT()
+
+  return (
+    <div className="sticky top-0 z-20 flex flex-col gap-2 bg-nav px-3 py-2.5 sm:hidden">
+      <div className="flex items-center justify-between">
+        <Brand onDark />
+        <button
+          type="button"
+          onClick={signOut}
+          className="flex items-center gap-1.5 text-xs text-nav-ink"
         >
           <SignOutIcon width={14} height={14} />
           {t('common.signOut')}
@@ -143,10 +210,10 @@ function CabecalhoMovel() {
             to={{ pathname: to, search }}
             className={({ isActive }) =>
               cx(
-                'flex shrink-0 items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors',
+                'flex shrink-0 items-center gap-2 rounded px-3 py-1.5 text-sm transition-colors',
                 isActive
-                  ? 'border border-accent/30 bg-accent-soft font-medium text-accent shadow-sm'
-                  : 'border border-line/70 bg-surface/60 text-muted backdrop-blur-sm',
+                  ? 'bg-accent font-medium text-on-fill'
+                  : 'bg-nav-2 text-nav-ink hover:text-nav-ink-strong',
               )
             }
           >
@@ -159,68 +226,23 @@ function CabecalhoMovel() {
   )
 }
 
-function Rail() {
-  const { search } = useLocation()
-  const tabs = useTabs()
-  const t = useT()
-
-  return (
-    <nav
-      aria-label={t('common.sections')}
-      className="chrome sticky top-0 z-20 hidden h-dvh w-48 shrink-0 flex-col gap-1 border-e border-line/70 py-5 pe-4 sm:flex"
-    >
-      <div className="mb-5 px-2">
-        <Brand />
-      </div>
-
-      {tabs.map(({ to, key, Icon }) => (
-        <NavLink
-          key={to}
-          to={{ pathname: to, search }}
-          className={({ isActive }) =>
-            cx(
-              'flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors',
-              isActive
-                ? 'bg-accent-soft font-medium text-accent shadow-[inset_0_0_0_1px_rgb(var(--glass-edge))]'
-                : 'text-muted hover:bg-surface-2/70 hover:text-ink',
-            )
-          }
-        >
-          <Icon />
-          {t(key)}
-        </NavLink>
-      ))}
-
-      <div className="mt-auto flex flex-col items-start gap-1 px-2.5">
-        <a href="/docs" className="py-1.5 text-xs text-muted hover:text-ink">
-          {t('common.apiDocs')}
-        </a>
-        <button
-          type="button"
-          onClick={async () => {
-            await post('/v1/auth/logout').catch(() => undefined)
-            window.location.assign('/signin')
-          }}
-          className="flex items-center gap-2 py-1.5 text-xs text-muted hover:text-ink"
-        >
-          <SignOutIcon width={14} height={14} />
-          {t('common.signOut')}
-        </button>
-      </div>
-    </nav>
-  )
-}
-
-export function Brand() {
+export function Brand({ onDark = false }: { onDark?: boolean }) {
   return (
     <span className="flex items-center gap-2">
       <span
         aria-hidden
-        className="grid size-7 place-items-center rounded-lg bg-accent font-mono text-[13px] font-medium text-on-fill"
+        className="grid size-7 shrink-0 place-items-center rounded bg-accent font-mono text-[13px] font-medium text-on-fill"
       >
         A
       </span>
-      <span className="text-[15px] font-semibold tracking-tight text-ink">AWAH</span>
+      <span
+        className={cx(
+          'text-[15px] font-semibold tracking-tight',
+          onDark ? 'text-nav-ink-strong' : 'text-ink',
+        )}
+      >
+        AWAH
+      </span>
     </span>
   )
 }
@@ -236,13 +258,13 @@ function TopBar({ actions }: { actions?: ReactNode }) {
    * spot is free.
    */
   return (
-    <div className="chrome -mx-3 flex flex-wrap items-center justify-between gap-3 border-b border-line/70 px-3 py-3 sm:sticky sm:top-0 sm:z-10 sm:-mx-5 sm:px-5">
+    <div className="chrome flex flex-wrap items-center justify-between gap-3 border-b border-line px-3 py-2.5 sm:sticky sm:top-0 sm:z-10 sm:min-h-[52px] sm:px-5">
       <div className="flex flex-1 flex-wrap items-center gap-2">
         {/* biome-ignore lint/a11y/useSemanticElements: a fieldset demands a visible legend and brings its own layout; these are toggle buttons, not form fields */}
         <div
           role="group"
           aria-label={t('common.timeWindow')}
-          className="flex overflow-hidden rounded-lg border border-line/70 bg-surface/60 backdrop-blur-sm"
+          className="flex overflow-hidden rounded border border-line"
         >
           {WINDOWS.map((option) => (
             <button
@@ -253,8 +275,8 @@ function TopBar({ actions }: { actions?: ReactNode }) {
               className={cx(
                 'px-2.5 py-1.5 font-mono text-xs transition-colors',
                 hours === option.hours
-                  ? 'bg-accent-soft font-medium text-accent'
-                  : 'text-muted hover:text-ink',
+                  ? 'bg-accent font-medium text-on-fill'
+                  : 'bg-surface text-muted hover:bg-surface-2 hover:text-ink',
               )}
             >
               {windowLabel(option.value, option.unit)}
@@ -287,7 +309,7 @@ function ThemeToggle() {
     <div
       role="group"
       aria-label={t('common.theme')}
-      className="flex overflow-hidden rounded-lg border border-line/70 bg-surface/60 backdrop-blur-sm"
+      className="flex overflow-hidden rounded border border-line"
     >
       {options.map(({ value, Icon, key }) => (
         <button
@@ -299,7 +321,9 @@ function ThemeToggle() {
           onClick={() => setTheme(value)}
           className={cx(
             'px-2 py-1.5 transition-colors',
-            theme === value ? 'bg-accent-soft text-accent' : 'text-muted hover:text-ink',
+            theme === value
+              ? 'bg-accent text-on-fill'
+              : 'bg-surface text-muted hover:bg-surface-2 hover:text-ink',
           )}
         >
           <Icon width={15} height={15} />
@@ -320,7 +344,7 @@ export function SessionFilter({ sessions }: { sessions: Array<{ id: string; name
       <select
         value={session ?? ''}
         onChange={(event) => setSession(event.target.value || null)}
-        className="rounded-lg border border-line/70 bg-surface/60 px-2 py-[7px] text-xs text-ink backdrop-blur-sm"
+        className="rounded border border-line bg-surface px-2 py-[7px] text-xs text-ink"
       >
         <option value="">{t('common.allSessions')}</option>
         {sessions.map((s) => (

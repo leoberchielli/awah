@@ -68,7 +68,7 @@ function IntegrationRow({
   const [removing, setRemoving] = useState(false)
 
   return (
-    <li className="flex flex-wrap items-center gap-3 border-b border-line/60 py-3 last:border-0">
+    <li className="flex flex-wrap items-center gap-3 border-b border-line py-3 last:border-0">
       <span className="min-w-0 flex-1">
         <span className="block text-sm font-medium text-ink">{t(NAMES[integration.kind])}</span>
         <span className="block truncate text-xs text-muted">

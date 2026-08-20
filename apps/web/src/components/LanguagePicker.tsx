@@ -22,7 +22,7 @@ export function LanguagePicker({ className }: { className?: string }) {
         value={locale}
         onChange={(event) => setLocale(event.target.value)}
         className={cx(
-          'rounded-lg border border-line/70 bg-surface/60 px-2 py-[7px] text-xs text-ink backdrop-blur-sm',
+          'rounded border border-line bg-surface px-2 py-[7px] text-xs text-ink',
           className,
         )}
       >

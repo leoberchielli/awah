@@ -13,152 +13,166 @@
 @import "@fontsource/ibm-plex-mono/latin-500.css";
 
 /*
- * An instrument under glass.
+ * A console, not a window.
  *
- * The panel is read by someone with an incident in their hands, so the rule
- * that orders everything else is: the effect must never cost legibility of the
- * data. The glass stays on the chrome and the cards — large surfaces, few of
- * them. List rows, pills and table cells stay opaque, because `backdrop-filter`
- * on hundreds of elements is what turns "modern" into "sluggish".
+ * The previous version put everything under glass: translucent cards over
+ * drifting fields of colour. It photographed well and read as lifeless,
+ * because translucency spends its contrast budget on the background and leaves
+ * the data sharing a surface with whatever happens to be behind it.
  *
- * For glass to look like glass there has to be something behind it. Hence the
- * ambient layer: slow-drifting fields of colour that give the blur something to
- * refract. Without it, translucency over a flat fill is just badly resolved
- * opacity — and that is exactly what the first version was, because the fields
- * were set so faint they never showed up over a near-white ground.
+ * This is the opposite bet, and it is the one classic operations consoles have
+ * been making for twenty years. Surfaces are opaque and flat. Colour arrives in
+ * solid blocks rather than in washes. The navigation is a dark bar that does
+ * not compete with the content, so the eye goes to the data first and knows
+ * where it is second.
  *
- * Colour is split in two, and the split is the whole discipline here:
+ * The colour discipline survives the change, because it was never about the
+ * style:
  *
- *   The semantics — green, amber, red — mean connected, held, failed. They are
- *   never spent on decoration, because an operator who has learned that red
- *   means trouble must never see red for any other reason.
+ *   The status colours — green, amber, red — mean connected, held, failed.
+ *   Never anything else. An operator who has learned that red means trouble
+ *   must never see red for any other reason.
  *
- *   The data ramp — iris, teal, violet, amber — carries series and stages. It
- *   exists so a healthy dashboard is not monochrome. Before it, `--ok` was
- *   doing four jobs at once: connected, delivered, read, inbound. That made
- *   green mean everything, which is the same as meaning nothing.
+ *   The series ramp — iris, teal, violet, blue — carries series and stages.
+ *
+ * The headline tiles use both, and the join is the whole idea: each tile keeps
+ * its own hue from the ramp while its metric is inside its healthy band, and
+ * switches to amber or red when it leaves. So the panel is colourful at rest
+ * — which is the point — and the colour still means something when it changes.
+ * A tile that is permanently red because red looked good in the mockup teaches
+ * the operator to ignore red.
  */
 :root {
-  --ground: #eef0f8;
+  --ground: #f2f4f7;
   --surface: #ffffff;
-  --surface-2: #e9ebf4;
-  --line: #dadce8;
-  --line-strong: #c0c3d4;
-  --ink: #15171d;
-  --muted: #5d6270;
-  --accent: #5959d2;
-  --accent-soft: #e6e6fa;
+  --surface-2: #eef0f4;
+  --line: #dde1e7;
+  --line-strong: #c3c9d3;
+  --ink: #1c2430;
+  --muted: #5c6573;
+  --accent: #4b4bc4;
+  --accent-soft: #e8e8fa;
 
   /* Status. These three carry meaning and are never used for style. */
-  --ok: #0f8f47;
-  --warn: #a86a03;
-  --crit: #c62c30;
-  --hold: #6f747f;
+  --ok: #12804a;
+  --warn: #9a6205;
+  --crit: #bd2b2f;
+  --hold: #656d7b;
+
+  /* Series and stages. Ordered, so a funnel drawn with them reads as one. */
+  --data-1: #4b4bc4;
+  --data-2: #0d7c8c;
+  --data-3: #7a3aa8;
+  --data-4: #1f66c2;
 
   /*
-   * Series and stages. Ordered, so a funnel drawn with them reads as a
-   * progression rather than as four unrelated colours.
+   * The navigation bar.
+   *
+   * Dark in both themes on purpose. It is chrome, and chrome that changes
+   * weight with the theme makes the whole layout feel like it moved.
    */
-  --data-1: #5959d2;
-  --data-2: #0d8697;
-  --data-3: #8244b8;
-  --data-4: #b96a0b;
+  --nav: #262c36;
+  --nav-2: #1e232b;
+  --nav-ink: #b9c0cc;
+  --nav-ink-strong: #ffffff;
+  --nav-line: #39414e;
 
-  /* Ink on a solid fill. White only survives in light: in dark the solids are
-     light, and the pair inverts. */
+  /*
+   * Ink on a solid fill: the headline tiles, the primary button, the active
+   * navigation item. Every fill token below is chosen so this survives on it.
+   */
   --on-fill: #ffffff;
 
-  /* Glass: ink opaque enough for the text to survive what passes behind it. */
-  --glass: 255 255 255 / 0.74;
-  --glass-strong: 255 255 255 / 0.87;
-  --glass-edge: 255 255 255 / 0.9;
-  --glass-line: 21 23 29 / 0.08;
-  --blur: 20px;
-
-  /*
-   * The ambient fields. Three hues rather than two, because two blues read as
-   * one wash; the third is warm on purpose, so the field has somewhere to go.
-   */
-  --halo-1: 89 89 210 / 0.3;
-  --halo-2: 13 150 170 / 0.26;
-  --halo-3: 214 96 132 / 0.17;
-
-  --shadow: 0 1px 2px rgb(21 23 29 / 0.04), 0 8px 24px -8px rgb(21 23 29 / 0.14);
-  --shadow-lift: 0 2px 4px rgb(21 23 29 / 0.05), 0 16px 40px -12px rgb(21 23 29 / 0.22);
+  --shadow: 0 1px 2px rgb(28 36 48 / 0.06), 0 1px 3px rgb(28 36 48 / 0.08);
+  --shadow-lift: 0 4px 10px -2px rgb(28 36 48 / 0.12), 0 12px 28px -8px rgb(28 36 48 / 0.18);
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --ground: #0a0b10;
-    --surface: #14161d;
-    --surface-2: #1b1e27;
-    --line: #272b36;
-    --line-strong: #3a3f4d;
-    --ink: #e9eaee;
-    --muted: #949aa6;
-    --accent: #8b8bf0;
-    --accent-soft: #1e1f38;
+    --ground: #13161c;
+    --surface: #1b1f27;
+    --surface-2: #232833;
+    --line: #2f3542;
+    --line-strong: #434b5a;
+    --ink: #e8eaef;
+    --muted: #98a0ad;
+    --accent: #7d7df0;
+    --accent-soft: #23244a;
 
-    --ok: #35c07a;
-    --warn: #e0a12a;
-    --crit: #ef6a6d;
-    --hold: #898f98;
+    --ok: #2fb673;
+    --warn: #d99a26;
+    --crit: #e8676a;
+    --hold: #8a919d;
 
-    --data-1: #8b8bf0;
-    --data-2: #2fc0d2;
-    --data-3: #b782e6;
-    --data-4: #e9a53e;
+    --data-1: #7d7df0;
+    --data-2: #29b5c7;
+    --data-3: #ab74dd;
+    --data-4: #4f96ea;
 
-    --on-fill: #0a0b10;
+    --nav: #171b22;
+    --nav-2: #11141a;
+    --nav-ink: #a7aebb;
+    --nav-ink-strong: #ffffff;
+    --nav-line: #2a313c;
 
-    --glass: 22 25 33 / 0.66;
-    --glass-strong: 22 25 33 / 0.82;
-    --glass-edge: 255 255 255 / 0.12;
-    --glass-line: 255 255 255 / 0.08;
+    --on-fill: #ffffff;
 
-    --halo-1: 116 116 255 / 0.32;
-    --halo-2: 24 190 210 / 0.24;
-    --halo-3: 236 106 146 / 0.18;
-
-    --shadow: 0 1px 2px rgb(0 0 0 / 0.5), 0 8px 28px -8px rgb(0 0 0 / 0.55);
-    --shadow-lift: 0 2px 6px rgb(0 0 0 / 0.5), 0 20px 48px -12px rgb(0 0 0 / 0.65);
+    --shadow: 0 1px 2px rgb(0 0 0 / 0.5), 0 2px 6px rgb(0 0 0 / 0.4);
+    --shadow-lift: 0 4px 12px -2px rgb(0 0 0 / 0.55), 0 16px 36px -10px rgb(0 0 0 / 0.6);
   }
 }
 
 :root[data-theme="dark"] {
-  --ground: #0a0b10;
-  --surface: #14161d;
-  --surface-2: #1b1e27;
-  --line: #272b36;
-  --line-strong: #3a3f4d;
-  --ink: #e9eaee;
-  --muted: #949aa6;
-  --accent: #8b8bf0;
-  --accent-soft: #1e1f38;
+  --ground: #13161c;
+  --surface: #1b1f27;
+  --surface-2: #232833;
+  --line: #2f3542;
+  --line-strong: #434b5a;
+  --ink: #e8eaef;
+  --muted: #98a0ad;
+  --accent: #7d7df0;
+  --accent-soft: #23244a;
 
-  --ok: #35c07a;
-  --warn: #e0a12a;
-  --crit: #ef6a6d;
-  --hold: #898f98;
+  --ok: #2fb673;
+  --warn: #d99a26;
+  --crit: #e8676a;
+  --hold: #8a919d;
 
-  --data-1: #8b8bf0;
-  --data-2: #2fc0d2;
-  --data-3: #b782e6;
-  --data-4: #e9a53e;
+  --data-1: #7d7df0;
+  --data-2: #29b5c7;
+  --data-3: #ab74dd;
+  --data-4: #4f96ea;
 
-  --on-fill: #0a0b10;
+  --nav: #171b22;
+  --nav-2: #11141a;
+  --nav-ink: #a7aebb;
+  --nav-ink-strong: #ffffff;
+  --nav-line: #2a313c;
 
-  --glass: 22 25 33 / 0.66;
-  --glass-strong: 22 25 33 / 0.82;
-  --glass-edge: 255 255 255 / 0.12;
-  --glass-line: 255 255 255 / 0.08;
+  --on-fill: #ffffff;
 
-  --halo-1: 116 116 255 / 0.32;
-  --halo-2: 24 190 210 / 0.24;
-  --halo-3: 236 106 146 / 0.18;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.5), 0 2px 6px rgb(0 0 0 / 0.4);
+  --shadow-lift: 0 4px 12px -2px rgb(0 0 0 / 0.55), 0 16px 36px -10px rgb(0 0 0 / 0.6);
+}
 
-  --shadow: 0 1px 2px rgb(0 0 0 / 0.5), 0 8px 28px -8px rgb(0 0 0 / 0.55);
-  --shadow-lift: 0 2px 6px rgb(0 0 0 / 0.5), 0 20px 48px -12px rgb(0 0 0 / 0.65);
+/*
+ * The fills the headline tiles are painted with.
+ *
+ * Separate from the tokens above because these are only ever backgrounds for
+ * `--on-fill`, never ink themselves, and they are darker than the ink versions
+ * of the same hues for exactly that reason: white text needs a darker ground
+ * than a chart stroke does. `scripts/contrast-check.mjs` reads this block and
+ * refuses the build if white stops surviving on any of them.
+ */
+:root {
+  --fill-1: #3f3fb4;
+  --fill-2: #0b6a78;
+  --fill-3: #6a3396;
+  --fill-4: #1a58a8;
+  --fill-ok: #12804a;
+  --fill-warn: #8a5804;
+  --fill-crit: #b02529;
+  --fill-hold: #555d69;
 }
 
 @theme {
@@ -180,11 +194,16 @@
   --color-data-2: var(--data-2);
   --color-data-3: var(--data-3);
   --color-data-4: var(--data-4);
+  --color-nav: var(--nav);
+  --color-nav-2: var(--nav-2);
+  --color-nav-ink: var(--nav-ink);
+  --color-nav-ink-strong: var(--nav-ink-strong);
+  --color-nav-line: var(--nav-line);
 
   --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
 
-  --radius-card: 16px;
+  --radius-card: 6px;
 }
 
 @layer base {
@@ -197,40 +216,7 @@
     color: var(--ink);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
-    /* The ambient layer is `fixed`; without this it would scroll along and
-       lose the effect. */
-    position: relative;
     min-height: 100dvh;
-  }
-
-  /*
-   * The layer the glass refracts.
-   *
-   * Sits behind everything, takes no pointer events and stays out of the
-   * reading order. The drift is slow on purpose: perceptible movement in a
-   * panel that stays open all day wears on you more than it impresses.
-   */
-  body::before {
-    content: "";
-    position: fixed;
-    inset: -20%;
-    z-index: -1;
-    pointer-events: none;
-    background:
-      radial-gradient(46% 38% at 16% 10%, rgb(var(--halo-1)) 0%, transparent 66%),
-      radial-gradient(44% 40% at 86% 22%, rgb(var(--halo-2)) 0%, transparent 64%),
-      radial-gradient(38% 34% at 72% 68%, rgb(var(--halo-3)) 0%, transparent 66%),
-      radial-gradient(52% 44% at 30% 94%, rgb(var(--halo-1)) 0%, transparent 68%);
-    animation: drift 42s ease-in-out infinite alternate;
-  }
-
-  @keyframes drift {
-    from {
-      transform: translate3d(0, 0, 0) scale(1);
-    }
-    to {
-      transform: translate3d(2.5%, -2%, 0) scale(1.06);
-    }
   }
 
   /* Digits do not dance when the number changes. */
@@ -243,58 +229,98 @@
   :focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
-    border-radius: 6px;
+    border-radius: 4px;
   }
 }
 
 @layer components {
   /*
-   * The glass.
+   * The card.
    *
-   * The top border lighter than the others is what the eye reads as "edge
-   * catching light" — without it the card looks translucent, not glassy. The
-   * `saturate` compensates for the wash the blur causes in the colours behind,
-   * and it matters more now that there is real colour back there to wash out.
+   * Opaque, hairline border, a shadow shallow enough to read as a sheet of
+   * paper rather than as a floating pane. The top rule is what separates one
+   * card from the next on a busy screen — more reliable than shadow alone,
+   * which disappears the moment two cards sit edge to edge.
    */
   .card {
     position: relative;
-    background-color: rgb(var(--glass));
-    /* No manual prefix: Lightning CSS prefixes according to the targets, and
-       declaring `-webkit-` by hand made it drop the standard property. */
-    backdrop-filter: blur(var(--blur)) saturate(160%);
-    border: 1px solid rgb(var(--glass-line));
+    background-color: var(--surface);
+    border: 1px solid var(--line);
     border-radius: var(--radius-card);
     box-shadow: var(--shadow);
     transition:
-      box-shadow 260ms ease,
-      transform 260ms ease;
-  }
-
-  .card::before {
-    content: "";
-    position: absolute;
-    inset: 0 0 auto;
-    height: 1px;
-    border-radius: var(--radius-card) var(--radius-card) 0 0;
-    background: linear-gradient(90deg, transparent, rgb(var(--glass-edge)), transparent);
-    pointer-events: none;
+      box-shadow 160ms ease,
+      transform 160ms ease;
   }
 
   /*
-   * Only what is clickable lifts. A chart card rising under the cursor would be
-   * movement without meaning.
+   * A card that announces itself with a coloured rule.
+   *
+   * Set `--card-tone` on the element. Deliberately a 3px rule rather than a
+   * fully filled header: a solid colour bar behind the title competes with the
+   * tiles above it, and when every card has one the screen turns into stripes.
+   */
+  .card-tone {
+    border-top: 3px solid var(--card-tone, var(--accent));
+    border-radius: var(--radius-card);
+  }
+
+  /*
+   * Only what is clickable lifts. A chart card rising under the cursor would
+   * be movement without meaning.
    */
   .card-hover:hover {
     box-shadow: var(--shadow-lift);
-    transform: translateY(-2px);
+    transform: translateY(-1px);
   }
 
-  /* Chrome: same recipe, firmer ink, because content scrolls underneath. */
+  /* Bars that sit above content: the top bar and the mobile header. */
   .chrome {
-    background-color: rgb(var(--glass-strong));
-    /* No manual prefix: Lightning CSS prefixes according to the targets, and
-       declaring `-webkit-` by hand made it drop the standard property. */
-    backdrop-filter: blur(var(--blur)) saturate(160%);
+    background-color: var(--surface);
+  }
+
+  /*
+   * The headline tile.
+   *
+   * A block of solid colour carrying the number, a watermark of the metric's
+   * icon, and a footer strip a shade darker. `--tile` is the fill; everything
+   * on it is `--on-fill`.
+   */
+  .tile {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--radius-card);
+    background-color: var(--tile, var(--fill-1));
+    color: var(--on-fill);
+    box-shadow: var(--shadow);
+    transition: box-shadow 160ms ease;
+  }
+
+  .tile:hover {
+    box-shadow: var(--shadow-lift);
+  }
+
+  /*
+   * The watermark. Large, clipped by the tile, and low enough in contrast that
+   * it never competes with the number sitting on top of it.
+   */
+  .tile-mark {
+    position: absolute;
+    top: 6px;
+    inset-inline-end: 8px;
+    opacity: 0.28;
+    pointer-events: none;
+  }
+
+  /* The strip along the bottom, a shade darker than the tile itself. */
+  .tile-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 6px 12px;
+    font-size: 12px;
+    background-color: rgb(0 0 0 / 0.13);
   }
 
   /* Section label: small caps with room between the letters. */
@@ -304,15 +330,6 @@
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--muted);
-  }
-
-  /*
-   * The number that matters gets a halo of its own colour. It is the only glow
-   * in the panel, and it exists so a reading from across the room finds the
-   * data before the label.
-   */
-  .stat-glow {
-    text-shadow: 0 0 28px color-mix(in oklab, currentColor 35%, transparent);
   }
 }
 

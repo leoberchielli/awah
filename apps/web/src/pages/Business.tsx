@@ -148,7 +148,7 @@ function ChatsTable({ rows }: { rows: KpiBusiness['topChats'] }) {
       {rows.map((row) => (
         <li
           key={row.chatId}
-          className="flex items-center gap-3 border-b border-line/60 py-2.5 last:border-0"
+          className="flex items-center gap-3 border-b border-line py-2.5 last:border-0"
         >
           <span className="w-40 shrink-0 truncate font-mono text-xs text-ink" title={row.chatId}>
             {chat(row.chatId, (id) => t('common.group', { id }))}

@@ -1,8 +1,8 @@
 /**
  * Icons drawn by hand, not a library.
  *
- * There are ten; an icon dependency would bring thousands and a tree-shaking
- * step to deliver exactly these ten.
+ * There are fourteen; an icon dependency would bring thousands and a
+ * tree-shaking step to deliver exactly these fourteen.
  */
 import type { SVGProps } from 'react'
 
@@ -82,5 +82,32 @@ export const PeopleIcon = (p: Props) => (
   <svg {...base} {...p} aria-hidden>
     <circle cx="9" cy="8" r="3.5" />
     <path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 5.2a3.5 3.5 0 0 1 0 5.6M18 14.3a6.5 6.5 0 0 1 3.5 5.7" />
+  </svg>
+)
+
+export const ClockIcon = (p: Props) => (
+  <svg {...base} {...p} aria-hidden>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 7v5.4l3.4 2" />
+  </svg>
+)
+
+export const QueueIcon = (p: Props) => (
+  <svg {...base} {...p} aria-hidden>
+    <path d="M12 2.8 21 7l-9 4.2L3 7l9-4.2Z" />
+    <path d="M3 12l9 4.2L21 12M3 17l9 4.2L21 17" />
+  </svg>
+)
+
+export const HoldIcon = (p: Props) => (
+  <svg {...base} {...p} aria-hidden>
+    <path d="M12 2.7 20 6v6.2c0 4.3-3.2 7.6-8 9.1-4.8-1.5-8-4.8-8-9.1V6l8-3.3Z" />
+    <path d="M10 9.5v5M14 9.5v5" />
+  </svg>
+)
+
+export const SendIcon = (p: Props) => (
+  <svg {...base} {...p} aria-hidden>
+    <path d="M21.2 2.8 10.8 13.2M21.2 2.8 14.6 21.4l-3.8-8.2-8.2-3.8 18.6-6.6Z" />
   </svg>
 )

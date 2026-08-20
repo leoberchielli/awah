@@ -192,7 +192,7 @@ function SessionCard({
   const diverged = session.desiredState === 'running' && !session.running
 
   return (
-    <li className="border-b border-line/60 last:border-0">
+    <li className="border-b border-line last:border-0">
       <div className="flex flex-wrap items-center gap-3 py-3">
         <button
           type="button"
@@ -373,7 +373,7 @@ function QrPanel({ sessionId }: { sessionId: string }) {
       alt={t('pairing.qrAlt')}
       width={248}
       height={248}
-      className="size-[248px] shrink-0 rounded-lg border border-line bg-white p-2"
+      className="size-[248px] shrink-0 rounded border border-line bg-white p-2"
     />
   )
 }
@@ -532,7 +532,7 @@ function Timeline({ sessionId }: { sessionId: string }) {
           {events.data?.events.map((event) => (
             <li
               key={event.id}
-              className="flex flex-wrap items-center gap-3 border-b border-line/60 py-2 last:border-0"
+              className="flex flex-wrap items-center gap-3 border-b border-line py-2 last:border-0"
             >
               <Pill tone={TONE_BY_EVENT[event.type] ?? 'hold'}>{event.type}</Pill>
               <span className="min-w-0 flex-1 truncate text-xs text-muted">
