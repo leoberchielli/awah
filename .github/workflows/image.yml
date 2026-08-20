@@ -1,16 +1,17 @@
-name: Imagem
+name: Image
 
-# Publica a imagem no registro do GitHub e prova que ela sobe.
+# Publishes the image to GitHub's registry and proves that it comes up.
 #
-# O CI já construía a imagem para provar que o Dockerfile compila, mas jogava o
-# resultado fora. Isso obrigava quem quisesse experimentar o AWAH a clonar o
-# repositório e compilar — vários minutos e uma cadeia de ferramentas inteira
-# antes de ver a primeira tela. Aqui a imagem passa a existir para o mundo.
+# CI already built the image to prove the Dockerfile compiles, then threw the
+# result away. That forced anyone wanting to try AWAH to clone the repository
+# and compile — several minutes and an entire toolchain before seeing the first
+# screen. Here the image starts existing for the world.
 #
-# "Compilou" não é "funciona": o segundo job puxa a imagem recém-publicada e
-# sobe o `docker-compose.yml` deste repositório, que é literalmente o caminho de
-# instalação que a documentação promete. Se esse caminho quebrar, quebra aqui e
-# não na máquina de quem estava experimentando o projeto pela primeira vez.
+# "It compiled" is not "it works": the second job pulls the freshly published
+# image and brings up this repository's `docker-compose.yml`, which is literally
+# the installation path the documentation promises. If that path breaks, it
+# breaks here rather than on the machine of someone trying the project for the
+# first time.
 
 on:
   push:
@@ -24,30 +25,30 @@ env:
 
 jobs:
   publicar:
-    name: Construir e publicar
+    name: Build and publish
     runs-on: ubuntu-latest
 
     permissions:
       contents: read
       packages: write
-      # Necessária para a attestation de proveniência assinada.
+      # Required for the signed provenance attestation.
       id-token: write
       attestations: write
 
     outputs:
-      # Referência por digest, não por tag. É o que garante que o teste de fumaça
-      # exercite exatamente o binário que este job acabou de publicar — uma tag
-      # como `edge` pode ter sido movida por outra execução no meio do caminho.
+      # Referenced by digest, not by tag. That is what guarantees the smoke test
+      # exercises exactly the binary this job just published — a tag like `edge`
+      # may have been moved by another run in the meantime.
       referencia: ghcr.io/${{ github.repository }}@${{ steps.build.outputs.digest }}
 
     steps:
       - uses: actions/checkout@v4
 
-      # Emulação para construir a variante arm64 no runner x86.
+      # Emulation, to build the arm64 variant on an x86 runner.
       #
-      # Não é preciosismo: metade dos VPS baratos hoje é ARM, e todo Mac com
-      # Apple Silicon roda Docker em arm64. Publicar só amd64 faria essa gente
-      # rodar sob emulação, lenta o bastante para o pareamento estourar timeout.
+      # Not a nicety: half the cheap VPS offerings today are ARM, and every Mac
+      # with Apple Silicon runs Docker on arm64. Publishing amd64 only would put
+      # those people under emulation, slow enough for pairing to time out.
       - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
 
@@ -67,7 +68,7 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
             type=sha,format=short
-            # `edge` é sempre a ponta da branch principal; `latest` só sai em tag.
+            # `edge` is always the tip of the main branch; `latest` only ships on a tag.
             type=raw,value=edge,enable={{is_default_branch}}
             type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
 
@@ -86,15 +87,15 @@ jobs:
             AWAH_REVISION=${{ github.sha }}
             AWAH_BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
 
-      # Prova verificável de que esta imagem saiu deste commit, por este
-      # workflow. Quem roda um gateway de WhatsApp com as credenciais dos
-      # próprios clientes dentro tem motivo de sobra para conferir a origem do
-      # binário antes de subir.
+      # Verifiable proof that this image came out of this commit, through this
+      # workflow. Anyone running a WhatsApp gateway with their own customers'
+      # credentials inside it has every reason to check where the binary came
+      # from before starting it.
       #
-      # O GitHub só persiste attestation em repositório público ou de
-      # organização. Enquanto este for privado, o passo é pulado em vez de
-      # derrubar uma publicação que deu certo — quando chegamos aqui a imagem já
-      # está no registro.
+      # GitHub only persists attestations for public or organization
+      # repositories. While this one is private the step is skipped rather than
+      # failing a publish that already succeeded — by the time we reach here the
+      # image is already in the registry.
       - if: ${{ !github.event.repository.private }}
         uses: actions/attest-build-provenance@v2
         with:
@@ -103,7 +104,7 @@ jobs:
           push-to-registry: true
 
   fumaca:
-    name: Provar a imagem publicada
+    name: Prove the published image
     needs: publicar
     runs-on: ubuntu-latest
 
@@ -112,12 +113,13 @@ jobs:
       packages: read
 
     env:
-      # É esta variável que o `docker-compose.yml` lê. Apontá-la para o digest
-      # faz o compose do repositório rodar contra a imagem recém-publicada em vez
-      # da `latest`, sem editar uma linha do arquivo que o usuário vai baixar.
+      # This is the variable `docker-compose.yml` reads. Pointing it at the
+      # digest makes the repository's compose run against the freshly published
+      # image instead of `latest`, without editing a single line of the file the
+      # user is going to download.
       AWAH_IMAGE: ${{ needs.publicar.outputs.referencia }}
-      # Definido de propósito: com ele vazio a rota fica aberta e o teste não
-      # provaria nada sobre a proteção. Aqui exercitamos os dois lados.
+      # Set on purpose: left empty the route is open and the test would prove
+      # nothing about the protection. Here both sides get exercised.
       METRICS_TOKEN: token-de-fumaca-do-ci
 
     steps:
@@ -129,100 +131,101 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Puxar do registro
+      - name: Pull from the registry
         run: docker pull "$AWAH_IMAGE"
 
-      - name: Conferir arquiteturas e rótulos
+      - name: Check architectures and labels
         run: |
           set -euo pipefail
 
-          # `unknown/unknown` são as entradas de attestation, não plataformas.
-          plataformas=$(docker buildx imagetools inspect "$AWAH_IMAGE" --format '{{json .Manifest}}' \
+          # `unknown/unknown` are the attestation entries, not platforms.
+          platforms=$(docker buildx imagetools inspect "$AWAH_IMAGE" --format '{{json .Manifest}}' \
             | jq -r '.manifests[].platform | "\(.os)/\(.architecture)"' \
             | grep -v unknown | sort -u)
-          echo "$plataformas"
-          grep -qx 'linux/amd64' <<<"$plataformas"
-          grep -qx 'linux/arm64' <<<"$plataformas"
+          echo "$platforms"
+          grep -qx 'linux/amd64' <<<"$platforms"
+          grep -qx 'linux/arm64' <<<"$platforms"
 
-          rotulos=$(docker image inspect "$AWAH_IMAGE" --format '{{json .Config.Labels}}')
-          jq . <<<"$rotulos"
+          labels=$(docker image inspect "$AWAH_IMAGE" --format '{{json .Config.Labels}}')
+          jq . <<<"$labels"
           jq -e --arg sha "$GITHUB_SHA" '
             .["org.opencontainers.image.source"] != null and
             .["org.opencontainers.image.licenses"] == "MIT" and
             .["org.opencontainers.image.revision"] == $sha
-          ' <<<"$rotulos" > /dev/null
+          ' <<<"$labels" > /dev/null
 
-      # Exatamente o comando que o README manda rodar, com o mesmo arquivo.
-      - name: Subir a pilha do docker-compose.yml
+      # Exactly the command the README tells people to run, on the same file.
+      - name: Bring up the docker-compose.yml stack
         run: docker compose up -d --wait --wait-timeout 300 api
 
-      - name: Provar que a API responde de verdade
+      - name: Prove the API actually answers
         run: |
           set -euo pipefail
           api() { curl -fsS --retry 5 --retry-connrefused "http://localhost:2900$1" "${@:2}"; }
-          codigo() { curl -s -o /dev/null -w '%{http_code}' "http://localhost:2900$1" "${@:2}"; }
+          status() { curl -s -o /dev/null -w '%{http_code}' "http://localhost:2900$1" "${@:2}"; }
 
-          echo "--- /health: a imagem sabe dizer o que é"
-          saude=$(api /health)
-          jq . <<<"$saude"
-          # `version` só é "dev" quando os ARG do Dockerfile não chegaram; a
-          # revisão precisa bater com o commit, senão publicamos outra coisa.
+          echo "--- /health: the image can say what it is"
+          health=$(api /health)
+          jq . <<<"$health"
+          # `version` is only "dev" when the Dockerfile ARGs never arrived; the
+          # revision has to match the commit, or we published something else.
           jq -e --arg sha "$GITHUB_SHA" \
-            '.status == "ok" and .version != "dev" and .revision == $sha' <<<"$saude" > /dev/null
+            '.status == "ok" and .version != "dev" and .revision == $sha' <<<"$health" > /dev/null
 
-          echo "--- /health/ready: Postgres e Redis realmente ligados"
-          pronto=$(api /health/ready)
-          jq . <<<"$pronto"
-          jq -e '.status == "ready" and .checks.database and .checks.redis' <<<"$pronto" > /dev/null
+          echo "--- /health/ready: Postgres and Redis really connected"
+          ready=$(api /health/ready)
+          jq . <<<"$ready"
+          jq -e '.status == "ready" and .checks.database and .checks.redis' <<<"$ready" > /dev/null
 
-          echo "--- instância virgem pede configuração inicial"
+          echo "--- a fresh instance asks to be set up"
           jq -e '.needsSetup == true' <<<"$(api /v1/auth/bootstrap)" > /dev/null
 
-          echo "--- criar a primeira organização"
-          criado=$(api /v1/auth/register -X POST -H 'content-type: application/json' -d '{
-            "organizationName": "Fumaca",
-            "name": "Verificador",
-            "email": "fumaca@exemplo.invalid",
-            "password": "senha-so-para-o-ci-1234"
+          echo "--- create the first organization"
+          created=$(api /v1/auth/register -X POST -H 'content-type: application/json' -d '{
+            "organizationName": "Smoke",
+            "name": "Checker",
+            "email": "smoke@example.invalid",
+            "password": "ci-only-password-1234"
           }')
-          jq -e '.organization.id != null and .user.id != null' <<<"$criado" > /dev/null
+          jq -e '.organization.id != null and .user.id != null' <<<"$created" > /dev/null
 
-          # A leitura seguinte é o que fecha o circuito: prova que a escrita
-          # atravessou a aplicação até o Postgres e voltou. É o mais perto de
-          # "funciona" que dá para chegar sem um número de WhatsApp de verdade.
-          echo "--- e o registro fecha sozinho depois disso"
+          # The read that follows is what closes the loop: it proves the write
+          # crossed the application into Postgres and came back. That is as near
+          # to "it works" as you get without a real WhatsApp number.
+          echo "--- and registration closes itself after that"
           jq -e '.needsSetup == false' <<<"$(api /v1/auth/bootstrap)" > /dev/null
 
-          echo "--- o navegador recebe o painel pela mesma porta"
-          # O `accept` não é enfeite: é ele que separa navegação de integração.
-          # Sem o cabeçalho a resposta é o 404 em JSON, e está certo assim.
-          painel=$(api / -H 'accept: text/html')
-          grep -q 'id="root"' <<<"$painel"
+          echo "--- a browser gets the panel on the same port"
+          # The `accept` is not decoration: it is what separates browsing from
+          # integrating. Without the header the answer is the JSON 404, and that
+          # is correct.
+          panel=$(api / -H 'accept: text/html')
+          grep -q 'id="root"' <<<"$panel"
 
-          echo "--- rota do cliente também cai no painel"
-          [ "$(codigo /sessoes -H 'accept: text/html')" = 200 ]
+          echo "--- a client-side route also lands on the panel"
+          [ "$(status /sessions -H 'accept: text/html')" = 200 ]
 
-          echo "--- mas caminho de API inexistente continua JSON, mesmo pedindo html"
-          # A regressão que este caso impede: o SPA responder 200 com HTML a um
-          # `/v1/...` digitado errado, e quem integra passar a tarde tentando
-          # entender por que o JSON virou `<!doctype html>`.
-          [ "$(codigo /v1/nao-existe -H 'accept: text/html')" = 404 ]
+          echo "--- but a missing API path stays JSON, even when html is asked for"
+          # The regression this case prevents: the SPA answering 200 with HTML to
+          # a mistyped `/v1/...`, and whoever is integrating spending the
+          # afternoon working out why their JSON became `<!doctype html>`.
+          [ "$(status /v1/does-not-exist -H 'accept: text/html')" = 404 ]
 
-          echo "--- assets com cache imutável"
-          ativo=$(grep -o '/assets/[A-Za-z0-9._-]*\.js' <<<"$painel" | awk 'NR==1')
-          curl -fsSI "http://localhost:2900$ativo" | tr -d '\r' | grep -qi 'cache-control:.*immutable'
+          echo "--- assets served with an immutable cache"
+          asset=$(grep -o '/assets/[A-Za-z0-9._-]*\.js' <<<"$panel" | awk 'NR==1')
+          curl -fsSI "http://localhost:2900$asset" | tr -d '\r' | grep -qi 'cache-control:.*immutable'
 
-          echo "--- /metrics exige o token quando ele está definido"
-          [ "$(codigo /metrics)" = 401 ]
-          metricas=$(api /metrics -H "authorization: Bearer $METRICS_TOKEN")
-          grep -q 'awah_' <<<"$metricas"
+          echo "--- /metrics demands the token once one is set"
+          [ "$(status /metrics)" = 401 ]
+          metrics=$(api /metrics -H "authorization: Bearer $METRICS_TOKEN")
+          grep -q 'awah_' <<<"$metrics"
 
-      - name: Logs, quando algo falhou
+      - name: Logs, when something failed
         if: failure()
         run: docker compose logs --no-color --tail=200
 
-      # `-v` aqui é seguro porque o runner é descartável. Em produção nunca:
-      # esses volumes guardam o auth state de todas as sessões.
-      - name: Derrubar
+      # `-v` is safe here because the runner is disposable. Never in production:
+      # those volumes hold the auth state of every session.
+      - name: Tear down
         if: always()
         run: docker compose down -v

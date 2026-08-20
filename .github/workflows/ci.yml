@@ -11,10 +11,10 @@ concurrency:
 
 jobs:
   check:
-    name: Lint, tipos e testes
+    name: Lint, types and tests
     runs-on: ubuntu-latest
 
-    # Os testes de integração exercitam o app real contra Postgres e Redis.
+    # The integration tests exercise the real app against Postgres and Redis.
     services:
       postgres:
         image: postgres:16-alpine
@@ -48,8 +48,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Sem `version` aqui: a action lê o `packageManager` do package.json, e
-      # declarar nos dois lugares faz ela abortar com "multiple versions".
+      # No `version` here: the action reads `packageManager` from package.json,
+      # and declaring it in both places makes it abort with "multiple versions".
       - uses: pnpm/action-setup@v4
 
       - uses: actions/setup-node@v4
@@ -57,33 +57,34 @@ jobs:
           node-version: 22
           cache: pnpm
 
-      - name: Instalar dependências
+      - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Lint e formatação
+      - name: Lint and formatting
         run: pnpm lint
 
-      - name: Checagem de tipos
+      - name: Type check
         run: pnpm typecheck
 
-      # Chave faltante não reprova — ela cai no inglês, e é isso que permite
-      # tradução parcial. O que reprova é chave desconhecida e placeholder
-      # perdido: `{n}` sumido faz o número desaparecer em silêncio, e nenhum
-      # type-checker pega isso porque o valor continua sendo uma string.
-      - name: Catálogos de tradução
+      # A missing key does not fail the build — it falls back to English, and
+      # that is exactly what makes partial translation possible. What does fail
+      # is an unknown key or a lost placeholder: a vanished `{n}` makes the
+      # number disappear silently, and no type checker catches it because the
+      # value is still a string.
+      - name: Translation catalogs
         run: pnpm i18n:check
 
-      - name: Aplicar migrations
+      - name: Apply migrations
         run: pnpm db:migrate
 
-      - name: Testes
+      - name: Tests
         run: pnpm test
 
       - name: Build
         run: pnpm build
 
   migrations:
-    name: Migrations aplicam em banco limpo
+    name: Migrations apply to a clean database
     runs-on: ubuntu-latest
 
     services:
@@ -104,8 +105,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Sem `version` aqui: a action lê o `packageManager` do package.json, e
-      # declarar nos dois lugares faz ela abortar com "multiple versions".
+      # No `version` here: the action reads `packageManager` from package.json,
+      # and declaring it in both places makes it abort with "multiple versions".
       - uses: pnpm/action-setup@v4
 
       - uses: actions/setup-node@v4
@@ -113,22 +114,22 @@ jobs:
           node-version: 22
           cache: pnpm
 
-      - name: Instalar dependências
+      - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Aplicar migrations
+      - name: Apply migrations
         run: pnpm db:migrate
         env:
           DATABASE_URL: postgres://awah:awah@localhost:5432/awah
 
-      # Se o schema mudou sem migration correspondente, o drizzle-kit gera um
-      # arquivo novo aqui e o diff deixa de estar limpo — o build falha e o
-      # autor é obrigado a versionar a migration junto da mudança.
-      - name: Schema e migrations estão em sincronia
+      # If the schema changed without a matching migration, drizzle-kit
+      # generates a new file here and the diff stops being clean — the build
+      # fails, and the author has to commit the migration alongside the change.
+      - name: Schema and migrations are in sync
         run: |
           pnpm db:generate
           if [ -n "$(git status --porcelain packages/db/migrations)" ]; then
-            echo "::error::O schema mudou sem migration versionada. Rode 'pnpm db:generate' e faça commit."
+            echo "::error::The schema changed without a committed migration. Run 'pnpm db:generate' and commit the result."
             git status --porcelain packages/db/migrations
             exit 1
           fi
@@ -136,7 +137,7 @@ jobs:
           DATABASE_URL: postgres://awah:awah@localhost:5432/awah
 
   docker:
-    name: Imagem Docker
+    name: Docker image
     runs-on: ubuntu-latest
 
     steps:
@@ -144,7 +145,7 @@ jobs:
 
       - uses: docker/setup-buildx-action@v3
 
-      - name: Construir imagem
+      - name: Build image
         uses: docker/build-push-action@v6
         with:
           context: .

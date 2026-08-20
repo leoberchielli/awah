@@ -1,20 +1,20 @@
 name: awah
 
-# Este arquivo roda sozinho, sem o código-fonte.
+# This file runs on its own, with no source code.
 #
 #   curl -O https://raw.githubusercontent.com/leoberchielli/awah/main/docker-compose.yml
 #   docker compose up -d
 #
-# A imagem vem pronta do registro. Para construir a partir do código, junte o
-# override de desenvolvimento:
+# The image comes ready from the registry. To build from source instead, add
+# the development override:
 #
 #   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
 #
-# Valores padrão servem apenas para desenvolvimento local. Em produção defina
-# tudo por .env — as chaves abaixo são públicas e estão no repositório.
+# The defaults are for local development only. In production set everything
+# through .env — the keys below are public and live in this repository.
 
-# Um lugar só para a imagem. AWAH_IMAGE aponta para outro registro ou outra tag
-# sem editar as três ocorrências.
+# One place for the image. AWAH_IMAGE points at another registry or another tag
+# without editing the three occurrences.
 x-image: &image ${AWAH_IMAGE:-ghcr.io/leoberchielli/awah:latest}
 x-api-env: &api-env
   NODE_ENV: ${NODE_ENV:-development}
@@ -25,7 +25,7 @@ x-api-env: &api-env
   ENCRYPTION_KEY: ${ENCRYPTION_KEY:-YXdhaC1kZXYta2V5LW5vdC1mb3ItcHJvZHVjdGlvbiE=}
   COOKIE_SECRET: ${COOKIE_SECRET:-awah-dev-cookie-secret-change-before-production}
   ALLOW_OPEN_REGISTRATION: ${ALLOW_OPEN_REGISTRATION:-true}
-  # Vazios em desenvolvimento; obrigatórios quando a instância vira alcançável.
+  # Empty in development; required once the instance becomes reachable.
   PUBLIC_URL: ${PUBLIC_URL:-}
   TRUST_PROXY: ${TRUST_PROXY:-false}
   METRICS_TOKEN: ${METRICS_TOKEN:-}
@@ -68,7 +68,7 @@ services:
       timeout: 5s
       retries: 12
 
-  # Passo único: aplica as migrations e sai. A API espera esta conclusão.
+  # One shot: applies the migrations and exits. The API waits for it to finish.
   migrate:
     image: *image
     command: ["node", "apps/api/dist/migrate.js"]
@@ -100,10 +100,11 @@ services:
       start_period: 15s
     restart: unless-stopped
 
-  # Segunda réplica. Sobe com o perfil `cluster`:
+  # A second replica. Bring it up with the `cluster` profile:
   #   docker compose --profile cluster up -d
-  # Existe para exercitar failover e roteamento de comandos de verdade — em
-  # produção seriam N réplicas atrás de um balanceador, com a mesma configuração.
+  # It exists so failover and command routing get exercised for real — in
+  # production this would be N replicas behind a load balancer, configured
+  # exactly like this one.
   api2:
     profiles: ["cluster"]
     image: *image
@@ -127,8 +128,9 @@ services:
       start_period: 15s
     restart: unless-stopped
 
-# Volumes nomeados, e não pastas do repositório: quem baixou só o compose não
-# tem repositório nenhum, e o Docker cuida das permissões sozinho.
+# Named volumes rather than folders in the repository: whoever downloaded only
+# the compose file has no repository at all, and Docker handles the permissions
+# on its own.
 volumes:
   awah-postgres:
   awah-redis:

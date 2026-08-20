@@ -1,13 +1,13 @@
-# Override de desenvolvimento: constrói a imagem a partir do código-fonte.
+# Development override: builds the image from source.
 #
 #   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
 #
-# Ou, para não repetir os -f a cada comando, ponha no seu .env:
+# Or, to stop repeating the -f on every command, put this in your .env:
 #
 #   COMPOSE_FILE=docker-compose.yml:docker-compose.dev.yml
 #
-# O `docker-compose.yml` sozinho puxa a imagem publicada — é o caminho de quem
-# só quer experimentar, e por isso é ele que fica como padrão.
+# `docker-compose.yml` on its own pulls the published image — that is the path
+# for someone who just wants to try it, which is why it is the default.
 
 x-build: &build
   build:
