@@ -18,20 +18,20 @@ export interface DispatcherDeps {
   sessions: SessionManager
   risk: RiskEngine
   /**
-   * Observação de duração, declarada como função solta para que o scheduler não
-   * precise conhecer o formato de métrica em uso.
+   * Duration observation, declared as a plain function so the scheduler never
+   * has to know which metrics format is in use.
    */
   observeSend?: (result: 'sent' | 'failed' | 'held', seconds: number) => void
   logger: ManagerLogger
   intervalMs: number
   batchSize: number
-  /** Teto de envios simultâneos neste nó, somando todas as sessões. */
+  /** Ceiling on simultaneous sends on this node, across all sessions. */
   maxConcurrent: number
-  /** Envio parado em 'sending' por mais que isto voltou de um processo morto. */
+  /** A send stuck in 'sending' past this came from a process that died. */
   stuckAfterMs: number
   onDelivered: (job: ClaimedJob, engineMessageId: string, sentAt: Date) => Promise<void>
   onDead: (job: ClaimedJob, error: string) => Promise<void>
-  /** Registra a decisão do motor de risco para auditoria. */
+  /** Records the risk engine's decision for auditing. */
   onRiskDecision: (job: ClaimedJob, decision: RiskDecision) => Promise<void>
 }
 
@@ -40,20 +40,21 @@ function sleep(ms: number): Promise<void> {
 }
 
 /**
- * Scheduler de envio.
+ * Send scheduler.
  *
- * O laço reserva lotes e dispara as entregas **sem esperá-las**. A distinção é
- * essencial depois do motor de risco: uma entrega pode ficar um minuto parada
- * de propósito, entre o jitter humano e o tempo de digitação, e aguardar por ela
- * dentro do ciclo travaria todos os outros chats junto. O que limita o paralelo
- * é o teto de concorrência, não o tempo de cada envio.
+ * The loop claims batches and fires the deliveries **without awaiting them**.
+ * The distinction is essential once the risk engine is in the path: a delivery
+ * can sit still for a minute on purpose, between the human jitter and the
+ * typing time, and awaiting it inside the cycle would stall every other chat
+ * along with it. What bounds the parallelism is the concurrency ceiling, not
+ * how long each send takes.
  */
 export class OutboxDispatcher {
   private timer: NodeJS.Timeout | null = null
   private stopped = true
   private claiming = false
   private ticksSinceRecovery = 0
-  /** Entregas em voo, por id do outbox. */
+  /** Deliveries in flight, by outbox id. */
   private readonly inFlight = new Set<string>()
 
   constructor(private readonly deps: DispatcherDeps) {}
@@ -64,7 +65,7 @@ export class OutboxDispatcher {
     this.scheduleNext()
   }
 
-  /** Para de reservar e espera o que já está em voo terminar. */
+  /** Stops claiming and waits for what is already in flight to finish. */
   async stop(timeoutMs = 15_000): Promise<void> {
     this.stopped = true
     if (this.timer) {
@@ -151,10 +152,10 @@ export class OutboxDispatcher {
     const adapter = this.deps.sessions.adapterFor(job.sessionId)
 
     /**
-     * Sessão ausente ou ainda não pareada devolve o envio à fila sem consumir
-     * tentativa. Indisponibilidade não é falha de entrega: contar como tal faria
-     * mensagens perfeitamente válidas morrerem na DLQ enquanto o operador ainda
-     * está escaneando o QR.
+     * A missing or not-yet-paired session puts the send back in the queue
+     * without consuming an attempt. Being unavailable is not a delivery
+     * failure: counting it as one would kill perfectly valid messages in the
+     * DLQ while the operator is still scanning the QR.
      */
     if (!adapter?.isReady()) {
       await release(this.deps.db, job.id)
@@ -168,11 +169,11 @@ export class OutboxDispatcher {
     }
 
     /**
-     * O motor de risco fica exatamente aqui: depois da reserva, antes da engine.
+     * The risk engine sits exactly here: after the claim, before the engine.
      *
-     * É a posição que torna a promessa do §2 possível — a mensagem já está
-     * persistida e reservada, então segurá-la não perde nada, e liberá-la mais
-     * tarde não exige que o cliente reenvie.
+     * That position is what makes the promise in §2 possible — the message is
+     * already persisted and claimed, so holding it loses nothing, and letting
+     * it go later does not require the client to send again.
      */
     const bypass = job.payload.bypassRisk === true
     const decision = await this.deps.risk.evaluate({
@@ -198,19 +199,19 @@ export class OutboxDispatcher {
     }
 
     try {
-      // Digitando antes de falar, por tempo proporcional ao texto.
+      // Typing before speaking, for a time proportional to the text.
       if (decision.typingMs > 0) {
         await adapter.sendPresence(job.chatId, 'composing')
         await sleep(decision.typingMs)
         await adapter.sendPresence(job.chatId, 'paused')
       }
 
-      // Jitter entre envios: o freio do score chega ao comportamento por aqui.
+      // Jitter between sends: this is where the score's brake reaches behaviour.
       if (decision.delayMs > 0) {
         await sleep(decision.delayMs)
       }
 
-      // A sessão pode ter caído durante a espera.
+      // The session may have dropped during the wait.
       if (!adapter.isReady()) {
         await release(this.deps.db, job.id)
         return

@@ -1,4 +1,4 @@
-/** Contratos da API. Espelham as respostas do servidor. */
+/** API contracts. They mirror the server's responses. */
 
 export type Engine = 'baileys' | 'cloud_api' | 'wwebjs' | 'whatsmeow'
 
@@ -30,7 +30,7 @@ export interface Session {
 export interface SessionEvent {
   id: string
   type: string
-  /** Código bruto do protocolo, quando houver. É o que distingue 428 de 440. */
+  /** Raw protocol code, when there is one. It is what tells 428 from 440. */
   rawCode: number | null
   cause: string | null
   nodeId: string | null
@@ -69,8 +69,8 @@ export interface EnqueuedMessage {
   status: OutboxStatus
   clientMessageId: string
   /**
-   * Verdadeiro quando o `clientMessageId` já existia. O envio devolvido é o
-   * original — nenhuma segunda mensagem foi criada.
+   * True when the `clientMessageId` already existed. The send returned is the
+   * original one — no second message was created.
    */
   duplicate: boolean
   scheduledAt?: string | null
@@ -95,7 +95,7 @@ export interface WebhookEndpoint {
   events: string[]
   active: boolean
   createdAt: string
-  /** Só aparece na criação. Guardar aqui é a única chance. */
+  /** Only shows up on creation. Storing it here is the only chance. */
   secret?: string
 }
 
@@ -108,7 +108,7 @@ export interface RiskSnapshot {
   limits: { perMinute: number; perHour: number; perDay: number; newContactsPerDay: number }
   baseLimits: { perMinute: number; perHour: number; perDay: number; newContactsPerDay: number }
   warmup: { ageInDays: number; factor: number }
-  /** 1 é ritmo normal; abaixo disso, o freio está ativo. */
+  /** 1 is normal pace; below that, the brake is on. */
   throttleFactor: number
 }
 
@@ -162,12 +162,12 @@ export interface KpiBusiness {
 }
 
 export interface JanelaKpi {
-  /** Horas para trás. Padrão 24, teto 720. */
+  /** Hours back. Default 24, ceiling 720. */
   hours?: number
   sessionId?: string
 }
 
-/** Corpo dos eventos entregues por webhook. */
+/** Body of the events delivered by webhook. */
 export interface WebhookEvent<T = Record<string, unknown>> {
   event:
     | 'message.received'

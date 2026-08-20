@@ -11,7 +11,7 @@ describe('cifra do auth state', () => {
   })
 
   it('gera ciphertext diferente a cada chamada', () => {
-    // IV aleatório: mesmo texto não pode produzir o mesmo payload duas vezes.
+    // Random IV: the same text must not produce the same payload twice.
     expect(encrypt('mesmo texto', key)).not.toBe(encrypt('mesmo texto', key))
   })
 
@@ -25,7 +25,7 @@ describe('cifra do auth state', () => {
     expect(() => decrypt(payload, randomBytes(32))).toThrow()
   })
 
-  /** GCM é autenticado: adulterar o ciphertext tem que falhar, não decifrar torto. */
+  /** GCM is authenticated: a tampered ciphertext must fail, not decrypt wrong. */
   it('detecta adulteração do ciphertext', () => {
     const [iv, tag, data] = encrypt('credencial', key).split('.') as [string, string, string]
     const corrupted = Buffer.from(data, 'base64url')
@@ -35,9 +35,9 @@ describe('cifra do auth state', () => {
   })
 
   it('rejeita payload malformado', () => {
-    expect(() => decrypt('sem-separador', key)).toThrow('malformado')
-    expect(() => decrypt('a.b', key)).toThrow('malformado')
-    expect(() => decrypt('a.b.c', key)).toThrow('malformado')
+    expect(() => decrypt('sem-separador', key)).toThrow('malformed')
+    expect(() => decrypt('a.b', key)).toThrow('malformed')
+    expect(() => decrypt('a.b.c', key)).toThrow('malformed')
   })
 })
 

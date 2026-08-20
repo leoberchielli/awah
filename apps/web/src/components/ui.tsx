@@ -34,10 +34,11 @@ export function Card({
 }
 
 /**
- * Número grande com rótulo.
+ * A big number with a label.
  *
- * O `tone` não é enfeite: ele é a leitura de longe. Quem passa pelo monitor
- * precisa saber se algo pede atenção antes de conseguir ler o valor.
+ * `tone` is not decoration: it is the reading from across the room. Whoever
+ * walks past the monitor needs to know if something wants attention before
+ * they can read the value.
  */
 export function Stat({
   label,
@@ -80,7 +81,7 @@ const TONES = {
 
 export type Tone = keyof typeof TONES
 
-/** Estado como forma e cor, não só cor — daltonismo é comum entre operadores. */
+/** State as shape and colour, not colour alone — colour blindness is common among operators. */
 export function Pill({ tone, children }: { tone: Tone; children: ReactNode }) {
   return (
     <span

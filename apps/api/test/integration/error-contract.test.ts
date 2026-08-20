@@ -4,8 +4,8 @@ import { buildApp } from '../../src/app'
 import { loadEnv } from '../../src/env'
 
 /**
- * Integração: precisa de Postgres e Redis de verdade. Fora do CI e do compose,
- * a suíte é pulada em vez de falhar.
+ * Integration: needs a real Postgres and Redis. Outside CI and the compose
+ * stack, the suite is skipped instead of failing.
  */
 const hasInfra = Boolean(process.env.DATABASE_URL && process.env.REDIS_URL)
 
@@ -22,11 +22,11 @@ describe.skipIf(!hasInfra)('contrato do formato de erro', () => {
   })
 
   /**
-   * Esta suíte existe por causa de um bug real: `setErrorHandler` no root só é
-   * herdado por contextos de plugin criados depois dele. Com as rotas
-   * registradas antes, toda a API respondia no formato padrão do Fastify
-   * (`{statusCode, code, error, message}`) enquanto a documentação prometia
-   * `{error: {code, message}}`. Nada quebrava — o contrato só estava errado.
+   * This suite exists because of a real bug: `setErrorHandler` on the root is
+   * only inherited by plugin contexts created after it. With the routes
+   * registered before it, the whole API answered in Fastify's default shape
+   * (`{statusCode, code, error, message}`) while the docs promised
+   * `{error: {code, message}}`. Nothing broke — the contract was just wrong.
    */
   it('devolve 401 no envelope do AWAH, não no padrão do Fastify', async () => {
     const response = await app.inject({ method: 'GET', url: '/v1/auth/me' })
@@ -35,7 +35,7 @@ describe.skipIf(!hasInfra)('contrato do formato de erro', () => {
     expect(response.statusCode).toBe(401)
     expect(body).toHaveProperty('error.code', 'unauthorized')
     expect(body).toHaveProperty('error.message')
-    // O envelope do Fastify não pode vazar no nível raiz.
+    // Fastify's own envelope must not leak at the root level.
     expect(body).not.toHaveProperty('statusCode')
     expect(body).not.toHaveProperty('error.statusCode')
     expect(typeof body.error).toBe('object')

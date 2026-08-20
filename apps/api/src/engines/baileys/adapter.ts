@@ -45,7 +45,7 @@ export class BaileysAdapter implements EngineAdapter {
 
   private socket: WASocket | null = null
   private qr: string | null = null
-  /** Distingue queda espontânea de desligamento pedido por nós. */
+  /** Tells a spontaneous drop apart from a shutdown we asked for. */
   private intentionalClose = false
 
   constructor(private readonly deps: BaileysAdapterDeps) {}
@@ -61,22 +61,22 @@ export class BaileysAdapter implements EngineAdapter {
       auth: {
         creds: state.creds,
         /**
-         * Cache na frente do store: sem ele, cada operação do Signal vira ida ao
-         * Postgres. Com ele, a leitura quente fica em memória e o banco só recebe
-         * escrita.
+         * A cache in front of the store: without it, every Signal operation
+         * turns into a trip to Postgres. With it, hot reads stay in memory and
+         * the database only takes writes.
          */
         keys: makeCacheableSignalKeyStore(state.keys, this.deps.logger),
       },
       logger: this.deps.logger,
       browser: Browsers.ubuntu('AWAH'),
       /**
-       * Não marcar presença online ao conectar. Se o gateway se anuncia online,
-       * o WhatsApp entende que o usuário está no aparelho e para de mandar
-       * notificação push para o celular dele — comportamento que surpreende
-       * qualquer um que use o mesmo número no dia a dia.
+       * Do not mark presence as online on connect. If the gateway announces
+       * itself as online, WhatsApp takes it that the user is on the device and
+       * stops sending push notifications to their phone — behaviour that
+       * surprises anyone using the same number day to day.
        */
       markOnlineOnConnect: false,
-      /** Sincronizar histórico completo é caro e não serve a um gateway. */
+      /** Syncing the full history is expensive and no use to a gateway. */
       syncFullHistory: false,
     })
 
@@ -92,10 +92,10 @@ export class BaileysAdapter implements EngineAdapter {
     })
 
     /**
-     * `notify` são mensagens chegando agora. Os outros tipos (`append`, `prepend`)
-     * são sincronização de histórico, que um gateway não deve tratar como
-     * mensagem nova — senão cada reconexão dispararia webhooks de conversas
-     * antigas.
+     * `notify` is messages arriving right now. The other types (`append`,
+     * `prepend`) are history sync, which a gateway must not treat as a new
+     * message — otherwise every reconnect would fire webhooks for old
+     * conversations.
      */
     this.socket.ev.on('messages.upsert', ({ messages, type }) => {
       if (type !== 'notify') return
@@ -140,7 +140,7 @@ export class BaileysAdapter implements EngineAdapter {
     const { connection, lastDisconnect, qr } = update
 
     if (qr) {
-      // Texto cru: a rota decide se entrega como PNG ou como string.
+      // Raw text: the route decides whether to serve it as PNG or as a string.
       this.qr = qr
       this.deps.onEvent({ type: 'qr', qr })
       this.deps.onEvent({ type: 'status', status: 'pairing' })
@@ -181,13 +181,13 @@ export class BaileysAdapter implements EngineAdapter {
 
     try {
       if (options?.logout) {
-        // Encerra o dispositivo no aparelho; as credenciais deixam de valer.
+        // Ends the device on the phone; the credentials stop being valid.
         await socket.logout()
       } else {
         socket.end(undefined)
       }
     } catch (error) {
-      // Desligar não pode falhar: a sessão sai do ar de qualquer maneira.
+      // Shutting down cannot fail: the session goes down either way.
       this.deps.logger.warn({ err: error }, 'error closing socket, continuing')
     }
   }
@@ -209,7 +209,7 @@ export class BaileysAdapter implements EngineAdapter {
     return this.qr
   }
 
-  /** `user` só é preenchido depois do pareamento concluído. */
+  /** `user` is only filled in once pairing has finished. */
   isReady(): boolean {
     return this.socket !== null && Boolean(this.socket.user?.id)
   }
@@ -220,7 +220,7 @@ export class BaileysAdapter implements EngineAdapter {
     try {
       await this.socket.sendPresenceUpdate(state, chatId)
     } catch (error) {
-      // Presença é cosmética: falhar aqui não pode impedir a mensagem de sair.
+      // Presence is cosmetic: failing here must not stop the message going out.
       this.deps.logger.debug({ err: error, chatId }, 'failed to update presence')
     }
   }

@@ -19,8 +19,9 @@ export const sessionsPlugin = fp(
     const qrCache = new QrCache(app.redis)
 
     /**
-     * Conexão dedicada para pub/sub: em modo subscribe o ioredis recusa comandos
-     * normais, então reaproveitar a conexão principal quebraria todo o resto.
+     * A dedicated connection for pub/sub: in subscribe mode ioredis refuses
+     * normal commands, so reusing the main connection would break everything
+     * else.
      */
     const subscriber = app.redis.duplicate() as Redis
     subscriber.on('error', (error) => {
@@ -61,12 +62,13 @@ export const sessionsPlugin = fp(
     failover.start()
 
     /**
-     * Solta as sessões antes de o processo morrer.
+     * Release the sessions before the process dies.
      *
-     * Sem isto, o WhatsApp mantém o socket antigo por algum tempo e a reconexão
-     * seguinte tende a colidir com ele — o 440 "sessão assumida em outro lugar"
-     * que confunde tanta gente. Soltar o lease explicitamente também encurta o
-     * failover: outra réplica assume na hora, em vez de esperar o TTL vencer.
+     * Without this, WhatsApp holds on to the old socket for a while and the
+     * next reconnect tends to collide with it — the 440 "session taken over
+     * elsewhere" that confuses so many people. Releasing the lease explicitly
+     * also shortens failover: another replica takes over right away instead of
+     * waiting for the TTL to expire.
      */
     app.addHook('onClose', async () => {
       failover.stop()

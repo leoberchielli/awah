@@ -1,16 +1,16 @@
 import type { SessionLimits } from './limits'
 
 /**
- * Curva de aquecimento de chip.
+ * Number warm-up curve.
  *
- * Um número recém-pareado que dispara mil mensagens no primeiro dia é o padrão
- * mais óbvio de conta descartável, e é o que o WhatsApp derruba primeiro. A
- * curva libera volume conforme a sessão acumula idade: começa em 5% do teto e
- * chega a 100% em trinta dias.
+ * A freshly paired number that blasts a thousand messages on day one is the
+ * most obvious throwaway-account pattern there is, and it is the first thing
+ * WhatsApp takes down. The curve releases volume as the session ages: it starts
+ * at 5% of the cap and reaches 100% in thirty days.
  *
- * A rampa é interpolada entre marcos, não escalonada — degrau faria o volume
- * saltar de um dia para o outro, que é exatamente o tipo de variação brusca que
- * se quer evitar.
+ * The ramp is interpolated between milestones, not stepped — a step would make
+ * volume jump from one day to the next, which is exactly the kind of abrupt
+ * change we are trying to avoid.
  */
 const MILESTONES: Array<{ day: number; factor: number }> = [
   { day: 0, factor: 0.05 },
@@ -21,7 +21,7 @@ const MILESTONES: Array<{ day: number; factor: number }> = [
   { day: 30, factor: 1 },
 ]
 
-/** Fator entre 0 e 1 aplicado aos tetos, conforme a idade em dias. */
+/** Factor between 0 and 1 applied to the caps, based on age in days. */
 export function warmupFactor(ageInDays: number): number {
   if (!Number.isFinite(ageInDays) || ageInDays <= 0) {
     return MILESTONES[0]?.factor ?? 0.05
@@ -47,8 +47,8 @@ export function warmupFactor(ageInDays: number): number {
 }
 
 /**
- * Idade da sessão em dias fracionários. Sessão nunca pareada é tratada como
- * idade zero: sem pareamento não há histórico para justificar volume.
+ * Session age in fractional days. A session that was never paired is treated as
+ * age zero: without pairing there is no history to justify volume.
  */
 export function sessionAgeInDays(pairedAt: Date | null, now: Date = new Date()): number {
   if (!pairedAt) return 0
@@ -57,10 +57,10 @@ export function sessionAgeInDays(pairedAt: Date | null, now: Date = new Date()):
 }
 
 /**
- * Limites efetivos depois do warmup.
+ * Effective limits after warm-up.
  *
- * O mínimo de 1 existe para que uma sessão recém-pareada não fique com teto
- * zero e trave completamente — ela envia pouco, mas envia.
+ * The floor of 1 exists so a freshly paired session does not end up with a cap
+ * of zero and lock up completely — it sends little, but it sends.
  */
 export function applyWarmup(limits: SessionLimits, ageInDays: number): SessionLimits {
   const factor = warmupFactor(ageInDays)

@@ -1,6 +1,6 @@
 import { and, type Database, eq, schema, sql } from '@awah/db'
 
-/** Eventos que o AWAH publica. Assinar `*` recebe todos. */
+/** Events AWAH publishes. Subscribing to `*` gets all of them. */
 export const WEBHOOK_EVENTS = [
   'message.received',
   'message.sent',
@@ -19,11 +19,11 @@ export interface EmitInput {
 }
 
 /**
- * Enfileira o evento para todas as assinaturas interessadas.
+ * Queues the event for every subscription that wants it.
  *
- * Enfileirar e entregar são passos separados de propósito: a entrega pode levar
- * segundos e falhar, e nada disso pode atrasar nem derrubar o caminho que
- * originou o evento — receber uma mensagem, concluir um envio.
+ * Queueing and delivering are separate steps on purpose: delivery can take
+ * seconds and can fail, and none of that may delay or bring down the path the
+ * event came from — receiving a message, completing a send.
  */
 export async function emitWebhook(db: Database, input: EmitInput): Promise<number> {
   const hooks = await db
@@ -39,7 +39,7 @@ export async function emitWebhook(db: Database, input: EmitInput): Promise<numbe
     const subscribed = hook.events.includes(input.event) || hook.events.includes('*')
     if (!subscribed) return false
 
-    // Escopo nulo alcança todas as sessões da organização.
+    // A null scope reaches every session in the organization.
     if (!hook.sessionScope || !input.sessionId) return true
     return hook.sessionScope.includes(input.sessionId)
   })
@@ -58,14 +58,14 @@ export async function emitWebhook(db: Database, input: EmitInput): Promise<numbe
   return targets.length
 }
 
-/** Recoloca entregas mortas na fila. Usado pelo replay do dashboard. */
+/** Puts dead deliveries back on the queue. Used by the dashboard replay. */
 export async function replayDeadDeliveries(
   db: Database,
   orgId: string,
   ids?: string[],
 ): Promise<number> {
-  // Um parâmetro por id: interpolar o array inteiro faria o driver mandá-lo
-  // como texto, e o Postgres recusaria com "malformed array literal".
+  // One parameter per id: interpolating the whole array would make the driver
+  // send it as text, and Postgres would refuse with "malformed array literal".
   const filtroIds =
     ids && ids.length > 0
       ? sql`AND id IN (${sql.join(

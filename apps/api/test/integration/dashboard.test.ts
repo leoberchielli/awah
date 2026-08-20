@@ -12,7 +12,7 @@ const hasInfra = Boolean(process.env.DATABASE_URL && process.env.REDIS_URL)
 const HTML =
   '<!doctype html><html><head><title>AWAH</title></head><body><div id="root"></div></body></html>'
 
-/** Um build de mentira, com a mesma forma do de verdade. */
+/** A fake build, with the same shape as the real one. */
 function montarDist(): string {
   const raiz = mkdtempSync(join(tmpdir(), 'awah-dash-'))
   mkdirSync(join(raiz, 'assets'))
@@ -35,7 +35,7 @@ describe('separação entre rotas do servidor e do dashboard', () => {
     expect(ehRotaDoServidor('/operacao')).toBe(false)
     expect(ehRotaDoServidor('/sessoes?horas=168')).toBe(false)
     expect(ehRotaDoServidor('/entrar')).toBe(false)
-    // Um caminho que só *começa* parecido não é rota do servidor.
+    // A path that merely *starts* alike is not a server route.
     expect(ehRotaDoServidor('/v1negocio')).toBe(false)
   })
 
@@ -77,9 +77,9 @@ describe.skipIf(!hasInfra)('SPA servida pela API', () => {
   })
 
   /**
-   * O bug que este teste existe para impedir: um erro de digitação numa rota da
-   * API devolvendo a página HTML com status 200, e quem integra tentando
-   * entender por que o JSON virou `<!doctype html>`.
+   * The bug this test exists to prevent: a typo in an API route returning the
+   * HTML page with status 200, and whoever is integrating trying to work out
+   * why their JSON turned into `<!doctype html>`.
    */
   it('não devolve HTML para rota de API inexistente', async () => {
     const resposta = await app.inject({

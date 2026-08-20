@@ -24,10 +24,10 @@ export const telemetryPlugin = fp(
     app.decorate('aggregator', aggregator)
 
     /**
-     * Todas as réplicas agregam a mesma janela e chegam ao mesmo resultado — o
-     * upsert torna a concorrência inofensiva. Eleger um agregador exigiria
-     * coordenação e criaria um ponto de falha para uma tarefa que não precisa
-     * de nenhum dos dois.
+     * Every replica aggregates the same window and reaches the same result —
+     * the upsert makes the concurrency harmless. Electing one aggregator would
+     * require coordination and create a point of failure for a task that needs
+     * neither of them.
      */
     aggregator.start()
 

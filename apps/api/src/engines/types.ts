@@ -1,9 +1,9 @@
 import type { EngineType, MessageStatus, MessageType, SessionStatus } from '@awah/db'
 
 /**
- * O que cada engine sabe fazer. É a fonte da matriz pública de capacidades: o
- * usuário precisa saber, antes de escolher, que a Cloud API não tem grupos e
- * que o Baileys não tem janela de 24 h.
+ * What each engine can do. This is the source of the public capability matrix:
+ * before choosing, the user needs to know that the Cloud API has no groups and
+ * that Baileys has no 24 h window.
  */
 export interface EngineCapabilities {
   qrPairing: boolean
@@ -13,7 +13,7 @@ export interface EngineCapabilities {
   presence: boolean
   reactions: boolean
   editMessage: boolean
-  /** Envio livre, sem template aprovado nem janela de atendimento. */
+  /** Free-form sending, with no approved template and no service window. */
   freeformMessaging: boolean
 }
 
@@ -23,16 +23,16 @@ export interface SendResult {
 }
 
 /**
- * Eventos que uma engine emite para o gerenciador de sessão. O gerenciador é
- * quem traduz isso em escrita no banco — o adapter nunca toca no Postgres
- * diretamente, para que trocar de engine não signifique reescrever persistência.
+ * Events an engine emits to the session manager. The manager is what turns them
+ * into database writes — the adapter never touches Postgres directly, so that
+ * swapping engines does not mean rewriting persistence.
  */
 export type EngineEvent =
   | { type: 'status'; status: SessionStatus; detail?: Record<string, unknown> }
-  /** QR novo para exibir. Expira em segundos e é substituído até o pareamento. */
+  /** A new QR to display. It expires in seconds and is replaced until pairing. */
   | { type: 'qr'; qr: string }
   | { type: 'paired'; phoneNumber: string | null }
-  /** As credenciais mudaram e precisam ser persistidas. */
+  /** The credentials changed and need to be persisted. */
   | { type: 'credentials' }
   | {
       type: 'closed'
@@ -41,7 +41,7 @@ export type EngineEvent =
       shouldReconnect: boolean
       loggedOut: boolean
     }
-  /** Mensagem chegou (ou saiu por outro dispositivo do mesmo número). */
+  /** A message arrived (or was sent from another device on the same number). */
   | {
       type: 'message.received'
       engineMessageId: string
@@ -52,7 +52,7 @@ export type EngineEvent =
       fromMe: boolean
       occurredAt: Date
     }
-  /** ACK do protocolo: alimenta o funil sent → delivered → read. */
+  /** Protocol ACK: feeds the sent → delivered → read funnel. */
   | {
       type: 'message.status'
       engineMessageId: string
@@ -70,39 +70,40 @@ export interface EngineAdapter {
   connect(): Promise<void>
 
   /**
-   * `logout: true` encerra a sessão no aparelho e invalida as credenciais;
-   * sem ele, apenas solta a conexão e o auth state segue reutilizável.
+   * `logout: true` ends the session on the phone and invalidates the
+   * credentials; without it, this only drops the connection and the auth state
+   * stays reusable.
    */
   disconnect(options?: { logout?: boolean }): Promise<void>
 
-  /** Pareamento por código de 8 dígitos, alternativa ao QR. */
+  /** Pairing by 8-digit code, an alternative to the QR. */
   requestPairingCode(phoneNumber: string): Promise<string>
 
-  /** QR corrente, se houver um pareamento em andamento. */
+  /** The current QR, if a pairing is in progress. */
   currentQr(): string | null
 
   /**
-   * Se a engine está pronta para enviar de fato.
+   * Whether the engine is actually ready to send.
    *
-   * Conectado não é o mesmo que pronto: uma sessão em pareamento tem socket
-   * aberto e nenhuma identidade. O scheduler usa isto para devolver o envio à
-   * fila em vez de gastar tentativa — indisponibilidade não é falha de entrega,
-   * e tratá-la como tal levaria mensagens boas à DLQ enquanto o usuário ainda
-   * está escaneando o QR.
+   * Connected is not the same as ready: a session that is pairing has an open
+   * socket and no identity. The scheduler uses this to put the send back on the
+   * queue instead of spending an attempt — being unavailable is not a delivery
+   * failure, and treating it as one would send good messages to the DLQ while
+   * the user is still scanning the QR.
    */
   isReady(): boolean
 
   /**
-   * Envio direto na engine. Nenhuma rota chama isto: todo envio entra pelo
-   * outbox e é o scheduler quem aciona o adapter, depois do motor de risco
-   * liberar a vaga.
+   * Send straight through the engine. No route calls this: every send comes in
+   * through the outbox, and it is the scheduler that drives the adapter, after
+   * the risk engine frees up a slot.
    */
   sendText(chatId: string, text: string): Promise<SendResult>
 
   /**
-   * Presença na conversa. O motor de risco usa `composing` antes de enviar, por
-   * um tempo proporcional ao texto — mensagem longa que aparece instantânea
-   * denuncia automação para quem está com a conversa aberta.
+   * Presence in the chat. The risk engine uses `composing` before sending, for
+   * a time proportional to the text — a long message that appears instantly
+   * gives the automation away to anyone with the chat open.
    */
   sendPresence(chatId: string, state: 'composing' | 'paused' | 'available'): Promise<void>
 }

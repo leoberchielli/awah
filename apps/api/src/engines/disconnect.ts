@@ -1,21 +1,22 @@
 import { exponentialBackoff } from '../lib/backoff'
 
 /**
- * Tradução dos códigos de desconexão do protocolo para causa legível.
+ * Translation of the protocol's disconnect codes into a readable cause.
  *
- * Esta tabela é pequena e é boa parte do valor do produto. Quem opera Baileys
- * hoje vê `Connection Closed` no log e não sabe se perdeu a internet, se abriu o
- * WhatsApp Web em outra aba ou se o número foi banido — três incidentes com
- * respostas completamente diferentes. A timeline de quedas do dashboard lê daqui.
+ * This table is small and it is a good part of the product's value. Anyone
+ * running Baileys today sees `Connection Closed` in the log and cannot tell
+ * whether the internet dropped, whether WhatsApp Web was opened in another tab
+ * or whether the number was banned — three incidents with completely different
+ * answers. The dashboard's disconnect timeline reads from here.
  */
 export interface DisconnectInfo {
-  /** Frase curta mostrada na timeline. */
+  /** Short phrase shown on the timeline. */
   cause: string
-  /** O que fazer a respeito. */
+  /** What to do about it. */
   guidance: string
-  /** Se vale reconectar sozinho. */
+  /** Whether it is worth reconnecting on its own. */
   shouldReconnect: boolean
-  /** Se as credenciais morreram e a sessão precisa parear de novo. */
+  /** Whether the credentials died and the session has to pair again. */
   loggedOut: boolean
 }
 
@@ -94,8 +95,8 @@ export function describeDisconnect(rawCode: number | null | undefined): Disconne
 }
 
 /**
- * Extrai o código de status de um erro do Baileys sem depender do tipo do Boom.
- * O formato é `error.output.statusCode`.
+ * Pulls the status code out of a Baileys error without depending on the Boom
+ * type. The shape is `error.output.statusCode`.
  */
 export function statusCodeFromError(error: unknown): number | null {
   if (typeof error !== 'object' || error === null) return null
@@ -110,7 +111,7 @@ export function statusCodeFromError(error: unknown): number | null {
   return typeof direct === 'number' ? direct : null
 }
 
-/** Espera antes da próxima tentativa de conexão: de 1 s até o teto de 5 min. */
+/** Wait before the next connection attempt: from 1 s up to a 5 min cap. */
 export function reconnectDelayMs(attempt: number, random: () => number = Math.random): number {
   return exponentialBackoff({ attempt, baseMs: 1000, capMs: 300_000, random })
 }

@@ -6,7 +6,7 @@ import { createSession, type SeededOrg, seedOrg, seedUser } from './helpers'
 
 const hasInfra = Boolean(process.env.DATABASE_URL && process.env.REDIS_URL)
 
-/** UUID de exemplo que o Swagger UI sugere para qualquer campo `format: uuid`. */
+/** The example UUID Swagger UI suggests for any `format: uuid` field. */
 const UUID_DE_EXEMPLO = '3fa85f64-5717-4562-b3fc-2c963f66afa6'
 
 describe.skipIf(!hasInfra)('criação de chave de API', () => {
@@ -14,8 +14,8 @@ describe.skipIf(!hasInfra)('criação de chave de API', () => {
   let org: SeededOrg
   let sessao: string
   /**
-   * Cookie de sessão de usuário, e não chave de API: emitir chave é
-   * administração de identidade, e chave de API não faz isso por design.
+   * A user session cookie, not an API key: issuing a key is identity
+   * administration, and an API key does not do that, by design.
    */
   let sessaoDoUsuario: string
 
@@ -70,10 +70,10 @@ describe.skipIf(!hasInfra)('criação de chave de API', () => {
   })
 
   /**
-   * A regressão que este teste impede: uma chave emitida contra o UUID de
-   * exemplo do formulário da documentação nasce válida e não alcança nada. O
-   * erro só aparecia no primeiro envio, como "Sessão não encontrada" — que
-   * culpa a sessão e manda quem está integrando procurar no lugar errado.
+   * The regression this test prevents: a key issued against the example UUID
+   * from the docs form is born valid and reaches nothing. The error only
+   * showed up on the first send, as "Session not found." — which blames the
+   * session and sends whoever is integrating looking in the wrong place.
    */
   it('recusa escopo apontando para sessão inexistente', async () => {
     const resposta = await app.inject({
@@ -100,9 +100,9 @@ describe.skipIf(!hasInfra)('criação de chave de API', () => {
   })
 
   /**
-   * Escopo é por organização. Uma sessão que existe, mas em outra org, é tão
-   * inalcançável quanto uma que não existe — e a mensagem não deve distinguir
-   * os dois casos, senão vira sonda de existência entre inquilinos.
+   * Scope is per organization. A session that exists, but in another org, is
+   * as unreachable as one that does not exist — and the message must not tell
+   * the two cases apart, or it becomes an existence probe across tenants.
    */
   it('recusa sessão de outra organização', async () => {
     const outra = await seedOrg(app.db)

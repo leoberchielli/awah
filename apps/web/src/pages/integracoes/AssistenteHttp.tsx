@@ -5,13 +5,14 @@ import type { IntegrationSaved, SessionRow, TesteDoConector } from '../../lib/ap
 import { ApiError, post, put } from '../../lib/api'
 
 /**
- * Plugar qualquer plataforma.
+ * Plug in any platform.
  *
- * Chatwoot e Typebot têm conector dedicado porque são os dois casos mais
- * comuns. Este existe para todo o resto: n8n, Make, uma função serverless, o
- * sistema da casa. O gateway posta a mensagem recebida numa URL e envia de volta
- * o que a resposta trouxer — e essa resposta entra pela mesma fila de qualquer
- * envio, com ordem por conversa, motor de risco e reentrega.
+ * Chatwoot and Typebot get dedicated connectors because they are the two most
+ * common cases. This one exists for everything else: n8n, Make, a serverless
+ * function, the in-house system. The gateway posts the incoming message to a
+ * URL and sends back whatever the response carries — and that response goes
+ * through the same queue as any other send, with per-chat ordering, the risk
+ * engine and redelivery.
  */
 export function AssistenteHttp({
   sessoes,
@@ -138,7 +139,7 @@ export function AssistenteHttp({
             onChange={(e) => setSecret(e.target.value)}
             className="rounded-md border border-line bg-surface-2 px-3 py-2 text-sm text-ink"
           />
-          {/* Mesmo esquema dos webhooks: quem já valida um valida o outro. */}
+          {/* Same scheme as the webhooks: whoever validates one validates the other. */}
           <span className="text-xs text-muted">{t('http.secretHint')}</span>
         </label>
 
@@ -173,10 +174,10 @@ export function AssistenteHttp({
 }
 
 /**
- * O que voltou, sem interpretação.
+ * What came back, uninterpreted.
  *
- * Status, tempo, corpo cru e o diagnóstico. É o que substitui adivinhação
- * quando alguém acabou de plugar uma plataforma que ninguém aqui conhece.
+ * Status, timing, raw body and the diagnosis. This is what replaces guesswork
+ * when someone has just plugged in a platform nobody here has heard of.
  */
 function Resultado({ teste }: { teste: TesteDoConector }) {
   const t = useT()

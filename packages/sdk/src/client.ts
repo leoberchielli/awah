@@ -21,14 +21,14 @@ export interface EnviarTexto {
   chatId: string
   text: string
   /**
-   * Chave de idempotência. Se omitida, o SDK gera uma — e é isso que torna o
-   * retry automático seguro: repetir o mesmo valor devolve o envio original com
-   * `duplicate: true`, nunca uma segunda mensagem.
+   * Idempotency key. If you leave it out the SDK generates one — and that is
+   * what makes the automatic retry safe: repeating the same value returns the
+   * original send with `duplicate: true`, never a second message.
    */
   clientMessageId?: string
   /**
-   * Fura o motor de risco. Fica registrado em `risk_events` como qualquer outra
-   * decisão, e a responsabilidade passa a ser de quem chamou.
+   * Bypasses the risk engine. It is still recorded in `risk_events` like any
+   * other decision, and the responsibility moves to the caller.
    */
   bypassRisk?: boolean
 }
@@ -52,32 +52,32 @@ class SessionsResource {
     return this.http.request({ method: 'DELETE', path: `/v1/sessions/${id}` })
   }
 
-  /** Abre a conexão. Sessão nova entra em pareamento — busque o QR depois disto. */
+  /** Opens the connection. A new session enters pairing — fetch the QR after this. */
   start(id: string): Promise<{ id: string; status: string }> {
     return this.http.request({ method: 'POST', path: `/v1/sessions/${id}/start` })
   }
 
-  /** Desconecta preservando as credenciais. */
+  /** Disconnects, keeping the credentials. */
   stop(id: string): Promise<{ id: string; status: string }> {
     return this.http.request({ method: 'POST', path: `/v1/sessions/${id}/stop` })
   }
 
-  /** Remove o dispositivo do aparelho e apaga as credenciais. Exige novo pareamento. */
+  /** Unlinks the device from the phone and erases the credentials. Pairing starts over. */
   logout(id: string): Promise<{ id: string; status: string }> {
     return this.http.request({ method: 'POST', path: `/v1/sessions/${id}/logout` })
   }
 
   /**
-   * QR do pareamento em curso, em texto cru e como PNG em `data:` URI.
+   * QR for the pairing in progress, as raw text and as a PNG `data:` URI.
    *
-   * O código é trocado a cada poucos segundos: busque **depois** do `start` e
-   * renove enquanto o estado for `pairing`.
+   * The code is swapped every few seconds: fetch it **after** `start` and keep
+   * refreshing it for as long as the status is `pairing`.
    */
   qr(id: string): Promise<{ qr: string; image: string }> {
     return this.http.request({ method: 'GET', path: `/v1/sessions/${id}/qr` })
   }
 
-  /** Alternativa ao QR: código de 8 dígitos digitado no aparelho. */
+  /** Alternative to the QR: an 8-digit code typed into the phone. */
   pairingCode(id: string, phoneNumber: string): Promise<{ code: string }> {
     return this.http.request({
       method: 'POST',
@@ -86,7 +86,7 @@ class SessionsResource {
     })
   }
 
-  /** Timeline de conexão e queda, com o código bruto ao lado da causa traduzida. */
+  /** Timeline of connects and drops, with the raw code beside the translated cause. */
   events(id: string, limit = 100): Promise<{ events: SessionEvent[] }> {
     return this.http.request({
       method: 'GET',
@@ -95,7 +95,7 @@ class SessionsResource {
     })
   }
 
-  /** Exclusivo da engine `cloud_api`. Guardado cifrado; nunca devolvido em leitura. */
+  /** Only for the `cloud_api` engine. Stored encrypted; never returned on a read. */
   setCredentials(
     id: string,
     credentials: CloudApiCredentials,
@@ -113,10 +113,10 @@ class MessagesResource {
   constructor(private readonly http: HttpClient) {}
 
   /**
-   * Enfileira um texto.
+   * Queues a text message.
    *
-   * Responde **202**: a mensagem foi persistida, não entregue. O estado real
-   * vive em `outbox.get()` e nos webhooks.
+   * Answers **202**: the message was persisted, not delivered. The real state
+   * lives in `outbox.get()` and in the webhooks.
    */
   sendText(sessionId: string, input: EnviarTexto): Promise<EnqueuedMessage> {
     const { bypassRisk, clientMessageId, ...resto } = input
@@ -125,7 +125,7 @@ class MessagesResource {
       method: 'POST',
       path: `/v1/sessions/${sessionId}/messages`,
       body: { ...resto, clientMessageId: clientMessageId ?? novaChave() },
-      // Seguro repetir justamente porque há chave de idempotência no corpo.
+      // Safe to repeat precisely because the body carries an idempotency key.
       idempotente: true,
       headers: bypassRisk ? { 'x-awah-bypass-risk': 'true' } : undefined,
     })
@@ -159,7 +159,7 @@ class OutboxResource {
     })
   }
 
-  /** Devolve à fila uma mensagem que esgotou as tentativas. */
+  /** Puts a message that ran out of attempts back on the queue. */
   retry(id: string): Promise<OutboxMessage> {
     return this.http.request({ method: 'POST', path: `/v1/outbox/${id}/retry`, idempotente: true })
   }
@@ -168,7 +168,7 @@ class OutboxResource {
 class WebhooksResource {
   constructor(private readonly http: HttpClient) {}
 
-  /** O `secret` da resposta aparece **uma única vez**. Guarde-o agora. */
+  /** The `secret` in the response appears **only once**. Store it now. */
   create(input: { url: string; events: string[]; sessionId?: string }): Promise<WebhookEndpoint> {
     return this.http.request({ method: 'POST', path: '/v1/webhooks', body: input })
   }
@@ -202,14 +202,14 @@ class WebhooksResource {
 class RiskResource {
   constructor(private readonly http: HttpClient) {}
 
-  /** Score com a contribuição de cada fator, consumo das janelas e limites vigentes. */
+  /** Score with each factor's contribution, window usage and the limits in force. */
   snapshot(sessionId: string): Promise<RiskSnapshot> {
     return this.http.request({ method: 'GET', path: `/v1/sessions/${sessionId}/risk` })
   }
 
   /**
-   * Os limites configurados são o **alvo**, não o valor de hoje: a curva de
-   * warmup começa em 5% e chega a 100% em trinta dias.
+   * The limits you configure are the **target**, not today's value: the warm-up
+   * curve starts at 5% and reaches 100% in thirty days.
    */
   setLimits(
     sessionId: string,
@@ -228,7 +228,7 @@ class RiskResource {
     })
   }
 
-  /** Cada decisão com o retrato do orçamento no instante em que foi tomada. */
+  /** Every decision, with the budget as it stood the instant it was taken. */
   events(options?: { sessionId?: string; limit?: number }): Promise<unknown> {
     return this.http.request({
       method: 'GET',
@@ -259,16 +259,16 @@ class KpiResource {
 }
 
 /**
- * Cliente do AWAH.
+ * The AWAH client.
  *
  * ```ts
- * const awah = new Awah({ baseUrl: 'https://awah.exemplo.com', apiKey: process.env.AWAH_KEY! })
- * const { id } = await awah.sessions.create({ name: 'atendimento' })
+ * const awah = new Awah({ baseUrl: 'https://awah.example.com', apiKey: process.env.AWAH_KEY! })
+ * const { id } = await awah.sessions.create({ name: 'support' })
  * await awah.sessions.start(id)
  * ```
  *
- * A chave de API é credencial de servidor. Ela envia mensagem em nome de todas
- * as sessões da organização — não a coloque em código que roda no navegador.
+ * The API key is a server credential. It sends messages on behalf of every
+ * session in the organization — do not put it in code that runs in a browser.
  */
 export class Awah {
   readonly sessions: SessionsResource
@@ -291,12 +291,12 @@ export class Awah {
     this.kpi = new KpiResource(this.http)
   }
 
-  /** Matriz de capacidades por engine — o que se perde ao trocar de uma para outra. */
+  /** Capability matrix per engine — what you give up by switching from one to another. */
   engines(): Promise<{ engines: EngineInfo[] }> {
     return this.http.request({ method: 'GET', path: '/v1/engines' })
   }
 
-  /** Contexto da credencial atual: organização, papel e escopo de sessão. */
+  /** Context of the current credential: organization, role and session scope. */
   me(): Promise<{
     kind: 'user' | 'api_key'
     organizationId: string
@@ -306,7 +306,7 @@ export class Awah {
     return this.http.request({ method: 'GET', path: '/v1/auth/me' })
   }
 
-  /** Não exige credencial válida; serve para checar alcance e versão. */
+  /** Takes no valid credential; use it to check reachability and version. */
   health(): Promise<{ status: string; nodeId: string; uptimeSeconds: number }> {
     return this.http.request({ method: 'GET', path: '/health' })
   }
@@ -315,6 +315,6 @@ export class Awah {
 function novaChave(): string {
   if (typeof globalThis.crypto?.randomUUID === 'function') return globalThis.crypto.randomUUID()
 
-  // Runtime antigo sem WebCrypto: entropia suficiente para uma chave de envio.
+  // Old runtime with no WebCrypto: entropy enough for one send key.
   return `awah-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`
 }

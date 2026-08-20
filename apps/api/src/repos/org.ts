@@ -18,7 +18,7 @@ export interface MemberRow {
   joinedAt: Date
 }
 
-/** Leitura e escrita da própria organização e do seu quadro de membros. */
+/** Reads and writes the organization itself and its roster of members. */
 export class OrgRepository extends TenantRepository {
   async profile(): Promise<OrgProfile | null> {
     const [row] = await this.db
@@ -96,8 +96,8 @@ export class OrgRepository extends TenantRepository {
   }
 
   /**
-   * Usado para impedir que a organização fique sem owner — rebaixar ou remover
-   * o último owner deixaria a org sem ninguém capaz de administrá-la.
+   * Used to keep the organization from ending up with no owner — demoting or
+   * removing the last owner would leave the org with nobody able to run it.
    */
   async ownerCount(): Promise<number> {
     const [row] = await this.db

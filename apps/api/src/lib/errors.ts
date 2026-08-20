@@ -1,6 +1,6 @@
 /**
- * Erro de domínio com código estável. O `code` faz parte do contrato público da
- * API — clientes fazem branch nele, então mudá-lo é breaking change.
+ * Domain error with a stable code. The `code` is part of the API's public
+ * contract — clients branch on it, so changing one is a breaking change.
  */
 export class AppError extends Error {
   constructor(

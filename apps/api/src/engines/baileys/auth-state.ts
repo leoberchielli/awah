@@ -5,11 +5,11 @@ import { decrypt, encrypt } from '../../lib/crypto'
 
 export interface PostgresAuthState {
   state: AuthenticationState
-  /** Persiste as credenciais. O Baileys chama isto no evento `creds.update`. */
+  /** Persists the credentials. Baileys calls this on the `creds.update` event. */
   saveCreds: () => Promise<void>
-  /** Apaga credenciais e keys. Usado no logout e na recuperação de sessão corrompida. */
+  /** Wipes credentials and keys. Used on logout and to recover a corrupted session. */
   clear: () => Promise<void>
-  /** true quando a identidade acabou de ser gerada e ainda não existia no banco. */
+  /** true when the identity was just generated and was not yet in the database. */
   isNew: boolean
 }
 
@@ -20,16 +20,17 @@ export interface AuthStateDeps {
 }
 
 /**
- * Auth state do Baileys sobre Postgres, cifrado em repouso.
+ * Baileys auth state on Postgres, encrypted at rest.
  *
- * Esta função é a decisão que destrava o cluster inteiro (§4.4 da spec).
- * Enquanto o auth state vive em arquivo — como no `useMultiFileAuthState`
- * padrão — a sessão está presa ao disco de um nó específico, e failover deixa
- * de ser possível: outra réplica simplesmente não tem as credenciais.
+ * This function is the decision that unlocks the whole cluster (§4.4 of the
+ * spec). While the auth state lives in a file — as it does with the standard
+ * `useMultiFileAuthState` — the session is tied to one specific node's disk,
+ * and failover stops being possible: another replica simply does not have the
+ * credentials.
  *
- * A cifra usa a mesma chave AES-256-GCM do resto do sistema. Quem obtiver
- * acesso de leitura ao banco, sem a chave, não consegue assumir o WhatsApp de
- * ninguém.
+ * The cipher uses the same AES-256-GCM key as the rest of the system. Someone
+ * who gets read access to the database, without the key, cannot take over
+ * anyone's WhatsApp.
  */
 export async function usePostgresAuthState(deps: AuthStateDeps): Promise<PostgresAuthState> {
   const { db, sessionId, encryptionKey } = deps
@@ -47,12 +48,12 @@ export async function usePostgresAuthState(deps: AuthStateDeps): Promise<Postgre
     .limit(1)
 
   /**
-   * Credencial ilegível é erro, não motivo para começar do zero.
+   * An unreadable credential is an error, not a reason to start from scratch.
    *
-   * O caso real é rotação de `ENCRYPTION_KEY`: o blob continua lá e deixa de
-   * abrir. Gerar uma identidade nova em silêncio faria a sessão pedir pareamento
-   * outra vez sem explicar por quê, e o dispositivo antigo ficaria pendurado no
-   * aparelho. Melhor falhar dizendo exatamente o que aconteceu.
+   * The real case is `ENCRYPTION_KEY` rotation: the blob is still there and
+   * stops opening. Quietly generating a new identity would make the session ask
+   * for pairing again without explaining why, and the old device would be left
+   * hanging on the phone. Better to fail and say exactly what happened.
    */
   let creds: AuthenticationCreds
   if (existing) {
@@ -86,7 +87,7 @@ export async function usePostgresAuthState(deps: AuthStateDeps): Promise<Postgre
     keys: {
       async get(type, ids) {
         const result: Record<string, unknown> = {}
-        // inArray com lista vazia gera SQL inválido — e o Baileys chama assim.
+        // An empty list makes inArray emit invalid SQL — and Baileys passes one.
         if (ids.length === 0) return result as never
 
         const rows = await db
@@ -107,9 +108,9 @@ export async function usePostgresAuthState(deps: AuthStateDeps): Promise<Postgre
           let value = open<unknown>(row.value)
 
           /**
-           * O Baileys espera esta categoria como mensagem do protobuf, não como
-           * objeto simples. Sem esta reidratação, a sincronização de app state
-           * falha de um jeito silencioso e difícil de rastrear.
+           * Baileys expects this category as a protobuf message, not a plain
+           * object. Without this rehydration, app state sync fails in a way
+           * that is silent and hard to track down.
            */
           if (type === 'app-state-sync-key' && value) {
             value = proto.Message.AppStateSyncKeyData.fromObject(value as Record<string, unknown>)
@@ -128,7 +129,7 @@ export async function usePostgresAuthState(deps: AuthStateDeps): Promise<Postgre
           keyId: string
           value: string
         }> = []
-        /** Valor nulo no payload significa "esqueça esta chave". */
+        /** A null value in the payload means "forget this key". */
         const removals = new Map<string, string[]>()
 
         for (const rawType of Object.keys(data)) {
@@ -151,7 +152,7 @@ export async function usePostgresAuthState(deps: AuthStateDeps): Promise<Postgre
 
         if (upserts.length === 0 && removals.size === 0) return
 
-        // Atômico: o store do Signal não pode ficar meio gravado.
+        // Atomic: the Signal store must not be left half-written.
         await db.transaction(async (tx) => {
           if (upserts.length > 0) {
             await tx

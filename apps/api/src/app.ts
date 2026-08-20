@@ -38,12 +38,12 @@ declare module 'fastify' {
     redis: Redis
   }
   interface FastifyRequest {
-    /** Bytes originais do corpo. Só preenchido nos callbacks da Meta. */
+    /** The body's original bytes. Only filled in on Meta's callbacks. */
     rawBody?: Buffer
   }
 }
 
-/** Nem todo erro que chega ao handler é um FastifyError — daí o narrowing. */
+/** Not every error the handler sees is a FastifyError — hence the narrowing. */
 function statusCodeOf(error: unknown): number | undefined {
   if (typeof error === 'object' && error !== null && 'statusCode' in error) {
     const value = (error as { statusCode?: unknown }).statusCode
@@ -59,16 +59,17 @@ export async function buildApp(env: Env): Promise<FastifyInstance> {
       redact: ['req.headers.authorization', 'req.headers.cookie'],
     },
     /**
-     * Vem do ambiente e é `false` por padrão.
+     * Comes from the environment and is `false` by default.
      *
-     * Confiar em `X-Forwarded-For` sem ter proxy na frente não é conveniência, é
-     * um buraco: o rate limit por IP usa `request.ip`, e um cliente que escolhe o
-     * próprio IP pelo cabeçalho troca de valor a cada requisição e nunca bate no
-     * limite. Atrás de proxy, prefira a lista de CIDRs à confiança irrestrita.
+     * Trusting `X-Forwarded-For` with no proxy in front is not convenience, it
+     * is a hole: the per-IP rate limit uses `request.ip`, and a client that
+     * picks its own IP through the header changes the value on every request
+     * and never hits the limit. Behind a proxy, prefer the CIDR list to blanket
+     * trust.
      */
     trustProxy: env.TRUST_PROXY,
     bodyLimit: env.BODY_LIMIT_BYTES,
-    // O gateway fica atrás de proxy com frequência; ids próprios atrapalham o rastro.
+    // The gateway often sits behind a proxy; ids of our own would break the trail.
     genReqId: (req) => (req.headers['x-request-id'] as string | undefined) ?? crypto.randomUUID(),
   })
 
@@ -76,12 +77,13 @@ export async function buildApp(env: Env): Promise<FastifyInstance> {
   app.setSerializerCompiler(serializerCompiler)
 
   /**
-   * Preserva o corpo cru dos callbacks da Meta.
+   * Keeps the raw body of Meta's callbacks.
    *
-   * A assinatura `X-Hub-Signature-256` cobre os bytes exatos que eles enviaram;
-   * reserializar o objeto já parseado produz bytes parecidos, não idênticos, e o
-   * HMAC falharia de forma intermitente. O buffer só é guardado nessas rotas —
-   * fazer isso para todo o tráfego custaria memória em troca de nada.
+   * The `X-Hub-Signature-256` signature covers the exact bytes they sent;
+   * re-serializing the already-parsed object produces similar bytes, not
+   * identical ones, and the HMAC would fail intermittently. The buffer is only
+   * kept on these routes — doing it for all traffic would cost memory in
+   * exchange for nothing.
    */
   app.addContentTypeParser(
     'application/json',
@@ -124,13 +126,14 @@ export async function buildApp(env: Env): Promise<FastifyInstance> {
   })
 
   /**
-   * CSP escrita à mão, e ligada nos dois ambientes.
+   * Hand-written CSP, and on in both environments.
    *
-   * A política padrão do helmet quebraria três coisas concretas deste painel: o
-   * QR chega como `data:` URI, os componentes posicionam barras por atributo
-   * `style`, e o Swagger UI monta a própria folha inline. Deixar a CSP só para
-   * produção — como estava — significa que ninguém descobre a quebra até o
-   * deploy. Aqui ela vale desde o `pnpm dev`, com as três exceções nomeadas.
+   * Helmet's default policy would break three concrete things in this panel:
+   * the QR arrives as a `data:` URI, the components position bars through the
+   * `style` attribute, and Swagger UI builds its own inline stylesheet. Leaving
+   * the CSP to production only — as it was — means nobody finds the breakage
+   * until deploy. Here it holds from `pnpm dev` on, with the three exceptions
+   * named.
    */
   await app.register(helmet, {
     contentSecurityPolicy: {
@@ -140,12 +143,12 @@ export async function buildApp(env: Env): Promise<FastifyInstance> {
         frameAncestors: ["'none'"],
         objectSrc: ["'none'"],
         scriptSrc: ["'self'"],
-        // O Swagger UI injeta estilo próprio; o painel posiciona barras por atributo.
+        // Swagger UI injects its own style; the panel positions bars by attribute.
         styleSrc: ["'self'", "'unsafe-inline'"],
-        // `data:` é o QR de pareamento, que vem embutido na resposta da API.
+        // `data:` is the pairing QR, which comes embedded in the API's response.
         imgSrc: ["'self'", 'data:'],
         fontSrc: ["'self'"],
-        // Só a própria origem: o painel nunca fala com outro servidor.
+        // Own origin only: the panel never talks to another server.
         connectSrc: ["'self'"],
         formAction: ["'self'"],
         upgradeInsecureRequests: env.NODE_ENV === 'production' ? [] : null,
@@ -158,7 +161,7 @@ export async function buildApp(env: Env): Promise<FastifyInstance> {
     max: 300,
     timeWindow: '1 minute',
     redis,
-    // Chave de API é o sujeito do limite quando existe; senão, o IP.
+    // The API key is the limit's subject when there is one; otherwise the IP.
     keyGenerator: (request) => {
       const header = request.headers.authorization
       return header ? `k:${header.slice(-24)}` : `i:${request.ip}`
@@ -194,14 +197,13 @@ export async function buildApp(env: Env): Promise<FastifyInstance> {
   await app.register(workersPlugin)
 
   /**
-   * Formato de erro único para toda a API. Clientes fazem branch em
-   * `error.code`, então ele é contrato público — mensagens podem mudar, códigos
-   * não.
+   * One error shape for the whole API. Clients branch on `error.code`, so it
+   * is public contract — messages may change, codes may not.
    *
-   * Precisa vir ANTES do register das rotas: cada `register` abre um contexto de
-   * plugin que herda o error handler vigente no momento em que é criado. Definir
-   * o handler depois deixa as rotas presas ao padrão do Fastify, e o formato de
-   * erro documentado deixa silenciosamente de valer.
+   * It has to come BEFORE the routes are registered: each `register` opens a
+   * plugin context that inherits whatever error handler is in force the moment
+   * it is created. Setting the handler afterwards leaves the routes stuck with
+   * Fastify's default, and the documented error shape silently stops holding.
    */
   app.setErrorHandler((error: unknown, request, reply) => {
     if (error instanceof AppError) {
@@ -235,11 +237,11 @@ export async function buildApp(env: Env): Promise<FastifyInstance> {
     }
 
     /**
-     * Erro do cliente é aviso; erro nosso é erro.
+     * A client's error is a warning; ours is an error.
      *
-     * Corpo grande demais, JSON malformado e afins chegam aqui com 4xx. Gravar
-     * cada um como "erro não tratado" enche o log de coisa que não é problema do
-     * servidor — e afoga o que é.
+     * Body too large, malformed JSON and the like arrive here as 4xx. Logging
+     * each one as "unhandled error" fills the log with things that are not the
+     * server's problem — and drowns the things that are.
      */
     if (statusCode && statusCode >= 400 && statusCode < 500) {
       request.log.warn({ err: error }, 'request rejected')
@@ -248,7 +250,7 @@ export async function buildApp(env: Env): Promise<FastifyInstance> {
       })
     }
 
-    // Erro não previsto: registra o detalhe, devolve o genérico.
+    // Unforeseen error: log the detail, return the generic one.
     request.log.error({ err: error }, 'unhandled error')
     return reply.code(500).send({
       error: { code: 'internal_error', message: 'Internal error.' },
@@ -256,13 +258,13 @@ export async function buildApp(env: Env): Promise<FastifyInstance> {
   })
 
   /**
-   * 404 com dois destinos.
+   * A 404 with two destinations.
    *
-   * Navegação de navegador para um caminho desconhecido recebe o HTML do
-   * dashboard — é assim que rota de cliente funciona. Qualquer outra coisa
-   * recebe o mesmo envelope de erro em JSON de sempre, inclusive um GET a
-   * `/v1/` inexistente: devolver HTML ali faria quem integra passar a tarde
-   * tentando entender por que o JSON virou `<!doctype html>`.
+   * Browser navigation to an unknown path gets the dashboard's HTML — that is
+   * how client-side routing works. Anything else gets the same JSON error
+   * envelope as always, including a GET to a `/v1/` route that does not exist:
+   * returning HTML there would cost an integrator an afternoon working out why
+   * the JSON turned into `<!doctype html>`.
    */
   app.setNotFoundHandler((request, reply) => {
     const navegacao =

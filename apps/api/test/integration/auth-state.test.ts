@@ -29,16 +29,16 @@ describe.skipIf(!hasInfra)('auth state no Postgres', () => {
 
   it('começa com credenciais novas quando a sessão nunca pareou', async () => {
     const auth = await usePostgresAuthState({ db, sessionId, encryptionKey })
-    // initAuthCreds gera um par de identidade; o registro ainda não aconteceu.
+    // initAuthCreds generates an identity pair; registration has not happened yet.
     expect(auth.state.creds.registered).toBe(false)
     expect(auth.state.creds.noiseKey).toBeDefined()
     expect(auth.isNew).toBe(true)
   })
 
   /**
-   * `isNew` é o que permite ao gerenciador gravar a identidade antes de abrir o
-   * socket, fechando a janela em que o usuário pareia e o processo cai antes do
-   * primeiro `creds.update` — deixando um dispositivo fantasma no aparelho.
+   * `isNew` is what lets the manager write the identity before opening the
+   * socket, closing the window where the user pairs and the process dies before
+   * the first `creds.update` — leaving a ghost device on their phone.
    */
   it('deixa de ser nova depois de persistida', async () => {
     const outraSessao = await createSession(db, org.orgId)
@@ -56,15 +56,15 @@ describe.skipIf(!hasInfra)('auth state no Postgres', () => {
     first.state.creds.registered = true
     await first.saveCreds()
 
-    // Segunda instância simula outra réplica assumindo a sessão.
+    // The second instance stands in for another replica taking over the session.
     const second = await usePostgresAuthState({ db, sessionId, encryptionKey })
     expect(second.state.creds.registered).toBe(true)
     expect(second.state.creds.noiseKey.private).toEqual(first.state.creds.noiseKey.private)
   })
 
   /**
-   * A promessa é que quem lê a tabela sem a chave não assume o WhatsApp de
-   * ninguém. Este teste falha se alguém remover a cifra do caminho de escrita.
+   * The promise is that reading this table without the key takes over nobody's
+   * WhatsApp. This test fails if anyone drops the cipher from the write path.
    */
   it('guarda as credenciais cifradas, não em claro', async () => {
     const auth = await usePostgresAuthState({ db, sessionId, encryptionKey })
@@ -80,7 +80,7 @@ describe.skipIf(!hasInfra)('auth state no Postgres', () => {
     const stored = row?.creds ?? ''
     expect(stored).not.toContain('noiseKey')
     expect(stored).not.toContain('registered')
-    // Formato iv.tag.ciphertext.
+    // Format iv.tag.ciphertext.
     expect(stored.split('.')).toHaveLength(3)
   })
 
@@ -112,7 +112,7 @@ describe.skipIf(!hasInfra)('auth state no Postgres', () => {
     expect(Object.keys(fetched)).toEqual(['10'])
   })
 
-  /** O Baileys chama get com lista vazia; inArray vazio geraria SQL inválido. */
+  /** Baileys calls get with an empty list; an empty inArray makes invalid SQL. */
   it('sobrevive a get com lista vazia', async () => {
     const auth = await usePostgresAuthState({ db, sessionId, encryptionKey })
     await expect(auth.state.keys.get('pre-key', [])).resolves.toEqual({})
@@ -195,9 +195,9 @@ describe.skipIf(!hasInfra)('chave de cifragem trocada', () => {
   })
 
   /**
-   * O caso real é rotação de ENCRYPTION_KEY. Gerar identidade nova em silêncio
-   * faria a sessão pedir pareamento outra vez sem explicar por quê, e o
-   * dispositivo antigo ficaria pendurado no aparelho do usuário.
+   * The real case is ENCRYPTION_KEY rotation. Silently generating a new
+   * identity would make the session ask to be paired again without saying why,
+   * and the old device would be left hanging on the user's phone.
    */
   it('falha dizendo o que aconteceu, em vez de começar do zero', async () => {
     const sessionId = await createSession(db, org.orgId)

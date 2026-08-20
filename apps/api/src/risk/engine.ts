@@ -7,11 +7,11 @@ import { applyWarmup, sessionAgeInDays, warmupFactor } from './warmup'
 
 export interface RiskDecision {
   action: RiskAction
-  /** Espera antes de enviar. Zero significa enviar agora. */
+  /** Wait before sending. Zero means send now. */
   delayMs: number
-  /** Tempo exibindo "digitando" antes da mensagem sair. */
+  /** Time spent showing "typing" before the message goes out. */
   typingMs: number
-  /** Quando reavaliar, se a decisão foi segurar. */
+  /** When to re-evaluate, if the decision was to hold. */
   availableAt: Date | null
   reason: string
   score: number
@@ -41,23 +41,23 @@ export interface RiskEngineDeps {
   db: Database
   budget: BudgetTracker
   now?: () => number
-  /** Janela de cache dos sinais agregados. */
+  /** Cache window for the aggregated signals. */
   signalsTtlMs?: number
-  /** Desligado, o motor libera tudo na hora. Só para número descartável. */
+  /** Off, the engine lets everything through now. Throwaway numbers only. */
   enabled?: boolean
 }
 
 /**
- * Motor de risco.
+ * Risk engine.
  *
- * A decisão do §2 é "enfileira e regula": o motor nunca descarta uma mensagem.
- * Quando o orçamento acabou, o envio volta para a fila com a hora em que a
- * janela abre — e essa hora é real, calculada a partir do registro mais antigo
- * dentro da janela, não um palpite. Quando o comportamento parece disparo, o
- * ritmo cai em vez de a mensagem ser recusada.
+ * The §2 decision is "queue and regulate": the engine never drops a message.
+ * When the budget runs out, the send goes back to the queue with the time the
+ * window opens — and that time is real, computed from the oldest entry inside
+ * the window, not a guess. When the behaviour looks like blasting, the pace
+ * slows instead of the message being refused.
  *
- * O único caminho que ignora tudo isto é o override explícito, e ele fica
- * registrado em `risk_events` como qualquer outra decisão.
+ * The only path that ignores all of this is the explicit override, and it is
+ * recorded in `risk_events` like any other decision.
  */
 export class RiskEngine {
   private readonly signalsCache = new Map<string, CachedSignals>()
@@ -70,10 +70,10 @@ export class RiskEngine {
   }
 
   /**
-   * Agregados de 24 h da sessão, com cache curto.
+   * The session's 24 h aggregates, with a short cache.
    *
-   * Sem o cache, cada envio dispararia uma varredura de 24 h na tabela de
-   * mensagens — o motor de risco viraria o gargalo que ele existe para evitar.
+   * Without the cache, every send would trigger a 24 h scan of the messages
+   * table — the risk engine would become the bottleneck it exists to prevent.
    */
   private async signals(sessionId: string): Promise<CachedSignals> {
     const cached = this.signalsCache.get(sessionId)
@@ -146,7 +146,7 @@ export class RiskEngine {
       }
     }
 
-    // 1. Orçamento: janela cheia segura o envio até a vaga abrir.
+    // 1. Budget: a full window holds the send until a slot opens.
     const verdict = await this.deps.budget.check(input.sessionId, limits, isNewContact)
     if (verdict.exceeded) {
       return {
@@ -162,7 +162,7 @@ export class RiskEngine {
       }
     }
 
-    // 2. Score: comportamento parecido com disparo reduz a vazão.
+    // 2. Score: behaviour that looks like blasting reduces throughput.
     const signals = await this.signals(input.sessionId)
     const outbound = signals.outbound
     const score = computeScore({
@@ -195,14 +195,14 @@ export class RiskEngine {
     }
   }
 
-  /** Contabiliza o envio no orçamento. Chamado após a entrega bem-sucedida. */
+  /** Books the send against the budget. Called after successful delivery. */
   async recordSent(sessionId: string, chatId: string, isNewContact: boolean): Promise<void> {
     await this.deps.budget.record(sessionId, chatId, isNewContact)
-    // Os agregados mudaram: invalida para o próximo cálculo enxergar a realidade.
+    // The aggregates changed: invalidate so the next calculation sees reality.
     this.signalsCache.delete(sessionId)
   }
 
-  /** Retrato completo para o dashboard e para a rota de consulta. */
+  /** The full picture, for the dashboard and for the query route. */
   async snapshot(sessionId: string): Promise<RiskSnapshot | null> {
     const context = await this.sessionContext(sessionId)
     if (!context) return null

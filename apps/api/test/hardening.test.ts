@@ -8,7 +8,7 @@ const BASE = {
   COOKIE_SECRET: 'awah-dev-cookie-secret-trocar-antes-de-ir-a-producao',
 }
 
-/** Chaves reais, geradas para o teste — não são as do repositório. */
+/** Real keys, generated for the test — not the ones in the repository. */
 const PROPRIAS = {
   ENCRYPTION_KEY: Buffer.from('a'.repeat(32)).toString('base64'),
   COOKIE_SECRET: 'x'.repeat(48),
@@ -20,9 +20,9 @@ describe('segredos de desenvolvimento', () => {
   })
 
   /**
-   * Estes valores estão no docker-compose e no .env.example deste repositório.
-   * Quem subir em produção com eles entrega a forja de cookie de sessão e a
-   * decifragem do auth state a qualquer um que leia o projeto.
+   * These values ship in this repository's docker-compose and .env.example.
+   * Anyone who goes to production with them hands session cookie forgery and
+   * auth state decryption to whoever reads the project.
    */
   it('derrubam o processo em produção', () => {
     expect(() => loadEnv({ ...BASE, NODE_ENV: 'production' })).toThrow(/development secrets/i)
@@ -49,7 +49,7 @@ describe('segredos de desenvolvimento', () => {
       })
       expect.unreachable('deveria ter lançado')
     } catch (erro) {
-      // A primeira linha é a acusação; o resto é a receita, que cita os dois.
+      // The first line is the accusation; the rest is the recipe, which names both.
       const acusacao = (erro as Error).message.split('\n')[0] ?? ''
       expect(acusacao).toContain('COOKIE_SECRET')
       expect(acusacao).not.toContain('ENCRYPTION_KEY')
@@ -63,9 +63,9 @@ describe('segredos de desenvolvimento', () => {
 
 describe('confiança em proxy', () => {
   /**
-   * O padrão importa: o rate limit por IP usa `request.ip`, e confiar em
-   * `X-Forwarded-For` sem proxy na frente deixa qualquer cliente trocar de IP a
-   * cada requisição e nunca bater no limite.
+   * The default matters: the per-IP rate limit uses `request.ip`, and trusting
+   * `X-Forwarded-For` with no proxy in front lets any client change IP on every
+   * request and never hit the limit.
    */
   it('não confia por padrão', () => {
     expect(loadEnv(BASE).TRUST_PROXY).toBe(false)
@@ -82,7 +82,7 @@ describe('confiança em proxy', () => {
     expect(loadEnv({ ...BASE, TRUST_PROXY: '2' }).TRUST_PROXY).toBe(2)
   })
 
-  /** A forma segura atrás de proxy: confiar só nos endereços que são o proxy. */
+  /** The safe form behind a proxy: trust only the addresses that are the proxy. */
   it('aceita lista de CIDRs', () => {
     expect(loadEnv({ ...BASE, TRUST_PROXY: '10.0.0.0/8,172.16.0.0/12' }).TRUST_PROXY).toBe(
       '10.0.0.0/8,172.16.0.0/12',

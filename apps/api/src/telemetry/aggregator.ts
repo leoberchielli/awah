@@ -6,27 +6,27 @@ export interface AggregatorDeps {
   logger: ManagerLogger
   intervalMs: number
   /**
-   * Quantas horas recalcular a cada passada.
+   * How many hours to recompute on each pass.
    *
-   * Não basta agregar a hora corrente: um ACK de leitura chega horas depois do
-   * envio, e um webhook em retry pode concluir bem além da hora em que nasceu.
-   * Recalcular uma janela move esses números para o balde certo em vez de
-   * perdê-los.
+   * Aggregating the current hour is not enough: a read ACK arrives hours after
+   * the send, and a webhook in retry can finish well past the hour it was born
+   * in. Recomputing a window moves those numbers into the right bucket instead
+   * of losing them.
    */
   lookbackHours: number
 }
 
 /**
- * Materialização dos agregados horários.
+ * Materialization of the hourly aggregates.
  *
- * O dashboard lê exclusivamente de `metrics_hourly`. Varrer as tabelas cruas a
- * cada carregamento de painel é o erro que transforma observabilidade em
- * incidente de banco: a tabela de mensagens cresce sem teto e um `count(*)` por
- * hora sobre trinta dias derruba o Postgres justamente quando alguém está
- * tentando entender por que a operação caiu.
+ * The dashboard reads from `metrics_hourly` and nothing else. Scanning the raw
+ * tables on every panel load is the mistake that turns observability into a
+ * database incident: the messages table grows without a ceiling, and an hourly
+ * `count(*)` over thirty days takes Postgres down at exactly the moment someone
+ * is trying to work out why the operation went down.
  *
- * Cada consulta é um upsert idempotente — reprocessar a mesma janela produz o
- * mesmo resultado, então uma passada perdida se corrige sozinha na seguinte.
+ * Every query is an idempotent upsert — reprocessing the same window produces
+ * the same result, so a missed pass fixes itself on the next one.
  */
 export class MetricsAggregator {
   private timer: NodeJS.Timeout | null = null
@@ -38,7 +38,7 @@ export class MetricsAggregator {
   start(): void {
     if (!this.stopped) return
     this.stopped = false
-    // Primeira passada logo no boot, para o painel não nascer vazio.
+    // First pass right at boot, so the panel does not come up empty.
     void this.aggregate().finally(() => this.scheduleNext())
   }
 
@@ -59,18 +59,18 @@ export class MetricsAggregator {
   }
 
   /**
-   * Roda uma passada completa.
+   * Runs one full pass.
    *
-   * Várias réplicas agregam a mesma janela ao mesmo tempo e chegam ao mesmo
-   * resultado — o upsert torna a concorrência inofensiva, o que dispensa
-   * coordenação entre nós para uma tarefa que não precisa dela.
+   * Several replicas aggregate the same window at the same time and reach the
+   * same result — the upsert makes the concurrency harmless, which removes the
+   * need for coordination between nodes on a task that does not need it.
    */
   async aggregate(): Promise<void> {
     /**
-     * O guarda é só contra reentrância — uma passada lenta não pode se sobrepor
-     * à seguinte. Barrar também pelo estado do laço tornaria este método
-     * inchamável fora dele, e ele precisa funcionar sozinho: em teste, numa
-     * rota administrativa ou num job avulso de reprocessamento.
+     * The guard is only against re-entrancy — a slow pass must not overlap the
+     * next one. Gating on the loop's state as well would make this method
+     * uncallable outside it, and it has to work on its own: in a test, from an
+     * admin route, or in a one-off reprocessing job.
      */
     if (this.running) return
     this.running = true
@@ -78,12 +78,13 @@ export class MetricsAggregator {
     const horas = this.deps.lookbackHours
 
     /**
-     * Cada agregação isolada em seu próprio tratamento.
+     * Each aggregation isolated in its own error handling.
      *
-     * Com um `try` único em volta de todas, a primeira falha abortava as
-     * seguintes em silêncio — e o sintoma era uma métrica faltando no painel,
-     * sem nada no log apontando a causa. Isolar troca "perdi tudo depois do
-     * erro" por "perdi só a que quebrou, e sei qual foi".
+     * With a single `try` around all of them, the first failure aborted the
+     * rest in silence — and the symptom was a metric missing from the panel,
+     * with nothing in the log pointing at the cause. Isolating trades "I lost
+     * everything after the error" for "I lost only the one that broke, and I
+     * know which".
      */
     const etapas: Array<[string, () => Promise<void>]> = [
       ['volume', () => this.volumeDeMensagens(horas)],
@@ -108,7 +109,7 @@ export class MetricsAggregator {
     }
   }
 
-  /** Enviadas e recebidas por hora. */
+  /** Sent and received, per hour. */
   private async volumeDeMensagens(horas: number): Promise<void> {
     await this.deps.db.execute(sql`
       INSERT INTO metrics_hourly (org_id, session_id, bucket, metric, value)
@@ -123,8 +124,9 @@ export class MetricsAggregator {
   }
 
   /**
-   * Funil de ACK, contado pelo instante do evento e não pelo da mensagem: uma
-   * leitura de hoje sobre mensagem de ontem pertence à hora da leitura.
+   * ACK funnel, counted by the instant of the event and not that of the
+   * message: a read today on yesterday's message belongs to the hour of the
+   * read.
    */
   private async trilhaDeStatus(horas: number): Promise<void> {
     await this.deps.db.execute(sql`
@@ -141,11 +143,11 @@ export class MetricsAggregator {
   }
 
   /**
-   * Percentis de latência até a entrega.
+   * Latency percentiles up to delivery.
    *
-   * Média seria enganosa aqui: a distribuição tem cauda longa — a maioria chega
-   * em segundos e algumas levam minutos porque o destinatário estava sem rede.
-   * A média some com esse comportamento; o p95 o mostra.
+   * An average would mislead here: the distribution has a long tail — most
+   * arrive in seconds and a few take minutes because the recipient had no
+   * network. The average hides that behavior; the p95 shows it.
    */
   private async latenciaDeEntrega(horas: number): Promise<void> {
     await this.deps.db.execute(sql`
@@ -180,7 +182,7 @@ export class MetricsAggregator {
     `)
   }
 
-  /** Conexões e quedas — base do uptime e do MTBF por sessão. */
+  /** Connects and drops — the basis of uptime and MTBF per session. */
   private async eventosDeSessao(horas: number): Promise<void> {
     await this.deps.db.execute(sql`
       INSERT INTO metrics_hourly (org_id, session_id, bucket, metric, value)
@@ -194,7 +196,7 @@ export class MetricsAggregator {
     `)
   }
 
-  /** Quanto o motor de risco segurou, atrasou ou liberou. */
+  /** How much the risk engine held, delayed or let through. */
   private async decisoesDeRisco(horas: number): Promise<void> {
     await this.deps.db.execute(sql`
       INSERT INTO metrics_hourly (org_id, session_id, bucket, metric, value)
@@ -219,7 +221,7 @@ export class MetricsAggregator {
     `)
   }
 
-  /** Entregas de webhook por desfecho. `session_id` fica nulo: é métrica da org. */
+  /** Webhook deliveries by outcome. `session_id` stays null: it is an org metric. */
   private async entregaDeWebhooks(horas: number): Promise<void> {
     await this.deps.db.execute(sql`
       INSERT INTO metrics_hourly (org_id, session_id, bucket, metric, value)
@@ -234,11 +236,11 @@ export class MetricsAggregator {
   }
 
   /**
-   * Destinatários contatados pela primeira vez, por hora.
+   * Recipients contacted for the first time, per hour.
    *
-   * O sinal mais forte de disparo em massa, e o mesmo que o motor de risco
-   * limita — tê-lo no histórico permite comparar o comportamento antes e depois
-   * de um ajuste de limite.
+   * The strongest signal of a mass blast, and the same one the risk engine caps
+   * — having it in the history makes it possible to compare behavior before and
+   * after a limit is adjusted.
    */
   private async contatosNovos(horas: number): Promise<void> {
     await this.deps.db.execute(sql`

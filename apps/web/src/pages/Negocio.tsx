@@ -6,7 +6,7 @@ import { type Translate, type TranslationKey, useT } from '../i18n'
 import type { KpiBusiness, SessionRow } from '../lib/api'
 import { chat, dataHora, num, pct } from '../lib/format'
 
-/** Negócio muda em minutos, não em segundos. Meio minuto basta e pesa menos. */
+/** Business moves in minutes, not seconds. Half a minute is enough and costs less. */
 const POLL_MS = 30_000
 
 const CHAVE_POR_TIPO: Record<string, TranslationKey> = {
@@ -22,7 +22,7 @@ const CHAVE_POR_TIPO: Record<string, TranslationKey> = {
   system: 'type.system',
 }
 
-/** Tipo desconhecido aparece cru: melhor o nome do protocolo que um rótulo errado. */
+/** An unknown type shows raw: better the protocol's name than a wrong label. */
 function rotuloDoTipo(t: Translate, tipo: string): string {
   const chave = CHAVE_POR_TIPO[tipo]
   return chave ? t(chave) : tipo
@@ -167,7 +167,7 @@ function TabelaDeChats({ linhas }: { linhas: KpiBusiness['topChats'] }) {
   )
 }
 
-/** O p50 vem em segundos e quase nunca é legível assim. */
+/** The p50 arrives in seconds and is almost never readable that way. */
 function segundos(valor: number | null): string {
   if (valor === null) return '—'
   if (valor < 60) return `${Math.round(valor)} s`

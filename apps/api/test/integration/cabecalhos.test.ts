@@ -34,13 +34,14 @@ describe.skipIf(!hasInfra)('cabeçalhos de segurança', () => {
   }
 
   it('publica CSP também fora de produção', async () => {
-    // Só em produção significaria descobrir a quebra no deploy, não no dev.
+    // Production-only would mean finding the breakage at deploy, not in dev.
     expect(Object.keys(await csp()).length).toBeGreaterThan(0)
   })
 
   /**
-   * As três exceções da política existem por motivos concretos do painel. Se
-   * alguém apertar a CSP sem saber disso, um destes testes cai antes do deploy.
+   * The policy's three exceptions exist for concrete reasons in the panel. If
+   * someone tightens the CSP without knowing that, one of these tests falls
+   * first — before the deploy does.
    */
   it('permite o QR de pareamento, que chega como data: URI', async () => {
     expect((await csp())['img-src']).toContain('data:')

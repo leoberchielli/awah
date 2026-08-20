@@ -46,8 +46,8 @@ describe('permissões de usuário', () => {
 
 describe('permissões de chave de API', () => {
   /**
-   * Este é o teste que impede a escalada de privilégio por chave vazada: uma
-   * chave nunca administra identidade, nem sendo de owner.
+   * This is the test that blocks privilege escalation through a leaked key: a
+   * key never administers identity, not even an owner key.
    */
   it('nunca administra identidade, mesmo com papel de owner', () => {
     expect(apiKeyCan('owner', 'apikey:write')).toBe(false)

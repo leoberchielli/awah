@@ -34,9 +34,9 @@ describe.skipIf(!hasInfra)('cluster', () => {
 
   describe('posse de sessão', () => {
     /**
-     * A garantia central do cluster. Duas réplicas com o mesmo auth state abrem
-     * dois sockets para o mesmo número, e o WhatsApp derruba os dois
-     * alternadamente com 440.
+     * The cluster's central guarantee. Two replicas with the same auth state
+     * open two sockets to the same number, and WhatsApp knocks both offline in
+     * turn with 440.
      */
     it('só um nó ganha a posse', async () => {
       const nodeA = new SessionLease(redis, 'awah-1')
@@ -74,8 +74,8 @@ describe.skipIf(!hasInfra)('cluster', () => {
     })
 
     /**
-     * O compare-and-swap em Lua existe para isto: sem ele, um nó que perdeu a
-     * posse poderia estender a posse alheia com um PEXPIRE cego.
+     * The Lua compare-and-swap exists for this: without it, a node that lost
+     * ownership could extend someone else's with a blind PEXPIRE.
      */
     it('não deixa um nó renovar posse alheia', async () => {
       const nodeA = new SessionLease(redis, 'awah-1')
@@ -83,7 +83,7 @@ describe.skipIf(!hasInfra)('cluster', () => {
 
       await nodeA.acquire(sessionId)
       expect(await nodeB.renew(sessionId)).toBe(false)
-      // A posse de A continua intacta.
+      // A's ownership is still intact.
       expect(await nodeA.owner(sessionId)).toBe('awah-1')
 
       await nodeA.release(sessionId)
@@ -100,7 +100,7 @@ describe.skipIf(!hasInfra)('cluster', () => {
       await nodeA.release(sessionId)
     })
 
-    /** É o que torna o failover possível sem coordenador nem eleição. */
+    /** This is what makes failover possible with no coordinator and no election. */
     it('a posse expira sozinha quando ninguém renova', async () => {
       const efemero = new SessionLease(redis, 'awah-morto', { ttlMs: 3000 })
       await efemero.acquire(sessionId)
@@ -109,7 +109,7 @@ describe.skipIf(!hasInfra)('cluster', () => {
       await espera(3200)
 
       expect(await efemero.owner(sessionId)).toBeNull()
-      // E outro nó consegue assumir.
+      // And another node can take over.
       const sobrevivente = new SessionLease(redis, 'awah-2')
       expect(await sobrevivente.acquire(sessionId)).toBe(true)
       await sobrevivente.release(sessionId)
@@ -165,9 +165,9 @@ describe.skipIf(!hasInfra)('cluster', () => {
       subscriberEmissor = redis.duplicate()
 
       /**
-       * O ioredis conecta de forma preguiçosa. Em produção as conexões sobem no
-       * boot, muito antes do primeiro comando; aqui elas nascem no milissegundo
-       * anterior ao teste, e sem este aquecimento a primeira troca compete com o
+       * ioredis connects lazily. In production the connections come up at boot,
+       * long before the first command; here they are born the millisecond
+       * before the test, and without this warm-up the first exchange races the
        * handshake.
        */
       await Promise.all([publisher.ping(), subscriberDono.ping(), subscriberEmissor.ping()])
@@ -198,8 +198,8 @@ describe.skipIf(!hasInfra)('cluster', () => {
     })
 
     /**
-     * Sem isto, parar uma sessão funcionaria ou não conforme o balanceador
-     * escolhesse a réplica — comportamento intermitente impossível de depurar.
+     * Without this, stopping a session would work or not depending on which
+     * replica the load balancer picked — intermittent behaviour nobody can debug.
      */
     it('entrega o comando ao dono e devolve o resultado', async () => {
       await dono.claim(sessionId, async (request) => ({
@@ -248,7 +248,7 @@ describe.skipIf(!hasInfra)('cluster', () => {
       await dono.unclaim(sessionId)
     })
 
-    /** Nó morto não pode deixar quem pediu esperando para sempre. */
+    /** A dead node must not leave the caller waiting forever. */
     it('devolve erro de timeout quando ninguém atende', async () => {
       const resposta = await emissor.send({
         sessionId: randomUUID(),

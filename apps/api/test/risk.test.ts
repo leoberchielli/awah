@@ -20,7 +20,7 @@ describe('curva de warmup', () => {
     }
   })
 
-  /** Rampa interpolada, não degrau: volume não deve saltar de um dia para o outro. */
+  /** An interpolated ramp, not a step: volume must not jump from one day to the next. */
   it('interpola entre os marcos', () => {
     const meio = warmupFactor(2)
     expect(meio).toBeGreaterThan(warmupFactor(1))
@@ -32,7 +32,7 @@ describe('curva de warmup', () => {
     expect(warmupFactor(Number.NaN)).toBe(0.05)
   })
 
-  /** Teto zero travaria a sessão por completo; ela envia pouco, mas envia. */
+  /** A zero cap would freeze the session entirely; it sends little, but it sends. */
   it('nunca zera os limites', () => {
     const limites = applyWarmup(DEFAULT_LIMITS, 0)
     expect(limites.perMinute).toBeGreaterThanOrEqual(1)
@@ -59,7 +59,7 @@ describe('idade da sessão', () => {
     expect(sessionAgeInDays(new Date('2026-08-18T00:00:00Z'), agora)).toBe(0.5)
   })
 
-  /** Sem pareamento não há histórico que justifique volume. */
+  /** With no pairing there is no history to justify volume. */
   it('sessão nunca pareada tem idade zero', () => {
     expect(sessionAgeInDays(null, agora)).toBe(0)
   })
@@ -82,7 +82,7 @@ describe('limites por sessão', () => {
     expect(limites.perHour).toBe(DEFAULT_LIMITS.perHour)
   })
 
-  /** Configuração corrompida nunca deve destravar o limite. */
+  /** A corrupted config must never unlock the limit. */
   it('ignora valores inválidos e mantém o conservador', () => {
     const limites = resolveLimits({
       limits: { perMinute: -5, perHour: 0, perDay: 'muitos', newContactsPerDay: Number.NaN },
@@ -111,14 +111,14 @@ describe('score de risco', () => {
     expect(score.value).toBeLessThan(20)
   })
 
-  /** O sinal mais forte: gente conversa nos dois sentidos, robô só fala. */
+  /** The strongest signal: people talk both ways, a bot only talks. */
   it('penaliza conversa unilateral', () => {
     const unilateral = computeScore({ ...base, outbound24h: 500, inbound24h: 2 })
     const equilibrada = computeScore({ ...base, outbound24h: 500, inbound24h: 400 })
     expect(unilateral.value).toBeGreaterThan(equilibrada.value + 25)
   })
 
-  /** Volume baixo não é disparo, mesmo sem resposta — 5 mensagens sem retorno é normal. */
+  /** Low volume is not blasting, even with no replies — 5 messages unanswered is normal. */
   it('não pune volume pequeno sem resposta', () => {
     const fator = computeScore({ ...base, outbound24h: 5, inbound24h: 0 }).factors.find(
       (f) => f.name === 'conversa_unilateral',
@@ -152,7 +152,7 @@ describe('score de risco', () => {
     expect(pior.value).toBeGreaterThan(80)
   })
 
-  /** Um número solto de 0 a 100 não ajuda ninguém a decidir o que mudar. */
+  /** A bare number from 0 to 100 helps nobody decide what to change. */
   it('explica cada fator', () => {
     const score = computeScore({ ...base, outbound24h: 200, inbound24h: 5 })
     expect(score.factors).toHaveLength(4)
@@ -175,7 +175,7 @@ describe('freio adaptativo', () => {
     expect(throttleFactor(95)).toBeLessThan(throttleFactor(75))
   })
 
-  /** O §2 fixou que o motor regula, não bloqueia: a sessão nunca para de todo. */
+  /** §2 settled it: the engine regulates, never blocks — a session never fully stops. */
   it('nunca chega a zero', () => {
     expect(throttleFactor(100)).toBeGreaterThan(0)
   })
@@ -191,7 +191,7 @@ describe('jitter humano', () => {
   })
 
   it('fica perto da mediana com sorte neutra', () => {
-    // random = 0,5 nos dois sorteios devolve z próximo de zero.
+    // random = 0.5 on both draws returns a z close to zero.
     const atraso = humanDelayMs({ medianMs: 3000, random: () => 0.5 })
     expect(atraso).toBeGreaterThan(1500)
     expect(atraso).toBeLessThan(6000)
@@ -203,7 +203,7 @@ describe('jitter humano', () => {
     expect(freado).toBeGreaterThan(normal * 3)
   })
 
-  /** Intervalo uniforme produziria um padrão regular — exatamente o que se evita. */
+  /** A uniform interval would produce a regular pattern — exactly what we avoid. */
   it('produz valores variados', () => {
     const amostras = new Set(Array.from({ length: 50 }, () => humanDelayMs()))
     expect(amostras.size).toBeGreaterThan(40)
@@ -227,7 +227,7 @@ describe('tempo de digitação', () => {
   })
 
   it('usa ritmo plausível de digitação', () => {
-    // 180 caracteres a ~18 por segundo ficam perto de dez segundos, limitado ao teto.
+    // 180 characters at ~18 per second land near ten seconds, clamped to the cap.
     expect(typingDurationMs(180)).toBeGreaterThan(5000)
   })
 })

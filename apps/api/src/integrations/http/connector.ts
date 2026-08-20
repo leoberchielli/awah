@@ -10,13 +10,13 @@ export class HttpConnectorError extends Error {
     this.name = 'HttpConnectorError'
   }
 
-  /** Configuração errada do outro lado: repetir devolve a mesma recusa. */
+  /** Wrong configuration on the other side: a retry gets the same refusal. */
   get isPermanente(): boolean {
     return this.status >= 400 && this.status < 500 && this.status !== 429
   }
 }
 
-/** O que o gateway posta. Mesma forma do evento `message.received`. */
+/** What the gateway posts. Same shape as the `message.received` event. */
 export interface EventoDeMensagem {
   event: 'message.received'
   data: {
@@ -33,28 +33,30 @@ export interface EventoDeMensagem {
 export interface RespostaDoConector {
   status: number
   durationMs: number
-  /** Textos que viraram mensagem. Vazio é resposta válida: nem todo evento pede uma. */
+  /** Texts that became messages. Empty is a valid answer: not every event needs one. */
   replies: string[]
-  /** Corpo cru, truncado. Só para o botão de teste mostrar o que voltou. */
+  /** Raw body, truncated. Only so the test button can show what came back. */
   raw: string
   /**
-   * Por que a resposta não virou mensagem, quando não virou. É o diagnóstico
-   * que substitui a adivinhação de quem acabou de plugar uma plataforma nova.
+   * Why the response did not become a message, when it did not. This is the
+   * diagnosis that replaces the guesswork of someone who has just plugged in a
+   * new platform.
    */
   diagnostico: string | null
 }
 
 /**
- * O escape para qualquer plataforma.
+ * The escape hatch to any platform.
  *
- * Um webhook comum avisa e esquece: a resposta dele é ignorada. Este conector
- * faz pergunta e resposta — o que voltar no corpo vira mensagem, e entra pela
- * mesma fila de qualquer envio, herdando ordem por conversa, motor de risco e
- * reentrega.
+ * An ordinary webhook tells you and forgets: its response is ignored. This
+ * connector does question and answer — whatever comes back in the body becomes
+ * a message, and enters through the same queue as any send, inheriting
+ * per-conversation ordering, the risk engine and redelivery.
  *
- * É a diferença entre "me avise quando chegar mensagem" e "responda por mim", e
- * é ela que permite a um fluxo do n8n, a uma função serverless ou ao sistema da
- * casa **ser** o robô, sem que ninguém escreva um conector dedicado aqui.
+ * It is the difference between "let me know when a message arrives" and "answer
+ * for me", and it is what lets an n8n flow, a serverless function or the
+ * in-house system **be** the bot, without anyone writing a dedicated connector
+ * here.
  */
 export class HttpConnector {
   private readonly fetchImpl: typeof fetch
@@ -82,11 +84,12 @@ export class HttpConnector {
           'content-type': 'application/json',
           'user-agent': 'awah-gateway',
           /**
-           * Mesma assinatura dos webhooks: HMAC sobre `timestamp.corpo`.
+           * Same signature as the webhooks: HMAC over `timestamp.corpo`.
            *
-           * Reaproveitar o esquema não é economia de código — é para que quem
-           * já valida webhook do AWAH valide isto com a mesma função, e para
-           * que o SDK sirva aos dois sem uma segunda implementação.
+           * Reusing the scheme is not code economy — it is so that anyone who
+           * already validates an AWAH webhook validates this with the same
+           * function, and so the SDK serves both without a second
+           * implementation.
            */
           ...(this.config.secret
             ? {
@@ -125,12 +128,12 @@ export class HttpConnector {
 }
 
 /**
- * Encontra os textos de resposta, aceitando as formas que aparecem na prática.
+ * Finds the reply texts, accepting the shapes that show up in practice.
  *
- * Ser permissivo aqui é decisão de adoção: quem monta um fluxo no n8n devolve
- * `{"reply": "..."}` sem pensar, e recusar isso porque a documentação pedia
- * `replies` seria rigor que só produz frustração. O que **não** pode acontecer é
- * o silêncio — daí o diagnóstico junto.
+ * Being permissive here is an adoption decision: whoever builds a flow in n8n
+ * returns `{"reply": "..."}` without thinking, and refusing that because the
+ * docs asked for `replies` would be rigour that only produces frustration. What
+ * **cannot** happen is silence — hence the diagnosis alongside.
  */
 export function extrairRespostas(
   texto: string,
@@ -138,7 +141,7 @@ export function extrairRespostas(
 ): { replies: string[]; diagnostico: string | null } {
   const limpo = texto.trim()
 
-  // Corpo vazio é resposta legítima: nem todo evento pede uma mensagem de volta.
+  // An empty body is legitimate: not every event asks for a message back.
   if (!limpo) return { replies: [], diagnostico: null }
 
   let corpo: unknown
@@ -164,7 +167,7 @@ export function extrairRespostas(
   const textos = normalizar(alvo)
   if (textos.length > 0) return { replies: textos, diagnostico: null }
 
-  // Objeto sem nenhum campo reconhecido é quase sempre engano de formato.
+  // An object with no recognised field is almost always a format mistake.
   if (typeof alvo === 'object' && alvo !== null && !Array.isArray(alvo)) {
     const chaves = Object.keys(alvo as object)
       .slice(0, 6)
@@ -178,7 +181,7 @@ export function extrairRespostas(
   return { replies: [], diagnostico: null }
 }
 
-/** Aceita `reply`, `replies`, `text`, array e string crua. */
+/** Accepts `reply`, `replies`, `text`, an array and a bare string. */
 function normalizar(valor: unknown): string[] {
   if (typeof valor === 'string') {
     const texto = valor.trim()
@@ -197,7 +200,7 @@ function normalizar(valor: unknown): string[] {
   return []
 }
 
-/** Caminho por ponto, para quem devolve a resposta aninhada. */
+/** Dotted path, for anyone who returns the reply nested. */
 function navegar(corpo: unknown, caminho: string): unknown {
   return caminho
     .split('.')
@@ -209,11 +212,12 @@ function navegar(corpo: unknown, caminho: string): unknown {
 }
 
 /**
- * Evento de exemplo do botão de teste.
+ * The test button's sample event.
  *
- * Tem a mesma forma do real de propósito: quem constrói o fluxo do outro lado
- * consegue montar tudo em cima desta amostra e depois só ligar. O número é o
- * reservado para documentação, para ninguém sair respondendo a um desconhecido.
+ * It has the same shape as the real one on purpose: whoever builds the flow on
+ * the other side can put the whole thing together on top of this sample and
+ * then just switch it on. The number is the one reserved for documentation, so
+ * that nobody ends up answering a stranger.
  */
 export const EVENTO_DE_TESTE: EventoDeMensagem = {
   event: 'message.received',

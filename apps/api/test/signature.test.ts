@@ -23,16 +23,16 @@ describe('assinatura de webhook', () => {
   })
 
   /**
-   * O timestamp entra no que é assinado justamente para isto: uma entrega
-   * capturada não pode ser reenviada depois, porque mudar o timestamp para
-   * escapar da janela invalida a assinatura.
+   * The timestamp is part of what gets signed for exactly this reason: a
+   * captured delivery cannot be replayed later, because moving the timestamp
+   * to escape the window invalidates the signature.
    */
   it('rejeita entrega antiga, mesmo com assinatura correta', () => {
     const antigo = agora - 3600
     const signature = sign(payload, secret, antigo)
 
     expect(verify({ payload, secret, signature, timestamp: antigo })).toBe(false)
-    // Dentro da janela configurada, a mesma assinatura passa.
+    // Inside the configured window, the same signature passes.
     expect(verify({ payload, secret, signature, timestamp: antigo, toleranceSeconds: 7200 })).toBe(
       true,
     )

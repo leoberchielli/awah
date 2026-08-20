@@ -69,7 +69,7 @@ function Convite({
   const [ocupado, setOcupado] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
 
-  /** Ninguém promove acima do próprio papel — o servidor recusa de qualquer forma. */
+  /** Nobody promotes above their own role — the server refuses either way. */
   const disponiveis = PAPEIS.filter((p) => papelAoMenos(papelDoUsuario, p.valor))
   const senhaCurta = password.length > 0 && password.length < 12
 
@@ -134,9 +134,10 @@ function Convite({
         </div>
 
         {/*
-          Nome e senha só entram quando o e-mail ainda não existe na instância.
-          Dizer isso aqui evita a leitura de que são obrigatórios e que convidar
-          alguém que já tem conta exige inventar uma senha para essa pessoa.
+          Name and password only come into play when the email does not yet
+          exist on this instance. Saying so here heads off the reading that they
+          are required, and that inviting someone who already has an account
+          means inventing a password for them.
         */}
         <p className="text-xs text-muted">{t('users.add.credentialsHint')}</p>
 
@@ -189,7 +190,7 @@ function LinhaDeMembro({
 }: {
   membro: Member
   souEu: boolean
-  /** O servidor recusa rebaixar ou remover o último owner; a tela avisa antes. */
+  /** The server refuses to demote or remove the last owner; the screen says so first. */
   ultimoDono: boolean
   papelDoUsuario: Papel
   podeEditar: boolean

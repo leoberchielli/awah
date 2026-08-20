@@ -21,8 +21,8 @@ describe('mapeamento de ACK', () => {
 
 describe('avanço de status', () => {
   /**
-   * ACKs chegam fora de ordem com frequência. Sem esta regra, o dashboard
-   * mostraria uma mensagem "voltando" de lida para entregue.
+   * ACKs arrive out of order all the time. Without this rule, the dashboard
+   * would show a message going backwards from read to delivered.
    */
   it('nunca regride', () => {
     expect(isStatusAdvance('read', 'delivered')).toBe(false)
@@ -109,7 +109,7 @@ describe('política de retenção', () => {
     expect(resultado.contentExpiresAt?.toISOString()).toBe('2026-09-17T12:00:00.000Z')
   })
 
-  /** Zero significa nunca persistir corpo — a linha nasce só com metadados. */
+  /** Zero means never persist a body — the row is born with metadata only. */
   it('descarta o corpo quando a retenção é zero', () => {
     const resultado = applyRetention('sensível', 0, agora)
     expect(resultado.body).toBeNull()

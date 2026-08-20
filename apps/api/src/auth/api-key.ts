@@ -1,20 +1,20 @@
 import { randomBytes } from 'node:crypto'
 
 const SCHEME = 'awah'
-/** Hex, porque o prefixo não pode conter o separador `_`. */
+/** Hex, because the prefix must not contain the `_` separator. */
 const PREFIX_BYTES = 8
 const SECRET_BYTES = 24
 
 export interface GeneratedApiKey {
-  /** Valor completo, mostrado ao usuário uma única vez. */
+  /** The full value, shown to the user exactly once. */
   token: string
-  /** Parte pública: serve de chave de busca e identifica a chave no dashboard. */
+  /** Public part: the lookup key, and what identifies it in the dashboard. */
   prefix: string
-  /** Parte secreta, persistida apenas como hash argon2id. */
+  /** Secret part, persisted only as a SHA-256 hash — see `auth/plugin.ts`. */
   secret: string
 }
 
-/** Formato: `awah_<prefix hex>_<secret base64url>`. */
+/** Format: `awah_<prefix hex>_<secret base64url>`. */
 export function generateApiKey(): GeneratedApiKey {
   const prefix = randomBytes(PREFIX_BYTES).toString('hex')
   const secret = randomBytes(SECRET_BYTES).toString('base64url')
@@ -27,9 +27,9 @@ export interface ParsedApiKey {
 }
 
 /**
- * O segredo é base64url e pode conter `_`, então só o primeiro separador depois
- * do esquema conta. O prefixo é hex justamente para que esse corte seja
- * inequívoco.
+ * The secret is base64url and may contain `_`, so only the first separator
+ * after the scheme counts. The prefix is hex precisely so that this split is
+ * unambiguous.
  */
 export function parseApiKey(raw: string): ParsedApiKey | null {
   const header = `${SCHEME}_`
@@ -46,7 +46,7 @@ export function parseApiKey(raw: string): ParsedApiKey | null {
   return { prefix, secret }
 }
 
-/** Extrai o token de um header `Authorization: Bearer …`. */
+/** Pulls the token out of an `Authorization: Bearer …` header. */
 export function bearerFrom(header: string | undefined): string | null {
   if (!header) return null
   const [scheme, ...rest] = header.split(' ')

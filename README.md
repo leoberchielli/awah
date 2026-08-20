@@ -168,7 +168,7 @@ Create the session, start it and pair. The QR rotates every few seconds, so
 fetch it after the START:
 
 ```bash
-curl -X POST http://localhost:2900/v1/sessions -H "Authorization: Bearer $AWAH_KEY" -H 'content-type: application/json' -d '{"name":"atendimento"}'
+curl -X POST http://localhost:2900/v1/sessions -H "Authorization: Bearer $AWAH_KEY" -H 'content-type: application/json' -d '{"name":"support"}'
 ```
 
 ```bash
@@ -320,7 +320,7 @@ npm install @awah/sdk
 ```ts
 import { Awah } from '@awah/sdk'
 
-const awah = new Awah({ baseUrl: 'https://awah.suaempresa.com', apiKey: process.env.AWAH_KEY! })
+const awah = new Awah({ baseUrl: 'https://awah.yourcompany.com', apiKey: process.env.AWAH_KEY! })
 
 await awah.messages.sendText(sessionId, {
   chatId: '5511987654321',
@@ -353,12 +353,12 @@ Events: `message.received`, `message.sent`, `message.status`, `message.failed`,
 `session.status`. The secret appears **exactly once**, in the creation response.
 
 Every delivery carries `x-awah-signature` (`sha256=…`) and `x-awah-timestamp`.
-The signature covers `timestamp.corpo`, not just the body — so a captured
+The signature covers `timestamp.body`, not just the body — so a captured
 delivery cannot be replayed later: changing the timestamp to escape the window
 invalidates the signature.
 
 ```js
-const esperado = 'sha256=' + createHmac('sha256', segredo).update(`${timestamp}.${corpo}`).digest('hex')
+const expected = 'sha256=' + createHmac('sha256', secret).update(`${timestamp}.${body}`).digest('hex')
 ```
 
 Deliveries have exponential backoff and a dead-letter queue of their own,
@@ -433,7 +433,7 @@ curl -X POST http://localhost:2900/v1/sessions -H "Authorization: Bearer $AWAH_K
 ```
 
 ```bash
-curl -X PUT http://localhost:2900/v1/sessions/$ID/credentials -H "Authorization: Bearer $AWAH_KEY" -H 'content-type: application/json' -d '{"phoneNumberId":"1098...","accessToken":"EAAG...","verifyToken":"um-segredo-seu","appSecret":"o-app-secret-da-meta"}'
+curl -X PUT http://localhost:2900/v1/sessions/$ID/credentials -H "Authorization: Bearer $AWAH_KEY" -H 'content-type: application/json' -d '{"phoneNumberId":"1098...","accessToken":"EAAG...","verifyToken":"a-secret-of-your-own","appSecret":"the-meta-app-secret"}'
 ```
 
 The response returns the URL to register in the Meta app. The credentials are
@@ -515,7 +515,7 @@ rest there is the **HTTP connector**: the gateway posts every received message
 to your URL and sends back whatever the response carries.
 
 ```bash
-curl -X PUT http://localhost:2900/v1/sessions/$ID/integrations/http -H "Authorization: Bearer $AWAH_KEY" -H 'content-type: application/json' -d '{"url":"https://n8n.exemplo.com/webhook/atendimento","secret":"um-segredo-bem-longo"}'
+curl -X PUT http://localhost:2900/v1/sessions/$ID/integrations/http -H "Authorization: Bearer $AWAH_KEY" -H 'content-type: application/json' -d '{"url":"https://n8n.example.com/webhook/support","secret":"a-good-and-long-secret"}'
 ```
 
 Answer `{"reply":"texto"}` and the message goes out. Answer empty and nothing
@@ -694,7 +694,7 @@ Two credentials, with deliberately different powers:
 
 - **User session** — a signed httpOnly cookie, for the dashboard. Password in
   argon2id, session revocable in the database.
-- **API key** — `Authorization: Bearer awah_<prefixo>_<segredo>`, for
+- **API key** — `Authorization: Bearer awah_<prefix>_<secret>`, for
   integration. The secret is stored only as a hash.
 
 API keys **never** administer identity: they do not create other keys, do not

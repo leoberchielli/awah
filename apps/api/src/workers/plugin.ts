@@ -19,12 +19,12 @@ declare module 'fastify' {
 }
 
 /**
- * Liga os processos de fundo: scheduler de envio, entrega de webhooks e expurgo
- * de conteúdo vencido.
+ * Starts the background processes: the send scheduler, webhook delivery and the
+ * purge of expired content.
  *
- * Todos rodam dentro do processo da API nesta versão. Extrair para um worker
- * separado é possível sem mudar nada disto — o acoplamento é só o banco, e o
- * claim já tolera vários consumidores concorrentes.
+ * All of them run inside the API process in this version. Pulling them out into
+ * a separate worker is possible without changing any of this — the only coupling
+ * is the database, and the claim already tolerates several concurrent consumers.
  */
 export const workersPlugin = fp(
   async (app: FastifyInstance) => {
@@ -53,10 +53,10 @@ export const workersPlugin = fp(
     }
 
     /**
-     * Mensagens que chegam pela engine: persiste e publica.
+     * Messages arriving from the engine: persist, then publish.
      *
-     * O handler nunca deixa uma falha escapar para o gerenciador de sessão —
-     * webhook com problema não pode derrubar a conexão do WhatsApp.
+     * The handler never lets a failure escape to the session manager — a broken
+     * webhook must not bring down the WhatsApp connection.
      */
     app.sessions.onMessageEvent(async (context, event) => {
       if (event.type === 'message.received') {
@@ -74,18 +74,18 @@ export const workersPlugin = fp(
           occurredAt: event.occurredAt,
         })
 
-        // Eco de mensagem enviada por outro dispositivo do mesmo número não é
-        // "mensagem recebida" para quem integra.
+        // An echo of a message sent from another device on the same number is
+        // not a "received message" to whoever is integrating.
         if (event.fromMe) return
 
         app.metrics.messagesReceived.inc({ session: context.sessionId })
 
         /**
-         * Ferramentas externas vêm depois da persistência e antes do webhook.
+         * External tools come after persistence and before the webhook.
          *
-         * Depois da persistência porque a mensagem precisa estar salva mesmo se
-         * o Chatwoot estiver fora do ar; o dispatcher engole as próprias falhas
-         * justamente para que uma delas não derrube o restante do tratamento.
+         * After persistence because the message has to be saved even if Chatwoot
+         * is down; the dispatcher swallows its own failures precisely so that one
+         * of them cannot bring down the rest of the handling.
          */
         await app.integrations.aoReceber({
           orgId: context.orgId,
@@ -122,7 +122,7 @@ export const workersPlugin = fp(
         occurredAt: event.occurredAt,
       })
 
-      // Só publica quando o estado realmente avançou: ACK repetido não é evento.
+      // Only publish when the state really moved: a repeated ACK is not an event.
       if (!advanced) return
 
       await emitWebhook(app.db, {
@@ -140,14 +140,14 @@ export const workersPlugin = fp(
     })
 
     /**
-     * Mudança de estado da sessão vira webhook. É o sinal que permite ao
-     * integrador reagir a uma queda sem ficar consultando a API em laço — e o
-     * `rawCode` vai junto porque a diferença entre 428 e 401 muda a reação.
+     * A session state change becomes a webhook. It is the signal that lets the
+     * integrator react to a drop without polling the API in a loop — and the
+     * `rawCode` goes with it because 428 and 401 call for different reactions.
      */
     app.sessions.onStatusChange(async (context, payload) => {
       if (payload.status === 'disconnected' || payload.status === 'logged_out') {
-        // A causa traduzida vira rótulo: distingue queda de rede de número banido.
-        app.metrics.sessionDisconnects.inc({ cause: payload.cause ?? 'desconhecida' })
+        // The translated cause becomes a label: network drop versus banned number.
+        app.metrics.sessionDisconnects.inc({ cause: payload.cause ?? 'unknown' })
       }
 
       await emitWebhook(app.db, {
@@ -176,9 +176,10 @@ export const workersPlugin = fp(
       stuckAfterMs: app.env.OUTBOX_STUCK_AFTER_MS,
 
       /**
-       * Toda decisão vira linha em `risk_events`, inclusive as de liberação.
-       * Guardar só o que foi bloqueado deixaria o histórico enviesado e
-       * impediria comparar comportamento antes e depois de um ajuste de limite.
+       * Every decision becomes a row in `risk_events`, including the ones that
+       * let a message through. Storing only what was blocked would bias the
+       * history and make it impossible to compare behavior before and after a
+       * limit is adjusted.
        */
       onRiskDecision: async (job, decision) => {
         app.metrics.riskDecisions.inc({ action: decision.action })
@@ -261,7 +262,7 @@ export const workersPlugin = fp(
       },
     })
 
-    // Expurgo do conteúdo vencido pela política de retenção da organização.
+    // Purge of content expired under the organization's retention policy.
     const sweep = setInterval(() => {
       void purgeExpiredContent(app.db)
         .then((purged) => {

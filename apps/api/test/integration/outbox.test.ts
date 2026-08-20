@@ -54,7 +54,7 @@ describe.skipIf(!hasInfra)('fila de envio', () => {
       expect(todos).toHaveLength(1)
     })
 
-    /** O retry do cliente devolve a linha original, não a segunda tentativa. */
+    /** The client's retry gets back the original row, not the second attempt. */
     it('devolve o envio original no reenvio', async () => {
       const id = randomUUID()
       await enqueue('5511900000002@s.whatsapp.net', 'texto original', id)
@@ -67,8 +67,8 @@ describe.skipIf(!hasInfra)('fila de envio', () => {
 
   describe('FIFO por chat', () => {
     /**
-     * A garantia central da fila: dentro de uma conversa, a ordem é a de
-     * chegada, e nunca há dois envios saindo ao mesmo tempo para o mesmo chat.
+     * The queue's central guarantee: inside one conversation the order is the
+     * order of arrival, and two sends never leave for the same chat at once.
      */
     it('reserva apenas a cabeça da fila de cada chat', async () => {
       const chat = '5511911111111@s.whatsapp.net'
@@ -89,7 +89,7 @@ describe.skipIf(!hasInfra)('fila de envio', () => {
       await enqueue(chat, 'segunda')
 
       await claimOutbox(db, [sessionId], 10)
-      // A primeira segue em 'sending'; o segundo ciclo não pode pegar nada.
+      // The first is still 'sending'; the second cycle must pick up nothing.
       const segundoCiclo = await claimOutbox(db, [sessionId], 10)
 
       expect(segundoCiclo).toHaveLength(0)
@@ -109,7 +109,7 @@ describe.skipIf(!hasInfra)('fila de envio', () => {
       expect(proximo[0]?.id).toBe(segunda.row.id)
     })
 
-    /** Chats distintos não bloqueiam uns aos outros — é o paralelismo do §4.2. */
+    /** Distinct chats do not block each other — this is the §4.2 parallelism. */
     it('reserva chats diferentes em paralelo', async () => {
       await enqueue('5511944444444@s.whatsapp.net', 'para A')
       await enqueue('5511955555555@s.whatsapp.net', 'para B')
@@ -147,7 +147,7 @@ describe.skipIf(!hasInfra)('fila de envio', () => {
       expect(row?.lastError).toContain('timeout')
       expect(row?.availableAt.getTime()).toBeGreaterThan(Date.now() + 30_000)
 
-      // Ainda não elegível: a espera precisa ser respeitada.
+      // Not eligible yet: the delay has to be respected.
       expect(await claimOutbox(db, [sessionId], 10)).toHaveLength(0)
     })
 
@@ -194,7 +194,7 @@ describe.skipIf(!hasInfra)('fila de envio', () => {
       expect(revivida?.lastError).toBeNull()
     })
 
-    /** Sessão fora do ar não é falha de entrega: devolve sem consumir tentativa. */
+    /** A session that is down is not a delivery failure: released, no attempt spent. */
     it('release não consome tentativa', async () => {
       await enqueue('5511900000010@s.whatsapp.net', 'sessão caiu')
       const [job] = await claimOutbox(db, [sessionId], 1)
@@ -210,16 +210,16 @@ describe.skipIf(!hasInfra)('fila de envio', () => {
 
   describe('recuperação de envios presos', () => {
     /**
-     * Sem isto, um processo que morre no meio de um envio trava a fila daquele
-     * chat para sempre: o claim continuaria enxergando um envio em curso que não
-     * existe mais em lugar nenhum.
+     * Without this, a process that dies mid-send jams that chat's queue for
+     * good: the claim would keep seeing a send in flight that no longer exists
+     * anywhere.
      */
     it('devolve à fila o que ficou preso em sending', async () => {
       await enqueue('5511900000011@s.whatsapp.net', 'órfã')
       const [job] = await claimOutbox(db, [sessionId], 1)
       if (!job) throw new Error('nada reservado')
 
-      // Simula o processo tendo morrido há dez minutos.
+      // Pretend the process died ten minutes ago.
       await db.execute(
         sql`UPDATE outbox_messages SET updated_at = now() - interval '10 minutes' WHERE id = ${job.id}::uuid`,
       )

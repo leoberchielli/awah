@@ -15,12 +15,12 @@ export interface RiskEventRow {
 
 export class RiskRepository extends TenantRepository {
   /**
-   * Registra a decisão junto do retrato do orçamento no instante em que ela foi
-   * tomada.
+   * Records the decision alongside a picture of the budget at the instant it
+   * was made.
    *
-   * Guardar o snapshot é o que torna o motor auditável meses depois: dá para
-   * responder "por que esta mensagem atrasou quarenta segundos às 14h03" sem
-   * reconstituir o estado do Redis daquele momento.
+   * Keeping the snapshot is what makes the engine auditable months later: you
+   * can answer "why was this message delayed by forty seconds at 14:03" without
+   * reconstructing the state of Redis at that moment.
    */
   async record(input: {
     sessionId: string

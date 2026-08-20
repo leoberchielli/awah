@@ -114,7 +114,7 @@ on the other side on top of the sample.
 Through the API:
 
 ```bash
-curl -X POST http://localhost:2900/v1/integrations/http/test -H "Authorization: Bearer $AWAH_KEY" -H 'content-type: application/json' -d '{"url":"https://n8n.exemplo.com/webhook/atendimento"}'
+curl -X POST http://localhost:2900/v1/integrations/http/test -H "Authorization: Bearer $AWAH_KEY" -H 'content-type: application/json' -d '{"url":"https://n8n.example.com/webhook/support"}'
 ```
 
 ## Recipes

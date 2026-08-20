@@ -7,7 +7,7 @@ import {
 
 describe('tradução de códigos de desconexão', () => {
   it('separa queda passageira de credencial morta', () => {
-    // 428 e 408 voltam sozinhos; 401 e 500 exigem parear de novo.
+    // 428 and 408 come back on their own; 401 and 500 need pairing again.
     expect(describeDisconnect(428).shouldReconnect).toBe(true)
     expect(describeDisconnect(408).shouldReconnect).toBe(true)
     expect(describeDisconnect(401).shouldReconnect).toBe(false)
@@ -16,9 +16,9 @@ describe('tradução de códigos de desconexão', () => {
   })
 
   /**
-   * 440 é o código que mais confunde na prática: a sessão foi assumida em outro
-   * lugar. Reconectar em laço faz as duas pontas se derrubarem alternadamente,
-   * então este caso precisa continuar não-reconectável.
+   * 440 is the code that confuses people most in practice: the session was
+   * taken over somewhere else. Reconnecting in a loop makes the two ends knock
+   * each other offline in turn, so this case has to stay non-reconnectable.
    */
   it('não reconecta quando a sessão foi assumida em outro lugar', () => {
     const info = describeDisconnect(440)
@@ -41,7 +41,7 @@ describe('tradução de códigos de desconexão', () => {
     expect(describeDisconnect(null).cause).toMatch(/unknown/i)
     expect(describeDisconnect(undefined).cause).toMatch(/unknown/i)
     expect(describeDisconnect(999).cause).toMatch(/unknown/i)
-    // O genérico tenta reconectar: a alternativa é derrubar sessão boa por código novo.
+    // The generic case reconnects: the alternative is killing a good session over a new code.
     expect(describeDisconnect(999).shouldReconnect).toBe(true)
   })
 
@@ -87,8 +87,8 @@ describe('espera entre reconexões', () => {
   })
 
   /**
-   * Sem jitter, todas as sessões que caem juntas — queda de rede do host —
-   * voltam no mesmo milissegundo e repetem a rajada a cada ciclo.
+   * Without jitter, every session that drops together — a host network outage —
+   * comes back on the same millisecond and repeats the burst every cycle.
    */
   it('espalha as tentativas com jitter de até 25%', () => {
     expect(reconnectDelayMs(3, () => 0)).toBe(4000)

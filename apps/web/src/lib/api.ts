@@ -1,10 +1,10 @@
 /**
- * Cliente da API.
+ * API client.
  *
- * O dashboard é servido pela própria API, então tudo é mesma origem e a
- * credencial é o cookie de sessão — nunca uma chave de API. Chave de API vive em
- * servidor de cliente; colocá-la no navegador entregaria a conta inteira a
- * qualquer extensão instalada.
+ * The dashboard is served by the API itself, so everything is same-origin and
+ * the credential is the session cookie — never an API key. An API key lives on
+ * a customer's server; putting one in the browser would hand the whole account
+ * to any installed extension.
  */
 export class ApiError extends Error {
   constructor(
@@ -57,7 +57,7 @@ export const put = <T>(path: string, body?: unknown) =>
 export const del = <T>(path: string) => api<T>(path, { method: 'DELETE' })
 
 // ---------------------------------------------------------------------------
-// Contratos. Espelham as respostas do servidor; o que não é usado fica de fora.
+// Contracts. They mirror the server's responses; what is unused stays out.
 // ---------------------------------------------------------------------------
 
 export type Papel = 'viewer' | 'operator' | 'admin' | 'owner'
@@ -80,10 +80,10 @@ export interface Member {
 export interface ApiKeyRow {
   id: string
   name: string
-  /** Parte pública do token. É por ela que se identifica a chave num log. */
+  /** The token's public part. It is how you identify the key in a log. */
   prefix: string
   role: Papel
-  /** Nulo quando a chave alcança toda a organização. */
+  /** Null when the key reaches the whole organization. */
   sessionScope: string[] | null
   lastUsedAt: string | null
   expiresAt: string | null
@@ -93,7 +93,7 @@ export interface ApiKeyRow {
 
 export interface ApiKeyCreated {
   key: ApiKeyRow
-  /** Aparece só nesta resposta — o servidor guarda apenas o hash. */
+  /** Shows up in this response only — the server keeps just the hash. */
   token: string
 }
 
@@ -204,7 +204,7 @@ export interface Integration {
   sessionId: string
   kind: 'chatwoot' | 'typebot' | 'http'
   active: boolean
-  /** Última falha ao falar com a ferramenta. Nulo quando está tudo bem. */
+  /** Last failure talking to the tool. Null when everything is fine. */
   lastError: string | null
   lastErrorAt: string | null
   createdAt: string
@@ -213,12 +213,12 @@ export interface Integration {
 export interface IntegrationSaved {
   integration: Integration
   detail: string
-  /** Só o Chatwoot devolve — é a URL que precisa ser cadastrada lá. */
+  /** Only Chatwoot returns one — it is the URL that has to be registered there. */
   webhookUrl: string | null
 }
 
 export interface Bootstrap {
-  /** true enquanto não existir nenhuma organização nesta instância. */
+  /** true for as long as no organization exists on this instance. */
   needsSetup: boolean
   openRegistration: boolean
 }
@@ -233,7 +233,7 @@ export interface CaixaChatwoot {
   id: number
   name: string
   channelType: string
-  /** Só caixa do tipo API serve; as outras têm transporte próprio. */
+  /** Only an API-type inbox will do; the others have their own transport. */
   usable: boolean
 }
 
@@ -243,13 +243,13 @@ export interface DescobertaChatwoot {
 }
 
 export interface TesteDoConector {
-  /** Falso quando a resposta não virou mensagem — o diagnóstico diz por quê. */
+  /** False when the response did not become a message — the diagnosis says why. */
   ok: boolean
   status: number
   durationMs: number
   replies: string[]
   raw: string
   diagnostico: string | null
-  /** O que foi postado, para montar o fluxo do outro lado em cima da amostra. */
+  /** What was posted, so the flow on the other side can be built on the sample. */
   sentPayload: Record<string, unknown>
 }

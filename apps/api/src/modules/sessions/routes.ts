@@ -35,10 +35,11 @@ const sessionSchema = z.object({
 })
 
 /**
- * Uma chave de API com `sessionScope` só enxerga as sessões listadas nela.
+ * An API key with `sessionScope` only sees the sessions listed in it.
  *
- * Fora do escopo responde 404, não 403: 403 confirmaria que a sessão existe,
- * e a existência de uma sessão já é informação que a chave não deveria ter.
+ * Outside the scope it answers 404, not 403: a 403 would confirm the session
+ * exists, and a session's existence is already information the key should not
+ * have.
  */
 function assertInScope(auth: AuthContext, sessionId: string): void {
   if (auth.sessionScope && !auth.sessionScope.includes(sessionId)) {
@@ -50,20 +51,20 @@ export async function sessionRoutes(app: FastifyInstance) {
   const route = app.withTypeProvider<ZodTypeProvider>()
 
   /**
-   * `running` é uma pergunta sobre o cluster, não sobre este processo: quem
-   * consulta quer saber se a sessão está no ar em algum lugar, e o balanceador
-   * escolhe a réplica que responde.
+   * `running` is a question about the cluster, not about this process: whoever
+   * asks wants to know whether the session is up somewhere, and the load
+   * balancer picks which replica answers.
    */
   const decorate = async <T extends { id: string; ownerNodeId: string | null }>(session: T) => {
     const owner = await app.sessions.ownerOf(session.id)
     return {
       ...session,
       /**
-       * O dono vem do lease, não da coluna.
+       * The owner comes from the lease, not from the column.
        *
-       * A coluna guarda o último nó que assumiu e fica velha justamente na
-       * janela mais confusa: entre o lease expirar e outro nó adotar a sessão,
-       * ela apontaria para um processo que já morreu.
+       * The column holds the last node that took over, and it goes stale in
+       * exactly the most confusing window: between the lease expiring and
+       * another node adopting the session, it would point at a dead process.
        */
       ownerNodeId: owner,
       running: owner !== null,
@@ -120,7 +121,7 @@ export async function sessionRoutes(app: FastifyInstance) {
             presence: false,
             reactions: true,
             editMessage: false,
-            // Fora da janela de 24 h, só template aprovado pela Meta.
+            // Outside the 24 h window, only a Meta-approved template.
             freeformMessaging: false,
           },
         },
@@ -173,7 +174,7 @@ export async function sessionRoutes(app: FastifyInstance) {
       const auth = requireAuth(request)
       const rows = await new SessionRepository(app.db, auth.orgId).list(auth.sessionScope)
 
-      // Uma consulta de posse para a lista inteira, em vez de uma por sessão.
+      // One ownership lookup for the whole list, instead of one per session.
       const donos = await app.sessions.ownersOf(rows.map((s) => s.id))
 
       return {
@@ -229,7 +230,7 @@ export async function sessionRoutes(app: FastifyInstance) {
         throw notFound('Session not found.')
       }
 
-      // Solta o socket antes; o cascade do banco leva credenciais e eventos.
+      // Close the socket first; the database cascade takes credentials and events.
       await app.sessions.stopAnywhere(auth.orgId, request.params.id)
       await repo.remove(request.params.id)
 
@@ -238,11 +239,11 @@ export async function sessionRoutes(app: FastifyInstance) {
   )
 
   /**
-   * Credenciais da engine oficial.
+   * Credentials for the official engine.
    *
-   * PUT e não PATCH porque o conjunto vale inteiro: um token novo com o
-   * phoneNumberId antigo é uma configuração quebrada, não uma parcial. O valor
-   * é cifrado antes de tocar o banco e nunca é devolvido em leitura.
+   * PUT and not PATCH because the set only counts whole: a new token with the
+   * old phoneNumberId is a broken configuration, not a partial one. The value
+   * is encrypted before it touches the database and is never returned on read.
    */
   route.put(
     '/v1/sessions/:id/credentials',
@@ -294,11 +295,11 @@ export async function sessionRoutes(app: FastifyInstance) {
       )
 
       /**
-       * URL absoluta quando a instância sabe o próprio endereço.
+       * An absolute URL when the instance knows its own address.
        *
-       * A Meta cadastra um endereço público e HTTPS; devolver só o caminho
-       * obrigaria quem integra a montar a URL na mão e a errar o host quando
-       * houver proxy na frente.
+       * Meta registers a public HTTPS address; returning only the path would
+       * force whoever integrates to assemble the URL by hand and to get the
+       * host wrong whenever there is a proxy in front.
        */
       const base = app.env.PUBLIC_URL ?? `http://localhost:${app.env.PORT}`
 

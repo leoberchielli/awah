@@ -76,7 +76,7 @@ export class ApiKeyRepository extends TenantRepository {
         createdAt: schema.apiKeys.createdAt,
       })
 
-    if (!row) throw new Error('falha ao criar chave de API')
+    if (!row) throw new Error('failed to create API key')
     return row
   }
 
@@ -98,9 +98,9 @@ export class ApiKeyRepository extends TenantRepository {
 }
 
 /**
- * Busca por prefixo. Fica fora da classe de tenant de propósito: no momento da
- * autenticação ainda não sabemos a qual organização o pedido pertence — é
- * justamente a chave que informa isso.
+ * Lookup by prefix. It sits outside the tenant class on purpose: at
+ * authentication time we do not yet know which organization the request belongs
+ * to — the key is precisely what tells us.
  */
 export async function findApiKeyByPrefix(
   db: DbExecutor,

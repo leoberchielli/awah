@@ -19,15 +19,15 @@ const janela = z.object({
 export async function metricsRoutes(app: FastifyInstance) {
   const route = app.withTypeProvider<ZodTypeProvider>()
 
-  const desde = (hours: number) => new Date(Date.now() - hours * 60 * 60 * 1000)
+  const cutoff = (hours: number) => new Date(Date.now() - hours * 60 * 60 * 1000)
 
   /**
-   * Scrape do Prometheus.
+   * Prometheus scrape.
    *
-   * Fica fora do `/v1` e do esquema de chaves de API porque quem raspa métricas
-   * é o coletor, não um integrador. A proteção é um token dedicado: sem ele, a
-   * URL entregaria volume de mensagens, número de sessões e saúde da operação a
-   * qualquer um que alcançasse a porta.
+   * It sits outside `/v1` and outside the API key scheme because what scrapes
+   * metrics is the collector, not an integrator. The protection is a dedicated
+   * token: without it, the URL would hand message volume, session count and the
+   * health of the operation to anyone who reached the port.
    */
   route.get(
     '/metrics',
@@ -54,11 +54,11 @@ export async function metricsRoutes(app: FastifyInstance) {
   )
 
   /**
-   * Saúde de sessão.
+   * Session health.
    *
-   * O uptime sai dos eventos de conexão, não de um heartbeat: o par
-   * conectou/desconectou já está gravado, e derivar dali significa que o número
-   * continua correto mesmo para períodos anteriores a este processo existir.
+   * Uptime comes out of the connection events, not out of a heartbeat: the
+   * connected/disconnected pair is already recorded, and deriving from there
+   * means the number stays right even for periods before this process existed.
    */
   route.get(
     '/v1/kpi/sessions',
@@ -79,7 +79,7 @@ export async function metricsRoutes(app: FastifyInstance) {
                 reconnects: z.number(),
                 lastCause: z.string().nullable(),
                 lastDisconnectAt: z.date().nullable(),
-                /** Tempo médio entre quedas, em minutos. Nulo sem quedas no período. */
+                /** Mean time between drops, in minutes. Null if none in the period. */
                 mtbfMinutes: z.number().nullable(),
               }),
             ),
@@ -182,7 +182,7 @@ export async function metricsRoutes(app: FastifyInstance) {
     async (request) => {
       const auth = requireAuth(request)
       const repo = new MetricsRepository(app.db, auth.orgId)
-      const since = desde(request.query.hours)
+      const since = cutoff(request.query.hours)
       const scope = request.query.sessionId ?? null
 
       const totais = await repo.totals(
@@ -202,7 +202,7 @@ export async function metricsRoutes(app: FastifyInstance) {
       const delivered = totais['status.delivered'] ?? 0
       const read = totais['status.read'] ?? 0
 
-      // Percentis não se somam entre sessões; a média dos baldes é a leitura honesta.
+      // Percentiles do not sum across sessions; the bucket average is the honest read.
       const percentis = await repo.totals(
         ['latency.delivered.p50', 'latency.delivered.p95', 'latency.delivered.p99'],
         since,
@@ -286,7 +286,7 @@ export async function metricsRoutes(app: FastifyInstance) {
     async (request) => {
       const auth = requireAuth(request)
       const repo = new MetricsRepository(app.db, auth.orgId)
-      const since = desde(request.query.hours)
+      const since = cutoff(request.query.hours)
       const scope = request.query.sessionId ?? null
 
       const totais = await repo.totals(
@@ -318,11 +318,11 @@ export async function metricsRoutes(app: FastifyInstance) {
   )
 
   /**
-   * Negócio e atendimento.
+   * Business and support.
    *
-   * Tempo de primeira resposta é calculado sobre as conversas, não sobre as
-   * mensagens: o que interessa é quanto o cliente esperou até alguém falar com
-   * ele, e isso só existe no par pergunta-resposta.
+   * First response time is computed over the conversations, not over the
+   * messages: what matters is how long the customer waited until someone spoke
+   * to them, and that only exists in the question-answer pair.
    */
   route.get(
     '/v1/kpi/business',
@@ -353,7 +353,7 @@ export async function metricsRoutes(app: FastifyInstance) {
       const auth = requireAuth(request)
       const repo = new MetricsRepository(app.db, auth.orgId)
       const horas = request.query.hours
-      const since = desde(horas)
+      const since = cutoff(horas)
 
       const resposta = await app.db.execute(sql`
         WITH conversas AS (

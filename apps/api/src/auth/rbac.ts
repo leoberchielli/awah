@@ -1,7 +1,7 @@
 export const ROLES = ['viewer', 'operator', 'admin', 'owner'] as const
 export type Role = (typeof ROLES)[number]
 
-/** Hierarquia: um papel cobre tudo que os papéis abaixo dele cobrem. */
+/** Hierarchy: a role covers everything the roles below it cover. */
 const RANK: Record<Role, number> = {
   viewer: 0,
   operator: 1,
@@ -14,10 +14,10 @@ export function roleAtLeast(actual: Role, required: Role): boolean {
 }
 
 /**
- * Permissão nomeada → papel mínimo que a satisfaz.
+ * Named permission → the lowest role that satisfies it.
  *
- * Preferimos nomes a checagens de papel espalhadas pelas rotas: quando o
- * requisito de uma operação muda, muda aqui e em nenhum outro lugar.
+ * We prefer names to role checks scattered across the routes: when an
+ * operation's requirement changes, it changes here and nowhere else.
  */
 export const PERMISSIONS = {
   'org:read': 'viewer',
@@ -51,12 +51,12 @@ export function can(role: Role, permission: Permission): boolean {
 }
 
 /**
- * Operações que uma chave de API nunca executa, qualquer que seja o papel dela.
+ * Operations an API key never runs, whatever its role.
  *
- * Uma chave vazada é um segredo em trânsito por sistemas de terceiros. Se ela
- * pudesse criar outras chaves ou promover membros, o estrago deixaria de ser
- * "mandaram mensagem no meu nome" e viraria tomada de conta. Administração de
- * identidade exige sessão de usuário.
+ * A leaked key is a secret in transit through third-party systems. If it could
+ * create other keys or promote members, the damage would stop being "someone
+ * sent messages in my name" and become an account takeover. Identity
+ * administration requires a user session.
  */
 const API_KEY_DENIED = new Set<Permission>([
   'org:delete',

@@ -3,10 +3,10 @@ import { webhookDeliveryStatus } from './enums'
 import { orgs } from './tenancy'
 
 /**
- * Assinatura de eventos. `secret` assina o corpo em HMAC-SHA256 para que o
- * receptor consiga verificar a origem (§4.2).
+ * Event subscription. `secret` signs the body with HMAC-SHA256 so the receiver
+ * can verify where it came from (§4.2).
  *
- * `sessionScope` nulo significa "todas as sessões da org".
+ * A null `sessionScope` means "every session in the org".
  */
 export const webhooks = pgTable(
   'webhooks',
@@ -27,11 +27,11 @@ export const webhooks = pgTable(
 )
 
 /**
- * Uma tentativa de entrega por linha de fila. Existe pelo mesmo motivo do
- * outbox: webhook disparado e esquecido é perda silenciosa de evento.
+ * One delivery attempt per queue row. It exists for the same reason the outbox
+ * does: a webhook fired and forgotten is a silently lost event.
  *
- * Ao esgotar `maxAttempts` a linha vira `dead` e fica disponível para replay
- * manual pelo dashboard.
+ * Once `maxAttempts` runs out the row turns `dead` and stays available for
+ * manual replay from the dashboard.
  */
 export const webhookDeliveries = pgTable(
   'webhook_deliveries',

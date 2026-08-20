@@ -2,10 +2,11 @@ import type { MessageStatus, MessageType } from '@awah/db'
 import type { proto } from 'baileys'
 
 /**
- * Códigos de `proto.WebMessageInfo.Status`.
+ * Codes from `proto.WebMessageInfo.Status`.
  *
- * O protocolo só avança: uma vez `read`, não volta a `delivered`. Quem consome
- * a trilha de status pode confiar nessa monotonicidade.
+ * The protocol only moves forward: once `read`, it never goes back to
+ * `delivered`. Anything consuming the status trail can rely on that
+ * monotonicity.
  */
 const STATUS_BY_CODE: Record<number, MessageStatus> = {
   0: 'failed', // ERROR
@@ -13,7 +14,7 @@ const STATUS_BY_CODE: Record<number, MessageStatus> = {
   2: 'sent', // SERVER_ACK
   3: 'delivered', // DELIVERY_ACK
   4: 'read', // READ
-  5: 'played', // PLAYED — áudio ouvido
+  5: 'played', // PLAYED — audio listened to
 }
 
 export function mapStatus(code: number | null | undefined): MessageStatus | null {
@@ -21,7 +22,7 @@ export function mapStatus(code: number | null | undefined): MessageStatus | null
   return STATUS_BY_CODE[code] ?? null
 }
 
-/** Peso de cada estado, para nunca regredir a trilha por ACK fora de ordem. */
+/** Weight of each state, so an out-of-order ACK never rolls the trail back. */
 const STATUS_RANK: Record<MessageStatus, number> = {
   pending: 0,
   failed: 0,
@@ -33,9 +34,9 @@ const STATUS_RANK: Record<MessageStatus, number> = {
 }
 
 /**
- * ACKs chegam fora de ordem com frequência — o `delivered` de uma mensagem pode
- * aparecer depois do `read`. Sem esta comparação, o dashboard mostraria uma
- * mensagem "voltando" de lida para entregue.
+ * ACKs often arrive out of order — a message's `delivered` can show up after
+ * its `read`. Without this comparison, the dashboard would show a message
+ * "going back" from read to delivered.
  */
 export function isStatusAdvance(current: MessageStatus, incoming: MessageStatus): boolean {
   return STATUS_RANK[incoming] > STATUS_RANK[current]
@@ -47,9 +48,9 @@ export interface ExtractedContent {
 }
 
 /**
- * Reduz a união de tipos do protocolo ao que o AWAH persiste: uma categoria e um
- * texto. Legenda de mídia entra como corpo, porque é o que uma busca por
- * conteúdo espera encontrar.
+ * Narrows the protocol's type union down to what AWAH persists: a category and
+ * some text. A media caption goes in as the body, because that is what a search
+ * over content expects to find.
  */
 export function extractContent(message: proto.IMessage | null | undefined): ExtractedContent {
   if (!message) return { type: 'system', body: null }
@@ -101,14 +102,14 @@ export function extractContent(message: proto.IMessage | null | undefined): Extr
     return { type: 'poll', body: message.pollCreationMessage.name ?? null }
   }
 
-  // Protocolo, revogação, chamadas: registramos a ocorrência sem conteúdo.
+  // Protocol, revocation, calls: we record that it happened, with no content.
   return { type: 'system', body: null }
 }
 
 /**
- * Timestamp do protocolo vem em segundos. Pode chegar como número puro ou como
- * `Long` do protobuf — daí o `unknown`: `Number()` resolve os dois via valueOf,
- * e o guarda de finitude cobre o resto.
+ * The protocol timestamp comes in seconds. It can arrive as a plain number or
+ * as a protobuf `Long` — hence the `unknown`: `Number()` handles both via
+ * valueOf, and the finiteness guard covers the rest.
  */
 export function toDate(timestamp: unknown): Date {
   if (timestamp == null) return new Date()

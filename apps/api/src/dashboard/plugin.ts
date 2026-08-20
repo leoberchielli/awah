@@ -7,18 +7,18 @@ import fp from 'fastify-plugin'
 
 declare module 'fastify' {
   interface FastifyInstance {
-    /** HTML do dashboard, ou null quando ele não foi empacotado nesta imagem. */
+    /** The dashboard HTML, or null when it was not bundled into this image. */
     spaIndex: string | null
   }
 }
 
 /**
- * Prefixos que pertencem ao servidor, não ao dashboard.
+ * Prefixes that belong to the server, not to the dashboard.
  *
- * O SPA responde a qualquer caminho que ele não conheça — é assim que rota de
- * cliente funciona. Sem esta lista, um `GET /v1/sessoes` digitado errado
- * devolveria a página HTML com status 200, e quem integra passaria a tarde
- * tentando entender por que o JSON virou `<!doctype html>`.
+ * The SPA answers any path it does not know — that is how client-side routing
+ * works. Without this list, a mistyped `GET /v1/sessoes` would return the HTML
+ * page with status 200, and the integrator would spend the afternoon working
+ * out why the JSON turned into `<!doctype html>`.
  */
 const RESERVADOS = ['/v1/', '/webhooks/', '/metrics', '/docs', '/health', '/ready']
 
@@ -30,12 +30,12 @@ export function ehRotaDoServidor(url: string): boolean {
 }
 
 /**
- * Descobre onde estão os arquivos do dashboard.
+ * Finds where the dashboard files are.
  *
- * São três cenários reais e nenhum se deriva dos outros: a imagem Docker copia o
- * build para `public`, ao lado do bundle; o monorepo em desenvolvimento tem
- * `apps/web/dist`; e quem empacota de outro jeito aponta DASHBOARD_DIR. A ordem
- * é essa — explícito ganha de convenção.
+ * Three real scenarios, and none of them follows from the others: the Docker
+ * image copies the build into `public`, next to the bundle; the monorepo in
+ * development has `apps/web/dist`; and anyone who packages it some other way
+ * points DASHBOARD_DIR at it. That is the order — explicit beats convention.
  */
 export function encontrarDashboard(dirExplicito?: string): string | null {
   const candidatos = dirExplicito
@@ -55,17 +55,17 @@ export function encontrarDashboard(dirExplicito?: string): string | null {
 }
 
 /**
- * Serve o dashboard pela mesma origem da API.
+ * Serves the dashboard from the same origin as the API.
  *
- * Mesma origem não é detalhe de empacotamento: é o que permite que a credencial
- * do painel seja um cookie `httpOnly` em vez de um token no `localStorage`. Em
- * origens separadas o navegador exigiria `SameSite=None`, e aí o cookie passa a
- * viajar em requisição de terceiro — exatamente o que ele deveria impedir.
+ * Same origin is not a packaging detail: it is what lets the panel's credential
+ * be an `httpOnly` cookie instead of a token in `localStorage`. On separate
+ * origins the browser would demand `SameSite=None`, and then the cookie starts
+ * riding along on third-party requests — exactly what it was there to prevent.
  *
- * O 404 não é tratado aqui: quem responde continua sendo o handler único do
- * `app.ts`, que consulta `spaIndex`. Dois handlers de 404 no mesmo contexto o
- * Fastify recusa, e mais importante — o formato de erro da API é contrato
- * público e precisa de um dono só.
+ * The 404 is not handled here: the single handler in `app.ts` still answers it,
+ * by consulting `spaIndex`. Fastify refuses two 404 handlers in the same
+ * context, and more important — the API's error format is a public contract and
+ * needs one owner.
  */
 export const dashboardPlugin = fp(async (app: FastifyInstance) => {
   const raiz = encontrarDashboard(app.env.DASHBOARD_DIR)
@@ -82,18 +82,19 @@ export const dashboardPlugin = fp(async (app: FastifyInstance) => {
     root: raiz,
     prefix: '/',
     /**
-     * Sem rota curinga: o plugin varre a pasta no boot e registra uma rota por
-     * arquivo. Assim nenhum `GET /*` fica na frente das rotas da API, e tudo que
-     * não é arquivo cai limpo no handler de 404.
+     * No wildcard route: the plugin scans the folder at boot and registers one
+     * route per file. That way no `GET /*` sits in front of the API routes, and
+     * anything that is not a file lands cleanly on the 404 handler.
      */
     wildcard: false,
     index: false,
     setHeaders(resposta, caminho) {
       /**
-       * Os arquivos de `assets/` têm hash do conteúdo no nome: mudou o conteúdo,
-       * mudou o nome. Podem ser cacheados para sempre. O `index.html` não tem
-       * hash e é justamente ele que aponta para os nomes novos — cacheá-lo
-       * deixaria o navegador preso na versão anterior depois de um deploy.
+       * The files under `assets/` carry a content hash in the name: content
+       * changed, name changed. They can be cached forever. `index.html` has no
+       * hash, and it is precisely the file that points at the new names —
+       * caching it would leave the browser stuck on the previous version after
+       * a deploy.
        */
       if (caminho.includes(`${sep}assets${sep}`)) {
         resposta.header('cache-control', 'public, max-age=31536000, immutable')

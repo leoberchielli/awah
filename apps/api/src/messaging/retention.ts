@@ -6,12 +6,12 @@ interface CacheEntry {
 }
 
 /**
- * Resolve a política de retenção de uma organização.
+ * Resolves an organization's retention policy.
  *
- * O valor é consultado em toda mensagem que entra ou sai, e muda raramente —
- * daí o cache curto. Sessenta segundos é o atraso máximo entre alguém mudar a
- * política no dashboard e ela valer para mensagens novas; mensagens já gravadas
- * não são afetadas de qualquer forma.
+ * The value is looked up on every message in or out, and rarely changes —
+ * hence the short cache. Sixty seconds is the longest delay between someone
+ * changing the policy in the dashboard and it holding for new messages;
+ * messages already written are unaffected either way.
  */
 export class RetentionResolver {
   private readonly cache = new Map<string, CacheEntry>()
@@ -43,19 +43,19 @@ export class RetentionResolver {
 }
 
 export interface RetentionDecision {
-  /** Corpo a persistir. Nulo quando a organização não guarda conteúdo. */
+  /** Body to persist. Null when the organization keeps no content. */
   body: string | null
-  /** Quando o conteúdo deve ser apagado. Nulo significa reter para sempre. */
+  /** When the content should be erased. Null means keep it forever. */
   contentExpiresAt: Date | null
 }
 
 /**
- * Aplica a política ao conteúdo de uma mensagem.
+ * Applies the policy to a message's content.
  *
- * `0` nunca persiste corpo — a linha nasce só com metadados, e os KPIs de
- * volume e latência continuam funcionando. `-1` retém para sempre. Qualquer
- * outro valor marca a data em que o corpo será apagado, degradando a linha para
- * metadados sem perder o histórico de contagem.
+ * `0` never persists a body — the row is born with metadata only, and the
+ * volume and latency KPIs go on working. `-1` keeps it forever. Any other value
+ * marks the date the body will be erased, degrading the row to metadata without
+ * losing the counting history.
  */
 export function applyRetention(
   body: string | null,

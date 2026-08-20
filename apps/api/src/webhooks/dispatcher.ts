@@ -9,7 +9,7 @@ export interface WebhookDispatcherDeps {
   intervalMs: number
   batchSize: number
   requestTimeoutMs: number
-  /** Desfecho e duração de cada tentativa, para métrica. */
+  /** Outcome and duration of each attempt, for metrics. */
   observeDelivery?: (outcome: 'delivered' | 'retrying' | 'dead', seconds: number) => void
 }
 
@@ -24,11 +24,11 @@ interface PendingDelivery {
 }
 
 /**
- * Entrega de webhooks com retry e fila morta.
+ * Webhook delivery with retries and a dead-letter queue.
  *
- * Existe pelo mesmo motivo do outbox: webhook disparado e esquecido é perda
- * silenciosa de evento. Quem integra descobre semanas depois que faltam
- * mensagens, sem nenhum rastro de onde sumiram.
+ * It exists for the same reason the outbox does: a webhook fired and forgotten
+ * is an event lost in silence. The integrator finds out weeks later that
+ * messages are missing, with no trace of where they went.
  */
 export class WebhookDispatcher {
   private timer: NodeJS.Timeout | null = null
@@ -73,7 +73,7 @@ export class WebhookDispatcher {
     }
   }
 
-  /** Mesma estratégia do outbox: o UPDATE condicional é o que garante exclusividade. */
+  /** Same strategy as the outbox: the conditional UPDATE is what guarantees exclusivity. */
   private async claim(): Promise<PendingDelivery[]> {
     const result = await this.deps.db.execute(sql`
       UPDATE webhook_deliveries d
@@ -140,8 +140,9 @@ export class WebhookDispatcher {
       }
 
       /**
-       * 4xx que não seja 408 nem 429 é erro do payload ou da rota: repetir não
-       * conserta e só gasta tentativa. Vai direto para a fila morta.
+       * A 4xx that is neither 408 nor 429 is an error in the payload or in the
+       * route: repeating does not fix it and only burns an attempt. Straight to
+       * the dead-letter queue.
        */
       const permanent =
         response.status >= 400 &&
@@ -207,7 +208,7 @@ export class WebhookDispatcher {
     if (exhausted) {
       this.deps.logger.error(
         { deliveryId: delivery.id, attempts: delivery.attempts, error, permanent },
-        'webhook foi para a fila morta',
+        'webhook went to the dead-letter queue',
       )
     }
 

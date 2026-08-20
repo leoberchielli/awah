@@ -22,7 +22,7 @@ describe.skipIf(!hasInfra)('integrações com ferramentas externas', () => {
   let integrationId: string
   let encryptionKey: Buffer
 
-  /** Registra tudo que o conector tentou falar com o Chatwoot. */
+  /** Records everything the connector tried to say to Chatwoot. */
   let chamadas: Array<{ url: string; method: string; body: unknown }>
 
   function fetchDoChatwoot(): typeof fetch {
@@ -137,9 +137,9 @@ describe.skipIf(!hasInfra)('integrações com ferramentas externas', () => {
       await receber('segunda mensagem')
 
       /**
-       * Reabrir conversa a cada mensagem criaria uma thread nova no Chatwoot por
-       * mensagem recebida — o operador veria a mesma conversa picada em dezenas
-       * de pedaços.
+       * Reopening the conversation on every message would create a new Chatwoot
+       * thread per inbound message — the operator would see one conversation
+       * chopped into dozens of pieces.
        */
       expect(chamadas.filter((c) => c.url.endsWith('/conversations'))).toHaveLength(0)
       expect(chamadas.some((c) => c.url.includes('/messages'))).toBe(true)
@@ -159,8 +159,8 @@ describe.skipIf(!hasInfra)('integrações com ferramentas externas', () => {
     })
 
     /**
-     * Chatwoot fora do ar não pode derrubar o tratamento do evento — no limite,
-     * derrubaria a conexão do WhatsApp por causa de uma ferramenta de terceiro.
+     * Chatwoot being down must not take the event handling with it — at the
+     * limit, it would drop the WhatsApp connection over a third-party tool.
      */
     it('engole a falha e registra o erro na integração', async () => {
       const quebrado = vi.fn(
@@ -210,7 +210,7 @@ describe.skipIf(!hasInfra)('integrações com ferramentas externas', () => {
     })
 
     beforeAll(async () => {
-      // Garante que o vínculo da conversa 555 existe antes desta bateria.
+      // Makes sure the link for conversation 555 exists before this batch runs.
       await receber('abre a conversa')
     })
 
@@ -245,9 +245,9 @@ describe.skipIf(!hasInfra)('integrações com ferramentas externas', () => {
     })
 
     /**
-     * O bug que este teste impede: o Chatwoot reentrega quando não recebe 200 a
-     * tempo, e sem chave de idempotência o cliente recebe a mesma resposta duas
-     * vezes.
+     * The bug this test prevents: Chatwoot redelivers when it does not get a
+     * 200 in time, and with no idempotency key the customer gets the same reply
+     * twice.
      */
     it('reentrega do mesmo evento não duplica a mensagem', async () => {
       await webhook(respostaDeAgente(2002))
@@ -263,8 +263,8 @@ describe.skipIf(!hasInfra)('integrações com ferramentas externas', () => {
     })
 
     /**
-     * O laço de eco: mensagem que nasceu no WhatsApp, foi criada por nós no
-     * Chatwoot, e voltaria para o WhatsApp de novo. O `source_id` é o que corta.
+     * The echo loop: a message born on WhatsApp, created by us in Chatwoot, and
+     * about to go back out to WhatsApp again. `source_id` is what cuts it.
      */
     it('não devolve ao WhatsApp a mensagem que veio de lá', async () => {
       const antes = (await fila()).length
@@ -344,8 +344,8 @@ describe.skipIf(!hasInfra)('integrações com ferramentas externas', () => {
       webhookToken: 'z'.repeat(32),
     })
 
-    // O segundo PUT substitui em vez de duplicar: duas do mesmo tipo na mesma
-    // sessão fariam o operador ver a conversa em dobro.
+    // The second PUT replaces instead of duplicating: two of the same kind on
+    // the same session would show the operator every conversation twice.
     await saveIntegration(app.db, encryptionKey, {
       orgId: org.orgId,
       sessionId,

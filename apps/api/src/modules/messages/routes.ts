@@ -26,8 +26,8 @@ const outboxSchema = z.object({
 })
 
 /**
- * `chatId` aceito nas duas formas: o JID completo do protocolo ou só o número.
- * Quem integra raramente tem o JID em mãos.
+ * `chatId` accepted in both forms: the protocol's full JID or just the number.
+ * Whoever integrates rarely has the JID at hand.
  */
 function normalizeChatId(input: string): string {
   const trimmed = input.trim()
@@ -46,13 +46,13 @@ export async function messageRoutes(app: FastifyInstance) {
   const route = app.withTypeProvider<ZodTypeProvider>()
 
   /**
-   * Enfileira um envio. Responde 202, não 200.
+   * Queues a send. Answers 202, not 200.
    *
-   * O código diz o que aconteceu de fato: a mensagem foi aceita e persistida,
-   * ainda não entregue. Prometer entrega numa resposta síncrona seria mentira —
-   * o WhatsApp pode estar fora do ar, a sessão pode ter caído, e a partir da
-   * onda 3 o motor de risco pode segurar o envio de propósito. O estado real
-   * vive em `GET /v1/outbox/:id` e nos webhooks.
+   * The code says what actually happened: the message was accepted and
+   * persisted, not delivered yet. Promising delivery in a synchronous response
+   * would be a lie — WhatsApp may be down, the session may have dropped, and
+   * from wave 3 on the risk engine may hold the send on purpose. The real state
+   * lives in `GET /v1/outbox/:id` and in the webhooks.
    */
   route.post(
     '/v1/sessions/:id/messages',
@@ -100,9 +100,10 @@ export async function messageRoutes(app: FastifyInstance) {
       if (!session) throw notFound('Session not found.')
 
       /**
-       * Override do motor de risco. Fica no payload, não numa coluna, porque é
-       * atributo do envio e não da fila — e vai gravado em `risk_events` como
-       * qualquer outra decisão, para que o uso do bypass seja auditável.
+       * Risk engine override. It lives in the payload, not in a column,
+       * because it is an attribute of the send and not of the queue — and it
+       * gets written to `risk_events` like any other decision, so that use of
+       * the bypass is auditable.
        */
       const bypassRisk = request.headers['x-awah-bypass-risk'] === 'true'
 

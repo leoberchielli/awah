@@ -37,12 +37,13 @@ const COLUMNS = {
 
 export class OutboxRepository extends TenantRepository {
   /**
-   * Enfileira um envio.
+   * Queues a send.
    *
-   * O `onConflictDoNothing` sobre `(org_id, client_message_id)` é a idempotência
-   * do §4.2: um cliente que reenvia por timeout de rede não gera dois envios.
-   * Quando não há inserção, devolvemos a linha existente — a resposta é a mesma
-   * das duas vezes, que é o comportamento que torna o retry seguro.
+   * The `onConflictDoNothing` on `(org_id, client_message_id)` is the
+   * idempotency of §4.2: a client that resends after a network timeout does not
+   * produce two sends. When nothing is inserted we return the existing row —
+   * the response is the same both times, which is the behavior that makes the
+   * retry safe.
    */
   async enqueue(input: {
     sessionId: string
@@ -121,7 +122,7 @@ export class OutboxRepository extends TenantRepository {
       .limit(filter?.limit ?? 100)
   }
 
-  /** Recoloca um envio morto na fila, zerando as tentativas. */
+  /** Puts a dead send back on the queue, resetting the attempts. */
   async retry(id: string): Promise<boolean> {
     const rows = await this.db
       .update(schema.outboxMessages)

@@ -7,11 +7,12 @@ interface Aviso {
 }
 
 /**
- * Configurações que só machucam quando a instância vira alcançável.
+ * Settings that only hurt once the instance becomes reachable.
  *
- * São avisos, não erros: em rede fechada cada uma delas é uma escolha razoável,
- * e derrubar o processo por isso atrapalharia quem só quer rodar no laptop. O
- * que não pode acontecer é a pessoa descobrir depois de exposta.
+ * These are warnings, not errors: on a closed network each one is a reasonable
+ * choice, and killing the process over them would get in the way of someone who
+ * only wants to run this on a laptop. What must not happen is finding out after
+ * being exposed.
  */
 function avisarSobreExposicao(log: Aviso, env: Env): void {
   if (!env.METRICS_TOKEN) {
@@ -41,10 +42,10 @@ async function main() {
   const app = await buildApp(env)
 
   /**
-   * Desligamento ordenado: para de aceitar conexão nova, drena o que está em
-   * voo e só então fecha Postgres e Redis. A partir da onda 4 é aqui que as
-   * sessões também soltam o lease, para que outra réplica assuma na hora em vez
-   * de esperar o TTL vencer.
+   * Orderly shutdown: stop accepting new connections, drain what is in flight
+   * and only then close Postgres and Redis. From wave 4 on, this is also where
+   * sessions release their lease, so another replica takes over right away
+   * instead of waiting for the TTL to expire.
    */
   let shuttingDown = false
   const shutdown = async (signal: string) => {

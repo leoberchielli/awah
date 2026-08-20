@@ -4,12 +4,12 @@ export const SIGNATURE_HEADER = 'x-awah-signature'
 export const TIMESTAMP_HEADER = 'x-awah-timestamp'
 
 /**
- * Assina o corpo em HMAC-SHA256, com o timestamp dentro da assinatura.
+ * Signs the body with HMAC-SHA256, with the timestamp inside the signature.
  *
- * O timestamp faz parte do que é assinado, e não só do header, para que um
- * atacante não possa capturar uma entrega válida e reenviá-la depois: o
- * receptor rejeita assinaturas antigas comparando o timestamp com o relógio
- * dele, e o timestamp não pode ser alterado sem invalidar a assinatura.
+ * The timestamp is part of what gets signed, not just of the header, so that an
+ * attacker cannot capture a valid delivery and send it again later: the receiver
+ * rejects old signatures by comparing the timestamp against its own clock, and
+ * the timestamp cannot be changed without invalidating the signature.
  */
 export function sign(payload: string, secret: string, timestamp: number): string {
   const hmac = createHmac('sha256', secret)
@@ -22,14 +22,14 @@ export interface VerifyOptions {
   secret: string
   signature: string
   timestamp: number
-  /** Janela aceita, em segundos. */
+  /** Accepted window, in seconds. */
   toleranceSeconds?: number
   now?: () => number
 }
 
 /**
- * Verificação do lado do receptor. Vai no SDK e na documentação — quem integra
- * precisa poder validar sem reimplementar o esquema.
+ * Receiver-side verification. It ships in the SDK and in the docs — integrators
+ * need to be able to validate without reimplementing the scheme.
  */
 export function verify(options: VerifyOptions): boolean {
   const { payload, secret, signature, timestamp, toleranceSeconds = 300, now = Date.now } = options

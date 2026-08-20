@@ -19,11 +19,11 @@ const COLUMNS = {
 }
 
 /**
- * O vínculo vivo entre uma conversa daqui e a mesma conversa lá fora.
+ * The live link between a conversation here and the same one out there.
  *
- * Vínculo vencido é tratado como inexistente, e não apagado: guardar o rastro
- * de qual sessão de fluxo atendeu qual conversa é o que permite explicar depois
- * por que o robô respondeu aquilo.
+ * An expired link is treated as non-existent, not deleted: keeping the trail of
+ * which flow session handled which conversation is what lets us explain later
+ * why the bot answered the way it did.
  */
 export async function findLink(
   db: Database,
@@ -48,7 +48,7 @@ export async function findLink(
   return linha ?? null
 }
 
-/** Caminho inverso: o webhook do Chatwoot chega com o id da conversa de lá. */
+/** Reverse path: the Chatwoot webhook arrives with their conversation id. */
 export async function findLinkByExternal(
   db: Database,
   integrationId: string,
@@ -105,7 +105,7 @@ export async function upsertLink(
   return linha
 }
 
-/** Encerra a sessão de fluxo de um contato — o escape para atendimento humano. */
+/** Ends a contact's flow session — the escape to a human agent. */
 export async function expireLink(
   db: Database,
   integrationId: string,

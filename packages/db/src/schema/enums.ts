@@ -1,26 +1,26 @@
 import { pgEnum } from 'drizzle-orm/pg-core'
 
 /**
- * Papéis do RBAC, em ordem crescente de poder. A hierarquia numérica vive em
- * `apps/api/src/auth/rbac.ts` — este enum define apenas os valores aceitos pelo banco.
+ * RBAC roles, in increasing order of power. The numeric hierarchy lives in
+ * `apps/api/src/auth/rbac.ts` — this enum only defines the values the database accepts.
  */
 export const memberRole = pgEnum('member_role', ['viewer', 'operator', 'admin', 'owner'])
 
-/** Implementações do EngineAdapter (§5 da spec). */
+/** EngineAdapter implementations (spec §5). */
 export const engineType = pgEnum('engine_type', ['baileys', 'cloud_api', 'wwebjs', 'whatsmeow'])
 
 /**
- * Ferramentas externas que o gateway alimenta.
+ * External tools the gateway feeds.
  *
- * `chatwoot` é atendimento humano e fala nos dois sentidos; `typebot` é fluxo
- * automatizado e responde ao que chega. Eles não são exclusivos entre si: o
- * arranjo mais comum é o fluxo atender primeiro e passar para o humano quando
- * não dá conta.
+ * `chatwoot` is human support and talks both ways; `typebot` is an automated
+ * flow and answers whatever arrives. They are not mutually exclusive: the most
+ * common arrangement is the flow taking the first shot and handing over to a
+ * human when it runs out of answers.
  *
- * `http` é o escape: fala com qualquer coisa que aceite um POST e devolva JSON.
- * Existe para que plugar uma plataforma nova não dependa de alguém escrever um
- * conector dedicado aqui dentro — n8n, Make, uma função serverless ou o sistema
- * da casa entram por ele sem mudança de código.
+ * `http` is the escape hatch: it talks to anything that accepts a POST and
+ * returns JSON. It exists so that plugging in a new platform does not depend on
+ * someone writing a dedicated connector in here — n8n, Make, a serverless
+ * function or the in-house system all come in through it with no code change.
  */
 export const integrationKind = pgEnum('integration_kind', ['chatwoot', 'typebot', 'http'])
 
@@ -35,13 +35,14 @@ export const sessionStatus = pgEnum('session_status', [
 ])
 
 /**
- * Intenção do operador, separada do estado observado.
+ * Operator intent, kept separate from observed state.
  *
- * `status` diz onde a sessão está; `desired_state` diz onde ela deveria estar.
- * A distinção é o que torna o failover possível sem adivinhação: quando um nó
- * morre, a sessão fica com status 'connected' e sem dono — e só é legítimo
- * assumi-la porque alguém pediu 'running'. Uma sessão que o operador parou tem
- * 'stopped' e não deve ser ressuscitada por ninguém.
+ * `status` says where the session is; `desired_state` says where it should be.
+ * That distinction is what makes failover possible without guessing: when a
+ * node dies, the session is left with status 'connected' and no owner — and
+ * taking it over is only legitimate because someone asked for 'running'. A
+ * session the operator stopped reads 'stopped' and must not be resurrected by
+ * anyone.
  */
 export const desiredState = pgEnum('desired_state', ['running', 'stopped'])
 
@@ -58,8 +59,8 @@ export const sessionEventType = pgEnum('session_event_type', [
 ])
 
 /**
- * Estados do outbox (§4.2). `held` é o estado que o motor de risco usa para
- * segurar uma mensagem sem descartá-la; `dead` é a DLQ.
+ * Outbox states (§4.2). `held` is the state the risk engine uses to hold a
+ * message without dropping it; `dead` is the DLQ.
  */
 export const outboxStatus = pgEnum('outbox_status', [
   'queued',
@@ -73,8 +74,8 @@ export const outboxStatus = pgEnum('outbox_status', [
 export const messageDirection = pgEnum('message_direction', ['inbound', 'outbound'])
 
 /**
- * `stale` existe porque um ACK que nunca chega não é o mesmo que uma entrega
- * confirmada — o reconciliador marca stale em vez de mentir "delivered".
+ * `stale` exists because an ACK that never arrives is not the same thing as a
+ * confirmed delivery — the reconciler marks stale instead of lying "delivered".
  */
 export const messageStatus = pgEnum('message_status', [
   'pending',
@@ -108,7 +109,7 @@ export const webhookDeliveryStatus = pgEnum('webhook_delivery_status', [
   'dead',
 ])
 
-/** Decisões do motor de risco (§4.1). `blocked` só ocorre com a sessão banida. */
+/** Risk engine decisions (§4.1). `blocked` only happens on a banned session. */
 export const riskAction = pgEnum('risk_action', [
   'allowed',
   'delayed',

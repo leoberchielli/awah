@@ -14,11 +14,11 @@ import { sessions } from './sessions'
 import { orgs } from './tenancy'
 
 /**
- * Fila durável de envio (§4.2). Toda chamada de envio vira uma linha aqui ANTES
- * de qualquer I/O de rede — se o processo morre no meio, a mensagem sai depois.
+ * Durable send queue (§4.2). Every send call becomes a row here BEFORE any
+ * network I/O — if the process dies halfway, the message goes out later.
  *
- * `availableAt` é o relógio único do scheduler: backoff de retry e hold do motor
- * de risco escrevem no mesmo campo, então existe um só critério de elegibilidade.
+ * `availableAt` is the scheduler's single clock: retry backoff and the risk
+ * engine's hold write to the same field, so there is only one eligibility test.
  */
 export const outboxMessages = pgTable(
   'outbox_messages',
@@ -32,14 +32,14 @@ export const outboxMessages = pgTable(
       .references(() => sessions.id, { onDelete: 'cascade' }),
 
     /**
-     * Ordem total de chegada. O FIFO por chat precisa de um critério de
-     * desempate absoluto: dois envios criados no mesmo microssegundo teriam o
-     * mesmo `created_at`, e a fila do chat perderia a ordem justamente sob a
-     * carga em que a ordem mais importa.
+     * Total arrival order. Per-chat FIFO needs an absolute tie-breaker: two
+     * sends created in the same microsecond would carry the same `created_at`,
+     * and the chat's queue would lose its order under exactly the load where
+     * order matters most.
      */
     seq: bigserial('seq', { mode: 'number' }).notNull(),
 
-    /** Idempotência: o mesmo id vindo do cliente nunca gera dois envios. */
+    /** Idempotency: the same id from the client never produces two sends. */
     clientMessageId: text('client_message_id').notNull(),
     chatId: text('chat_id').notNull(),
     type: messageType('type').notNull(),
@@ -49,11 +49,11 @@ export const outboxMessages = pgTable(
     attempts: integer('attempts').notNull().default(0),
     maxAttempts: integer('max_attempts').notNull().default(5),
     availableAt: timestamp('available_at', { withTimezone: true }).notNull().defaultNow(),
-    /** Por que o motor de risco segurou esta mensagem, quando segurou. */
+    /** Why the risk engine held this message, when it did. */
     heldReason: text('held_reason'),
     lastError: text('last_error'),
 
-    /** Id atribuído pela engine depois do envio, usado na reconciliação. */
+    /** Id the engine assigned after the send, used in reconciliation. */
     engineMessageId: text('engine_message_id'),
 
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -62,19 +62,19 @@ export const outboxMessages = pgTable(
   },
   (t) => [
     unique('outbox_client_message_key').on(t.orgId, t.clientMessageId),
-    // Varredura do scheduler: pega o que está elegível agora, em ordem de chegada.
+    // Scheduler sweep: picks up what is eligible now, in arrival order.
     index('outbox_dispatch_idx').on(t.status, t.availableAt, t.seq),
-    // Ordem FIFO dentro de um chat, com paralelismo entre chats distintos.
+    // FIFO order within a chat, with parallelism across distinct chats.
     index('outbox_chat_order_idx').on(t.sessionId, t.chatId, t.seq),
   ],
 )
 
 /**
- * Mensagem materializada, nos dois sentidos.
+ * Materialized message, in both directions.
  *
- * `body` e as referências de mídia são apagados quando `contentExpiresAt` passa,
- * degradando a linha para metadados puros — é assim que o TTL de retenção do §2
- * funciona sem perder os KPIs de volume e latência.
+ * `body` and the media references are wiped once `contentExpiresAt` passes,
+ * degrading the row to pure metadata — that is how the retention TTL from §2
+ * works without losing the volume and latency KPIs.
  */
 export const messages = pgTable(
   'messages',
@@ -96,7 +96,7 @@ export const messages = pgTable(
     fromJid: text('from_jid'),
     toJid: text('to_jid'),
 
-    /** Nulo depois que o TTL de retenção expira. */
+    /** Null once the retention TTL expires. */
     body: text('body'),
     mediaRef: text('media_ref'),
     mediaMimeType: text('media_mime_type'),
@@ -113,14 +113,14 @@ export const messages = pgTable(
     unique('messages_engine_id_key').on(t.orgId, t.sessionId, t.engineMessageId),
     index('messages_chat_idx').on(t.orgId, t.chatId, t.occurredAt),
     index('messages_session_time_idx').on(t.sessionId, t.occurredAt),
-    // Usado pelo job de expurgo de conteúdo.
+    // Used by the content purge job.
     index('messages_retention_idx').on(t.contentExpiresAt),
   ],
 )
 
 /**
- * Trilha append-only de ACK. É a fonte do funil sent → delivered → read e das
- * latências p50/p95/p99 por etapa (§7).
+ * Append-only ACK trail. It is the source of the sent → delivered → read funnel
+ * and of the p50/p95/p99 latencies per stage (§7).
  */
 export const messageStatusEvents = pgTable(
   'message_status_events',

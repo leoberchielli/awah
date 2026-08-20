@@ -7,7 +7,7 @@ import type { KpiDelivery, KpiRisk, KpiSessions, SessionRow } from '../lib/api'
 import { desde, duracao, minutos, num, pct } from '../lib/format'
 import { statusLabel, statusTone } from '../lib/sessionStatus'
 
-/** Cinco segundos: rápido o bastante para acompanhar um incidente, leve o bastante para deixar ligado. */
+/** Five seconds: fast enough to follow an incident, light enough to leave running. */
 const POLL_MS = 5000
 
 export function Operacao() {
@@ -58,7 +58,7 @@ export function Operacao() {
                     rotulo: t('ops.funnel.failed'),
                     valor: entrega.data.funnel.failed,
                     cor: 'var(--crit)',
-                    // Falha se mede contra o que foi enviado, não contra o que foi lido.
+                    // Failed is measured against what was sent, not against what was read.
                     base: entrega.data.funnel.sent,
                   },
                 ]}

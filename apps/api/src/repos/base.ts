@@ -1,15 +1,15 @@
 import type { DbExecutor } from '@awah/db'
 
 /**
- * Base de todo repositório com escopo de tenant.
+ * Base of every tenant-scoped repository.
  *
- * A guarda de `org_id` vive aqui, e não nas rotas, por um motivo prático: rota
- * é fácil de esquecer. Toda consulta a dado de tenant passa por uma subclasse
- * disto, que não consegue ser construída sem um `orgId` — o vazamento entre
- * organizações deixa de depender de disciplina em cada handler.
+ * The `org_id` guard lives here rather than in the routes for a practical
+ * reason: a route is easy to forget. Every query against tenant data goes
+ * through a subclass of this, which cannot be built without an `orgId` —
+ * leaking across organizations stops depending on discipline in each handler.
  *
- * Regra de ouro do projeto: se um handler precisa do `db` cru para ler tabela
- * com `org_id`, o repositório está faltando alguma coisa.
+ * Golden rule of the project: if a handler needs the raw `db` to read a table
+ * with `org_id`, the repository is missing something.
  */
 export abstract class TenantRepository {
   protected readonly db: DbExecutor
@@ -17,13 +17,13 @@ export abstract class TenantRepository {
 
   constructor(db: DbExecutor, orgId: string) {
     if (!orgId) {
-      throw new Error('TenantRepository exige um orgId — recusando consulta sem escopo.')
+      throw new Error('TenantRepository requires an orgId — refusing an unscoped query.')
     }
     this.db = db
     this.orgId = orgId
   }
 
-  /** Org à qual este repositório está preso. */
+  /** The org this repository is tied to. */
   get organizationId(): string {
     return this.orgId
   }

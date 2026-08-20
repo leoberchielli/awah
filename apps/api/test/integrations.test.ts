@@ -33,7 +33,7 @@ describe('configuração', () => {
     expect(() => chatwootConfigSchema.parse({ ...CHATWOOT, webhookToken: 'curto' })).toThrow()
   })
 
-  /** O escape para o humano vem ligado; desligar tem que ser escolha. */
+  /** The escape to a human ships on; turning it off has to be a choice. */
   it('traz a palavra de escape por padrão', () => {
     expect(TYPEBOT.humanHandoffKeyword).toBe('agent')
     expect(TYPEBOT.sessionTtlMinutes).toBeGreaterThan(0)
@@ -67,10 +67,10 @@ describe('cliente do Chatwoot', () => {
   })
 
   /**
-   * O `source_id` da caixa certa, e não o primeiro da lista.
+   * The `source_id` of the right inbox, not the first one in the list.
    *
-   * Um contato que já falou por e-mail tem um contact_inbox para cada caixa;
-   * pegar o primeiro abriria a conversa no lugar errado.
+   * A contact who has already written in by e-mail has one contact_inbox per
+   * inbox; taking the first would open the conversation in the wrong place.
    */
   it('escolhe o source_id da caixa configurada', async () => {
     const fetchImpl = vi.fn(async () =>
@@ -98,7 +98,7 @@ describe('cliente do Chatwoot', () => {
     let chamada = 0
     const fetchImpl = vi.fn(async (_url: string | URL, init?: RequestInit) => {
       chamada++
-      // Busca: acha um contato, mas só na caixa errada.
+      // Search: finds a contact, but only in the wrong inbox.
       if (!init?.method || init.method === 'GET') {
         if (chamada === 1) {
           return resposta({
@@ -109,7 +109,7 @@ describe('cliente do Chatwoot', () => {
           payload: [{ id: 9, contact_inboxes: [{ source_id: 'novo', inbox: { id: 7 } }] }],
         })
       }
-      // Criação devolve o vínculo certo.
+      // Creating one returns the right link.
       return resposta({
         payload: { contact: { id: 9, contact_inboxes: [{ source_id: 'novo', inbox: { id: 7 } }] } },
       })
@@ -122,7 +122,7 @@ describe('cliente do Chatwoot', () => {
     expect(contato.sourceId).toBe('novo')
   })
 
-  /** 422 na criação é corrida, não falha: outro processo criou entre a busca e agora. */
+  /** A 422 on create is a race, not a failure: another process created it since the search. */
   it('sobrevive a contato criado por outro processo no meio do caminho', async () => {
     let busca = 0
     const fetchImpl = vi.fn(async (_url: string | URL, init?: RequestInit) => {
@@ -163,7 +163,7 @@ describe('cliente do Chatwoot', () => {
   it('separa erro de configuração de erro de disponibilidade', () => {
     expect(new ChatwootError(401, 'x').isPermanente).toBe(true)
     expect(new ChatwootError(404, 'x').isPermanente).toBe(true)
-    // Estes valem repetir: são do outro lado, e passam.
+    // These are worth retrying: they belong to the other side, and they pass.
     expect(new ChatwootError(429, 'x').isPermanente).toBe(false)
     expect(new ChatwootError(503, 'x').isPermanente).toBe(false)
   })
@@ -198,7 +198,7 @@ describe('cliente do Typebot', () => {
     expect(turno.aguardandoResposta).toBe(true)
   })
 
-  /** Sem `input`, o fluxo terminou — e a próxima mensagem recomeça do zero. */
+  /** With no `input`, the flow is over — and the next message starts from scratch. */
   it('reconhece fluxo encerrado', async () => {
     const fetchImpl = vi.fn(async () =>
       resposta({
@@ -243,8 +243,8 @@ describe('cliente do Typebot', () => {
   })
 
   /**
-   * 404 no continueChat é sessão morta do outro lado, não erro. Tratar como
-   * falha deixaria o contato mudo para sempre.
+   * A 404 on continueChat is a dead session on the other side, not an error.
+   * Treating it as a failure would leave the contact mute forever.
    */
   it('marca sessão expirada como caso à parte', () => {
     expect(new TypebotError(404, 'x').sessaoExpirada).toBe(true)
@@ -289,9 +289,9 @@ describe('link de compartilhamento do Typebot', () => {
   })
 
   /**
-   * O engano mais provável de quem está com o Typebot aberto: copiar da barra de
-   * endereços do editor. Sem esta conferência a integração é aceita e só falha
-   * depois, na primeira mensagem de um cliente real.
+   * The likeliest mistake for someone with Typebot open: copying from the
+   * editor's address bar. Without this check the integration is accepted and
+   * only fails later, on the first message from a real customer.
    */
   it('recusa a URL do editor, explicando onde está a certa', () => {
     expect(() => derivarDoLink('https://app.typebot.io/typebots/abc123/edit')).toThrow(
@@ -310,8 +310,9 @@ describe('link de compartilhamento do Typebot', () => {
 
 describe('descoberta no Chatwoot', () => {
   /**
-   * O `accountId` fica escondido na URL do Chatwoot, e pedir que a pessoa o
-   * copie de lá é a primeira coisa que trava a adoção. O token já sabe.
+   * The `accountId` is buried in the Chatwoot URL, and asking someone to copy
+   * it from there is the first thing that stalls adoption. The token already
+   * knows it.
    */
   it('lista as contas que o token alcança', async () => {
     const urls: string[] = []
@@ -329,7 +330,7 @@ describe('descoberta no Chatwoot', () => {
       fetch: fetchImpl as unknown as typeof fetch,
     }).contas()
 
-    // O perfil não vive sob /accounts/{id} — é o único caminho absoluto.
+    // The profile does not live under /accounts/{id} — it is the one absolute path.
     expect(urls[0]).toBe('https://chat.exemplo.com/api/v1/profile')
     expect(contas).toEqual([
       { id: 1, name: 'Minha Empresa', role: 'administrator' },
@@ -368,8 +369,8 @@ describe('descoberta no Chatwoot', () => {
   })
 
   /**
-   * Criar a caixa e voltar ao Chatwoot para colar a URL eram os dois passos que
-   * mais faziam gente desistir. Uma chamada resolve os dois.
+   * Creating the inbox and going back to Chatwoot to paste the URL were the two
+   * steps that made most people give up. One call handles both.
    */
   it('cria a caixa já com o webhook apontado', async () => {
     let corpo: Record<string, unknown> = {}

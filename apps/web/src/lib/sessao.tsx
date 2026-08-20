@@ -6,11 +6,12 @@ const Contexto = createContext<Me | null>(null)
 export const ProvedorDeSessao = Contexto.Provider
 
 /**
- * Quem está logado.
+ * Who is signed in.
  *
- * O `Autenticado` já busca isto para decidir se mostra o painel; repetir a
- * chamada em cada tela que precisa do papel seria desperdício, e pior, abriria
- * a janela em que uma tela acha que é admin e outra ainda não sabe.
+ * `Autenticado` already fetches this to decide whether to show the panel;
+ * repeating the call on every screen that needs the role would be waste, and
+ * worse, would open a window where one screen thinks it is admin and another
+ * does not know yet.
  */
 export function useMe(): Me {
   const me = useContext(Contexto)
@@ -21,10 +22,11 @@ export function useMe(): Me {
 const RANK: Record<Papel, number> = { viewer: 0, operator: 1, admin: 2, owner: 3 }
 
 /**
- * Espelha a hierarquia do servidor.
+ * Mirrors the server's hierarchy.
  *
- * Aqui é só para não oferecer o que vai levar 403 — a autorização de verdade
- * continua sendo do servidor, e esta cópia nunca decide nada sozinha.
+ * This exists only so we do not offer what will come back 403 — the real
+ * authorization stays with the server, and this copy never decides anything on
+ * its own.
  */
 export function papelAoMenos(papel: string, minimo: Papel): boolean {
   const rank = RANK[papel as Papel]

@@ -75,25 +75,25 @@ export async function apiKeyRoutes(app: FastifyInstance) {
       const { name, role, sessionScope, expiresInDays } = request.body
 
       /**
-       * Ninguém emite uma chave mais poderosa do que o próprio papel — caso
-       * contrário um admin fabricaria uma chave de owner e escalaria sozinho.
+       * Nobody issues a key more powerful than their own role — otherwise an
+       * admin would forge an owner key and escalate on their own.
        */
       if (!roleAtLeast(auth.role, role)) {
         throw forbidden(`You cannot issue a key with a role above your own (${auth.role}).`)
       }
 
       /**
-       * Escopo precisa apontar para sessão que existe nesta organização.
+       * The scope has to point at a session that exists in this organization.
        *
-       * Sem esta conferência dá para emitir uma chave que não alcança nada, e a
-       * falha só aparece no primeiro envio — como um 404 dizendo "sessão não
-       * encontrada", que culpa a sessão em vez da chave e manda o operador
-       * procurar no lugar errado. O caso real foi alguém usar o "Try it" da
-       * documentação e deixar no campo o UUID de exemplo que o formulário
-       * sugere.
+       * Without this check you can issue a key that reaches nothing, and the
+       * failure only shows up on the first send — as a 404 saying "session not
+       * found", which blames the session instead of the key and sends the
+       * operator looking in the wrong place. The real case was someone using
+       * the "Try it" in the documentation and leaving the example UUID the
+       * form suggests in the field.
        *
-       * Conferir aqui não vaza nada: são as sessões da própria organização de
-       * quem está emitindo a chave.
+       * Checking here leaks nothing: these are the sessions of the very
+       * organization of whoever is issuing the key.
        */
       if (sessionScope) {
         if (sessionScope.length === 0) {

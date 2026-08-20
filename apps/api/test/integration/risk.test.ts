@@ -16,7 +16,7 @@ describe.skipIf(!hasInfra)('motor de risco', () => {
   let org: SeededOrg
   let sessionId: string
 
-  /** Relógio controlado: janela deslizante sem esperar minutos de verdade. */
+  /** Controlled clock: a sliding window without waiting real minutes. */
   let agora = new Date('2026-08-18T12:00:00Z').getTime()
   const now = () => agora
 
@@ -55,8 +55,9 @@ describe.skipIf(!hasInfra)('motor de risco', () => {
     })
 
     /**
-     * O ponto de usar janela deslizante e não balde de hora cheia: o que saiu há
-     * mais de um minuto deixa de contar no minuto, mas continua na hora.
+     * The point of a sliding window instead of a whole-hour bucket: what went
+     * out more than a minute ago stops counting in the minute, but stays in the
+     * hour.
      */
     it('esquece o que saiu da janela conforme o tempo passa', async () => {
       await budget.record(sessionId, 'a@s.whatsapp.net', false)
@@ -98,9 +99,9 @@ describe.skipIf(!hasInfra)('motor de risco', () => {
     })
 
     /**
-     * A ETA precisa ser real, não um palpite: é o instante em que o envio mais
-     * antigo sai da janela. É isso que permite mostrar "sai às 14h03" em vez de
-     * "tente de novo depois".
+     * The ETA has to be real, not a guess: it is the instant the oldest send
+     * leaves the window. That is what lets the panel say "goes out at 14:03"
+     * instead of "try again later".
      */
     it('calcula a ETA a partir do envio mais antigo da janela', async () => {
       const limites = { ...DEFAULT_LIMITS, perMinute: 2 }
@@ -109,7 +110,7 @@ describe.skipIf(!hasInfra)('motor de risco', () => {
       await budget.record(sessionId, 'b@s.whatsapp.net', false)
 
       const verdict = await budget.check(sessionId, limites, false)
-      // O primeiro entrou 20 s atrás: a vaga abre 40 s à frente.
+      // The first landed 20 s ago: the slot opens 40 s from now.
       const esperado = agora + 40_000
       expect(verdict.availableAt?.getTime()).toBe(esperado)
     })
@@ -122,7 +123,7 @@ describe.skipIf(!hasInfra)('motor de risco', () => {
       const paraConhecido = await budget.check(sessionId, limites, false)
 
       expect(paraNovo.exceeded).toBe('newContactsToday')
-      // Quem já conversa com a sessão continua sendo atendido.
+      // Anyone already in a conversation with the session keeps being served.
       expect(paraConhecido.exceeded).toBeNull()
     })
   })
@@ -138,9 +139,9 @@ describe.skipIf(!hasInfra)('motor de risco', () => {
     })
 
     /**
-     * O Redis é cache, não fonte de verdade. Sem o fallback ao Postgres, um
-     * restart faria a base inteira de contatos parecer nova e o teto diário
-     * travaria quem só está respondendo conversas antigas.
+     * Redis is a cache, not the source of truth. Without the Postgres fallback,
+     * a restart would make the whole contact base look new, and the daily cap
+     * would freeze someone who is only replying to old conversations.
      */
     it('recupera do Postgres quando o cache foi perdido', async () => {
       const chatId = 'historico@s.whatsapp.net'
@@ -174,7 +175,7 @@ describe.skipIf(!hasInfra)('motor de risco', () => {
       expect(decisao.typingMs).toBeGreaterThan(0)
     })
 
-    /** Nunca descarta: segura com hora marcada e devolve o motivo em português. */
+    /** Never dropped: held with a time on it, and the reason comes back in words. */
     it('segura quando o orçamento acabou, sem perder a mensagem', async () => {
       await db
         .update(schema.sessions)
@@ -234,7 +235,7 @@ describe.skipIf(!hasInfra)('motor de risco', () => {
 
       expect(snapshot).not.toBeNull()
       expect(snapshot?.ageInDays).toBeCloseTo(1, 1)
-      // Um dia de idade libera 10% do teto.
+      // One day of age unlocks 10% of the cap.
       expect(snapshot?.warmupFactor).toBeCloseTo(0.1, 2)
       expect(snapshot?.limits.perDay).toBeLessThan(DEFAULT_LIMITS.perDay)
       expect(snapshot?.score.factors).toHaveLength(4)

@@ -11,13 +11,14 @@ import type {
 import { ApiError, post, put } from '../../lib/api'
 
 /**
- * Conectar o Chatwoot sem sair desta tela.
+ * Connect Chatwoot without leaving this screen.
  *
- * O manual desta integração tinha sete passos, e três deles eram os que faziam
- * a pessoa desistir: descobrir o `accountId` na URL, descobrir o `inboxId` na
- * URL, e voltar ao Chatwoot para colar a URL do webhook. O token já sabe as
- * duas primeiras respostas, e a API do Chatwoot aceita criar a caixa com o
- * webhook já apontado — então nenhum dos três precisa existir.
+ * The manual for this integration had seven steps, and three of them were the
+ * ones that made people give up: find the `accountId` in the URL, find the
+ * `inboxId` in the URL, and go back to Chatwoot to paste the webhook URL. The
+ * token already knows the first two answers, and the Chatwoot API will create
+ * the inbox with the webhook already pointed at us — so none of the three has
+ * to exist.
  */
 export function AssistenteChatwoot({
   sessoes,
@@ -66,7 +67,7 @@ export function AssistenteChatwoot({
       }
 
       setContas(resultado.accounts)
-      // Conta única não merece uma pergunta: já avança e busca as caixas dela.
+      // A single account does not deserve a question: move on and fetch its inboxes.
       const unica = resultado.accounts.length === 1 ? resultado.accounts[0] : null
       if (unica) {
         await escolherConta(unica.id)
@@ -109,7 +110,7 @@ export function AssistenteChatwoot({
         <div className="flex flex-col gap-3">
           <p className="rounded-md bg-ok/10 px-3 py-2 text-sm text-ok">{pronto.detail}</p>
 
-          {/* Nulo significa que o gateway já apontou o webhook sozinho. */}
+          {/* Null means the gateway already pointed the webhook itself. */}
           {pronto.webhookUrl ? (
             <div className="flex flex-col gap-1.5">
               <p className="text-xs text-ink/80">
@@ -231,8 +232,9 @@ export function AssistenteChatwoot({
             )}
 
             {/**
-             * Caixa que não é do tipo API aparece desabilitada em vez de sumir:
-             * quem procura a caixa que já usa precisa ver por que ela não serve.
+             * An inbox that is not API-type shows disabled instead of vanishing:
+             * whoever is looking for the inbox they already use needs to see
+             * why it will not do.
              */}
             {caixas.map((caixa) => (
               <Opcao

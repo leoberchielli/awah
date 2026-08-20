@@ -44,8 +44,8 @@ describe('validação de ambiente', () => {
   })
 
   /**
-   * `z.coerce.boolean()` trataria a string "false" como verdadeira, que é
-   * exatamente o tipo de configuração que só falha em produção.
+   * `z.coerce.boolean()` would read the string "false" as true, which is
+   * exactly the kind of setting that only fails in production.
    */
   it.each([
     ['true', true],
@@ -69,11 +69,11 @@ describe('validação de ambiente', () => {
   })
 
   /**
-   * A regressão que este teste impede: o `docker-compose.yml` deste repositório
-   * declara `PUBLIC_URL: ${PUBLIC_URL:-}` e `METRICS_TOKEN: ${METRICS_TOKEN:-}`
-   * para documentar as duas variáveis. Compose entrega isso ao contêiner como
-   * string vazia, não como ausente — e o processo morria no boot com
-   * "PUBLIC_URL: Invalid url" para quem tinha acabado de baixar o compose.
+   * The regression this test prevents: this repo's `docker-compose.yml`
+   * declares `PUBLIC_URL: ${PUBLIC_URL:-}` and `METRICS_TOKEN: ${METRICS_TOKEN:-}`
+   * to document both variables. Compose hands that to the container as an
+   * empty string, not as absent — and the process died at boot with
+   * "PUBLIC_URL: Invalid url" for anyone who had just downloaded the compose.
    */
   it.each(['PUBLIC_URL', 'METRICS_TOKEN', 'DASHBOARD_DIR'] as const)(
     'trata %s vazio como não configurado',
@@ -82,7 +82,7 @@ describe('validação de ambiente', () => {
     },
   )
 
-  /** NODE_ID vazio não é "sem identidade": é "use o hostname", como ausente. */
+  /** Empty NODE_ID is not "no identity" — it means "use the hostname", as absent does. */
   it('trata NODE_ID vazio como não configurado', () => {
     expect(loadEnv({ ...valid, NODE_ID: '' }).NODE_ID).toBe(hostname())
   })
@@ -91,7 +91,7 @@ describe('validação de ambiente', () => {
     expect(loadEnv({ ...valid, PUBLIC_URL: '   ' }).PUBLIC_URL).toBeUndefined()
   })
 
-  /** Vazio vira ausente; errado continua errado. */
+  /** Empty becomes absent; wrong stays wrong. */
   it('continua recusando valor preenchido e inválido', () => {
     expect(() => loadEnv({ ...valid, PUBLIC_URL: 'nao-e-url' })).toThrow('PUBLIC_URL')
     expect(() => loadEnv({ ...valid, METRICS_TOKEN: 'curto-demais' })).toThrow('METRICS_TOKEN')

@@ -2,13 +2,12 @@ import type { MessageType } from '@awah/db'
 import { type Database, sql } from '@awah/db'
 
 /**
- * Operações de fila do outbox.
+ * Outbox queue operations.
  *
- * Ao contrário do resto do acesso a dados, estas funções atravessam
- * organizações de propósito: o scheduler é infraestrutura do nó e trabalha
- * sobre as sessões que este processo hospeda, sejam de quem forem. Toda leitura
- * originada de uma requisição HTTP continua passando pelo repositório com
- * escopo de tenant.
+ * Unlike the rest of the data access, these functions cross organizations on
+ * purpose: the scheduler is node infrastructure and works over the sessions
+ * this process hosts, whoever they belong to. Every read that starts from an
+ * HTTP request still goes through the tenant-scoped repository.
  */
 
 export interface ClaimedJob {
@@ -24,19 +23,19 @@ export interface ClaimedJob {
 }
 
 /**
- * Reserva até `limit` envios elegíveis.
+ * Claims up to `limit` eligible sends.
  *
- * Duas garantias moram nesta consulta:
+ * Two guarantees live in this query:
  *
- * 1. **FIFO por chat** — `DISTINCT ON (session_id, chat_id) … ORDER BY seq` pega
- *    somente a cabeça de cada fila de conversa, e o `NOT EXISTS` impede reservar
- *    a próxima enquanto a anterior ainda está saindo. Chats diferentes seguem
- *    em paralelo.
- * 2. **Exclusividade entre workers** — o `UPDATE … WHERE status = 'queued'` só
- *    afeta linhas que ainda estavam na fila. Se outra réplica reservou no
- *    intervalo, o status já mudou e a linha simplesmente não volta no RETURNING.
- *    É o mesmo efeito de um SKIP LOCKED, sem o risco de combinar bloqueio
- *    explícito com subconsulta agregada.
+ * 1. **FIFO per chat** — `DISTINCT ON (session_id, chat_id) … ORDER BY seq`
+ *    takes only the head of each conversation's queue, and the `NOT EXISTS`
+ *    stops the next one from being claimed while the previous one is still on
+ *    its way out. Different chats go on in parallel.
+ * 2. **Exclusivity between workers** — the `UPDATE … WHERE status = 'queued'`
+ *    only affects rows that were still queued. If another replica claimed one
+ *    in the meantime, the status has already changed and the row simply does
+ *    not come back in the RETURNING. Same effect as a SKIP LOCKED, without the
+ *    risk of combining an explicit lock with an aggregated subquery.
  */
 export async function claimOutbox(
   db: Database,
@@ -46,10 +45,10 @@ export async function claimOutbox(
   if (sessionIds.length === 0 || limit <= 0) return []
 
   /**
-   * Um parâmetro por id, em vez de um array interpolado. Interpolar o array
-   * inteiro faz o driver enviá-lo como texto, e o Postgres rejeita com
-   * "malformed array literal" — o `IN` com parâmetros individuais é explícito e
-   * continua imune a injeção.
+   * One parameter per id, instead of an interpolated array. Interpolating the
+   * whole array makes the driver send it as text, and Postgres rejects it with
+   * "malformed array literal" — an `IN` with individual parameters is explicit
+   * and stays immune to injection.
    */
   const ids = sql.join(
     sessionIds.map((id) => sql`${id}::uuid`),
@@ -118,9 +117,9 @@ export async function markSent(db: Database, id: string, engineMessageId: string
 }
 
 /**
- * Devolve o envio à fila com espera, ou o manda para a DLQ ao esgotar as
- * tentativas. Nunca descarta: mensagem morta continua consultável e pode ser
- * reprocessada.
+ * Puts the send back in the queue with a wait, or sends it to the DLQ once the
+ * attempts run out. Never drops it: a dead message is still queryable and can
+ * be reprocessed.
  */
 export async function markFailed(
   db: Database,
@@ -150,11 +149,11 @@ export async function markFailed(
 }
 
 /**
- * Segura o envio até a janela de orçamento abrir.
+ * Holds the send until the budget window opens.
  *
- * Estado próprio, separado de `queued`, porque a diferença importa para quem
- * opera: `held` significa "o motor de risco está protegendo seu número", com
- * hora marcada para sair. Não consome tentativa — não houve falha alguma.
+ * A state of its own, separate from `queued`, because the difference matters
+ * to whoever is operating: `held` means "the risk engine is protecting your
+ * number", with a set time to go out. It consumes no attempt — nothing failed.
  */
 export async function hold(db: Database, id: string, until: Date, reason: string): Promise<void> {
   await db.execute(sql`
@@ -168,9 +167,9 @@ export async function hold(db: Database, id: string, until: Date, reason: string
 }
 
 /**
- * Devolve à fila sem consumir tentativa. Usado quando a sessão saiu do ar entre
- * a reserva e o envio — não houve falha de entrega, apenas não há por onde sair
- * agora.
+ * Puts it back in the queue without consuming an attempt. Used when the
+ * session went down between the claim and the send — nothing failed to
+ * deliver, there is just no way out right now.
  */
 export async function release(db: Database, id: string, delayMs = 5000): Promise<void> {
   await db.execute(sql`
@@ -183,10 +182,9 @@ export async function release(db: Database, id: string, delayMs = 5000): Promise
 }
 
 /**
- * Solta envios que ficaram presos em 'sending' — o processo morreu entre a
- * reserva e a conclusão. Sem isto, a fila daquele chat trava para sempre, já que
- * o `NOT EXISTS` do claim continuaria enxergando um envio em curso que não
- * existe mais.
+ * Frees sends left stuck in 'sending' — the process died between the claim and
+ * the finish. Without this, that chat's queue jams forever, since the claim's
+ * `NOT EXISTS` would go on seeing a send in progress that no longer exists.
  */
 export async function recoverStuck(db: Database, olderThanMs: number): Promise<number> {
   const result = await db.execute(sql`

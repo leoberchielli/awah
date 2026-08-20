@@ -15,11 +15,11 @@ import { sessions } from './sessions'
 import { orgs } from './tenancy'
 
 /**
- * Decisão do motor de risco, uma linha por avaliação (§4.1).
+ * Risk engine decision, one row per evaluation (§4.1).
  *
- * Guardar o snapshot do orçamento junto da decisão é o que torna o
- * comportamento auditável: dá para responder "por que esta mensagem atrasou
- * 40 s às 14h03" meses depois, sem reconstituir estado.
+ * Storing the budget snapshot next to the decision is what makes the behaviour
+ * auditable: months later you can still answer "why was this message delayed
+ * 40 s at 14:03" without reconstructing state.
  */
 export const riskEvents = pgTable(
   'risk_events',
@@ -34,10 +34,10 @@ export const riskEvents = pgTable(
     outboxId: uuid('outbox_id').references(() => outboxMessages.id, { onDelete: 'set null' }),
 
     action: riskAction('action').notNull(),
-    /** Score 0–100 no momento da decisão. */
+    /** Score 0–100 at the moment of the decision. */
     score: integer('score').notNull(),
     reason: text('reason').notNull(),
-    /** Consumo das janelas por minuto/hora/dia e contatos novos no momento. */
+    /** Minute/hour/day window usage and new contacts at that moment. */
     budget: jsonb('budget'),
     delayMs: integer('delay_ms'),
 
@@ -50,13 +50,13 @@ export const riskEvents = pgTable(
 )
 
 /**
- * Agregado horário. O dashboard lê exclusivamente daqui — varrer as tabelas
- * cruas a cada carregamento de painel é o erro que transforma observabilidade
- * em incidente de banco (§4.3).
+ * Hourly aggregate. The dashboard reads from here and nowhere else — scanning
+ * the raw tables on every panel load is the mistake that turns observability
+ * into a database incident (§4.3).
  *
- * `sessionId` nulo representa o agregado da org inteira. O índice único usa
- * NULLS NOT DISTINCT para que esse caso continue sendo uma linha só — isso
- * exige PostgreSQL 15 ou superior.
+ * A null `sessionId` stands for the whole-org aggregate. The unique index uses
+ * NULLS NOT DISTINCT so that case stays a single row — which requires
+ * PostgreSQL 15 or later.
  */
 export const metricsHourly = pgTable(
   'metrics_hourly',
@@ -66,7 +66,7 @@ export const metricsHourly = pgTable(
       .notNull()
       .references(() => orgs.id, { onDelete: 'cascade' }),
     sessionId: uuid('session_id').references(() => sessions.id, { onDelete: 'cascade' }),
-    /** Início da hora, sempre em UTC. */
+    /** Start of the hour, always in UTC. */
     bucket: timestamp('bucket', { withTimezone: true }).notNull(),
     metric: text('metric').notNull(),
     value: doublePrecision('value').notNull(),

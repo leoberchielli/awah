@@ -7,11 +7,11 @@ export interface MigrateOptions {
 }
 
 /**
- * Aplica as migrations pendentes.
+ * Applies the pending migrations.
  *
- * Roda como passo separado do boot da API de propósito: várias réplicas subindo
- * ao mesmo tempo não devem competir para migrar o mesmo banco. O pool é de uma
- * conexão porque migration é serial por natureza.
+ * It runs as a step separate from the API boot on purpose: several replicas
+ * coming up at the same time must not race each other to migrate the same
+ * database. The pool is one connection because migration is serial by nature.
  */
 export async function runMigrations(options: MigrateOptions): Promise<void> {
   const handle = createDb({ url: options.url, max: 1 })

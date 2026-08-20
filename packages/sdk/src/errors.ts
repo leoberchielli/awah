@@ -1,9 +1,9 @@
 /**
- * Erro da API, com o `code` preservado.
+ * An API error, with the `code` preserved.
  *
- * O `code` é contrato público do AWAH — mensagens mudam de versão para versão,
- * códigos não. Quem trata `session_not_connected` de um jeito e
- * `risk_budget_exhausted` de outro faz branch nele, nunca no texto.
+ * The `code` is AWAH's public contract — messages change from version to
+ * version, codes do not. If you handle `session_not_connected` one way and
+ * `risk_budget_exhausted` another, branch on the code, never on the text.
  */
 export class AwahError extends Error {
   override readonly name = 'AwahError'
@@ -13,29 +13,29 @@ export class AwahError extends Error {
     readonly code: string,
     message: string,
     readonly details?: unknown,
-    /** Corpo cru, para quando o servidor devolver algo fora do envelope. */
+    /** Raw body, for when the server returns something outside the envelope. */
     readonly body?: unknown,
   ) {
     super(message)
   }
 
-  /** Erro de credencial: nem retry nem espera resolvem. */
+  /** A credential error: neither a retry nor waiting will fix it. */
   get isAuth(): boolean {
     return this.status === 401 || this.status === 403
   }
 
-  /** O servidor pediu para desacelerar. */
+  /** The server asked you to slow down. */
   get isRateLimited(): boolean {
     return this.status === 429
   }
 
-  /** Vale tentar de novo — o SDK já faz isso sozinho dentro da política. */
+  /** Worth trying again — the SDK already does it for you, within its policy. */
   get isRetryable(): boolean {
     return this.status === 408 || this.status === 429 || this.status >= 500
   }
 }
 
-/** A requisição não chegou a receber resposta: rede, DNS, timeout do cliente. */
+/** The request never got a response at all: network, DNS, client timeout. */
 export class AwahConnectionError extends Error {
   override readonly name = 'AwahConnectionError'
 

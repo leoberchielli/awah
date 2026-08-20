@@ -2,8 +2,8 @@ import { index, integer, pgTable, text, timestamp, unique, uuid } from 'drizzle-
 import { memberRole } from './enums'
 
 /**
- * Organização é a unidade de isolamento. Toda tabela de domínio carrega `orgId`
- * e a guarda vive na camada de repositório (§6 da spec).
+ * The org is the unit of isolation. Every domain table carries `orgId` and the
+ * guard lives in the repository layer (spec §6).
  */
 export const orgs = pgTable(
   'orgs',
@@ -12,8 +12,8 @@ export const orgs = pgTable(
     slug: text('slug').notNull(),
     name: text('name').notNull(),
     /**
-     * Retenção de conteúdo em dias (§2). 0 significa nunca persistir corpo de
-     * mensagem — só metadados. -1 significa reter para sempre.
+     * Content retention in days (§2). 0 means never persist a message body —
+     * metadata only. -1 means keep it forever.
      */
     retentionDays: integer('retention_days').notNull().default(30),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -23,9 +23,9 @@ export const orgs = pgTable(
 )
 
 /**
- * Usuário é global, não pertence a uma org — a ligação é a membership. Isso
- * permite que a mesma pessoa opere várias orgs com papéis diferentes.
- * `email` é sempre normalizado para minúsculas antes de gravar.
+ * A user is global, it does not belong to an org — the membership is the link.
+ * That lets the same person operate several orgs with different roles.
+ * `email` is always normalized to lowercase before it is written.
  */
 export const users = pgTable(
   'users',
@@ -41,7 +41,7 @@ export const users = pgTable(
   (t) => [unique('users_email_key').on(t.email)],
 )
 
-/** O papel é por membro dentro de uma org, nunca global (§6). */
+/** The role is per member within an org, never global (§6). */
 export const memberships = pgTable(
   'memberships',
   {
@@ -63,8 +63,8 @@ export const memberships = pgTable(
 )
 
 /**
- * Sessão de login do dashboard. Token opaco guardado como hash — o valor cru só
- * existe no cookie httpOnly do navegador, o que torna a revogação imediata.
+ * Dashboard login session. Opaque token stored as a hash — the raw value only
+ * exists in the browser's httpOnly cookie, which makes revocation immediate.
  */
 export const userSessions = pgTable(
   'user_sessions',
@@ -88,12 +88,12 @@ export const userSessions = pgTable(
 )
 
 /**
- * Chave de API. O segredo nunca é persistido em claro: guardamos o hash argon2id
- * e um `prefix` público que serve tanto para o lookup quanto para o usuário
- * identificar a chave no dashboard sem revelá-la.
+ * API key. The secret is never persisted in the clear: we keep the argon2id hash
+ * and a public `prefix` that serves both the lookup and the user identifying the
+ * key in the dashboard without revealing it.
  *
- * `sessionScope` nulo significa "todas as sessões da org"; um array restringe a
- * chave às sessões listadas.
+ * A null `sessionScope` means "every session in the org"; an array restricts the
+ * key to the sessions listed.
  */
 export const apiKeys = pgTable(
   'api_keys',

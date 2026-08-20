@@ -13,9 +13,9 @@ const APP_SECRET = 'segredo-do-app-da-meta'
 const VERIFY_TOKEN = 'token-de-verificacao'
 
 /**
- * O webhook da Meta é o único endpoint público do sistema: quem chama é a
- * infraestrutura deles, sem chave de API. Toda a defesa está na assinatura, e é
- * exatamente isso que estes testes exercitam.
+ * Meta's webhook is the only public endpoint in the system: the caller is
+ * their infrastructure, with no API key. The whole defence is the signature,
+ * and that is exactly what these tests exercise.
  */
 describe.skipIf(!hasInfra)('webhook da Cloud API', () => {
   let app: FastifyInstance
@@ -81,7 +81,7 @@ describe.skipIf(!hasInfra)('webhook da Cloud API', () => {
       expect(resposta.body).toBe('1234567890')
     })
 
-    /** Sem isto, qualquer um apontaria o webhook de outra conta para cá. */
+    /** Without this, anyone could point another account's webhook at us. */
     it('recusa token de verificação errado', async () => {
       const resposta = await app.inject({
         method: 'GET',
@@ -142,7 +142,7 @@ describe.skipIf(!hasInfra)('webhook da Cloud API', () => {
       const resposta = await enviar(corpo, assinar(JSON.stringify(corpo)))
       expect(resposta.statusCode).toBe(200)
 
-      // O processamento é assíncrono de propósito: a Meta não espera por ele.
+      // Processing is asynchronous on purpose: Meta does not wait for it.
       const gravada = await aguardar(async () => {
         const [linha] = await app.db
           .select({ body: schema.messages.body, direction: schema.messages.direction })
@@ -162,10 +162,10 @@ describe.skipIf(!hasInfra)('webhook da Cloud API', () => {
     })
 
     /**
-     * A assinatura cobre os bytes exatos que a Meta enviou. Reserializar o JSON
-     * produziria bytes parecidos, não idênticos — e o HMAC falharia de forma
-     * intermitente. Este corpo tem espaçamento fora do padrão justamente para
-     * provar que é o buffer cru que está sendo conferido.
+     * The signature covers the exact bytes Meta sent. Re-serializing the JSON
+     * would produce similar bytes, not identical ones — and the HMAC would fail
+     * intermittently. This body has odd spacing precisely to prove it is the
+     * raw buffer being checked.
      */
     it('confere a assinatura sobre os bytes crus, não sobre o JSON reserializado', async () => {
       const cru = '{ "entry" :  [ ] }'
@@ -185,7 +185,7 @@ describe.skipIf(!hasInfra)('webhook da Cloud API', () => {
   })
 })
 
-/** Espera uma condição assíncrona sem prender o teste em sleep fixo. */
+/** Waits for an async condition without pinning the test to a fixed sleep. */
 async function aguardar<T>(consulta: () => Promise<T | null>, tentativas = 40): Promise<T | null> {
   for (let i = 0; i < tentativas; i++) {
     const resultado = await consulta()

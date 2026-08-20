@@ -3,15 +3,17 @@ import { type Attributes, SpanStatusCode, trace } from '@opentelemetry/api'
 const tracer = trace.getTracer('awah')
 
 /**
- * Instrumentação de trace usando **apenas a API** do OpenTelemetry.
+ * Trace instrumentation using **the API only** of OpenTelemetry.
  *
- * A escolha é deliberada: `@opentelemetry/api` é uma interface de poucos
- * quilobytes e, sem um SDK registrado, todas as chamadas viram no-op de custo
- * desprezível. Embutir o SDK completo com auto-instrumentação acrescentaria
- * dezenas de megabytes de dependência a um projeto cuja tese é ser leve — e
- * cobraria isso de todo mundo, inclusive de quem nunca vai olhar um trace.
+ * The choice is deliberate: `@opentelemetry/api` is an interface of a few
+ * kilobytes and, with no SDK registered, every call turns into a no-op of
+ * negligible cost. Bundling the full SDK with auto-instrumentation would add
+ * tens of megabytes of dependency to a project whose whole thesis is being
+ * light — and would charge that to everyone, including those who will never
+ * look at a trace.
  *
- * Quem quiser tracing pluga o SDK no boot, sem tocar neste código:
+ * Anyone who wants tracing plugs the SDK in at boot, without touching this
+ * code:
  *
  *   node --require ./otel.js apps/api/dist/index.js
  */
@@ -38,7 +40,7 @@ export async function withSpan<T>(
   })
 }
 
-/** Anota o span corrente sem criar um novo. */
+/** Annotates the current span without creating a new one. */
 export function annotate(attributes: Attributes): void {
   trace.getActiveSpan()?.setAttributes(attributes)
 }

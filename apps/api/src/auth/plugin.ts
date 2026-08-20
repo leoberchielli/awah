@@ -8,7 +8,7 @@ import { bearerFrom, parseApiKey } from './api-key'
 import { apiKeyCan, can, type Permission, type Role } from './rbac'
 
 export const SESSION_COOKIE = 'awah_session'
-/** Escolhe a organização quando o usuário pertence a mais de uma. */
+/** Picks the organization when the user belongs to more than one. */
 export const ORG_HEADER = 'x-awah-org'
 
 export interface AuthContext {
@@ -17,7 +17,7 @@ export interface AuthContext {
   role: Role
   userId: string | null
   apiKeyId: string | null
-  /** Sessões que a credencial alcança. Nulo significa todas as da org. */
+  /** Sessions the credential reaches. Null means every session in the org. */
   sessionScope: string[] | null
 }
 
@@ -26,9 +26,9 @@ declare module 'fastify' {
     auth: AuthContext | null
   }
   interface FastifyInstance {
-    /** Exige credencial válida e popula `request.auth`. */
+    /** Requires a valid credential and populates `request.auth`. */
     authenticate: preHandlerHookHandler
-    /** Exige credencial válida que satisfaça a permissão. */
+    /** Requires a valid credential that satisfies the permission. */
     requirePermission: (permission: Permission) => preHandlerHookHandler
   }
 }
@@ -41,18 +41,18 @@ async function authFromApiKey(app: FastifyInstance, token: string): Promise<Auth
   if (!record) return null
 
   /**
-   * SHA-256 e não argon2, de propósito. O segredo tem 24 bytes de entropia
-   * aleatória, então não existe ataque de dicionário para encarecer — e um
-   * argon2 de 19 MiB por requisição transformaria o gateway em um gargalo de
-   * CPU justamente no caminho quente do envio. Senha de usuário é outro caso:
-   * lá o argon2 é obrigatório.
+   * SHA-256 and not argon2, on purpose. The secret carries 24 bytes of random
+   * entropy, so there is no dictionary attack to make expensive — and a 19 MiB
+   * argon2 per request would turn the gateway into a CPU bottleneck on exactly
+   * the hot path of a send. A user password is a different case: there argon2
+   * is mandatory.
    */
   if (!safeEqual(hashToken(parsed.secret), record.secretHash)) return null
 
   if (record.revokedAt) return null
   if (record.expiresAt && record.expiresAt.getTime() <= Date.now()) return null
 
-  // Fora do caminho crítico: falha aqui não invalida a requisição.
+  // Off the critical path: a failure here does not invalidate the request.
   void touchApiKey(app.db, record.id).catch((error) => {
     app.log.warn({ err: error, apiKeyId: record.id }, 'failed to record API key usage')
   })
@@ -166,7 +166,7 @@ export const authPlugin = fp(
   { name: 'awah-auth' },
 )
 
-/** Lê o contexto de auth garantindo que o preHandler rodou antes. */
+/** Reads the auth context, making sure the preHandler ran first. */
 export function requireAuth(request: FastifyRequest): AuthContext {
   if (!request.auth) {
     throw unauthorized()

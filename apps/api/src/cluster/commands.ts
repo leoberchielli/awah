@@ -23,7 +23,7 @@ export type CommandHandler = (request: CommandRequest) => Promise<unknown>
 
 export interface CommandBusDeps {
   publisher: Redis
-  /** Conexão dedicada: em modo subscribe o ioredis recusa comandos normais. */
+  /** Dedicated connection: in subscribe mode ioredis refuses normal commands. */
   subscriber: Redis
   nodeId: string
   logger: ManagerLogger
@@ -31,26 +31,26 @@ export interface CommandBusDeps {
 }
 
 /**
- * Roteamento de comandos para o nó que detém a sessão.
+ * Routes commands to the node that holds the session.
  *
- * Parar, deslogar ou pedir código de pareamento exigem o socket vivo, que existe
- * em um processo só. Sem roteamento, essas operações falhariam de forma
- * aparentemente aleatória — funcionando ou não conforme o balanceador escolhesse
- * a réplica certa.
+ * Stopping, logging out or asking for a pairing code all need the live socket,
+ * which exists in exactly one process. Without routing, these operations would
+ * fail seemingly at random — working or not depending on whether the balancer
+ * happened to pick the right replica.
  *
- * O padrão é request-reply sobre pub/sub, com timeout. Se o dono não responder,
- * quem pediu recebe um erro claro em vez de silêncio.
+ * The pattern is request-reply over pub/sub, with a timeout. If the owner does
+ * not answer, the caller gets a clear error instead of silence.
  */
 export class CommandBus {
   private readonly timeoutMs: number
-  /** Canais assinados agora, com seus tratadores. */
+  /** Channels subscribed right now, with their handlers. */
   private readonly routes = new Map<string, (message: string) => void>()
   /**
-   * Um tratador por sessão.
+   * One handler per session.
    *
-   * Guardar um só para todas seria um bug silencioso e grave: com várias sessões
-   * neste nó, o último `claim` venceria e um `logout` destinado a uma sessão
-   * seria executado em outra.
+   * Keeping a single one for all of them would be a silent, serious bug: with
+   * several sessions on this node, the last `claim` would win and a `logout`
+   * meant for one session would run against another.
    */
   private readonly handlers = new Map<string, CommandHandler>()
   private started = false
@@ -60,8 +60,8 @@ export class CommandBus {
   }
 
   /**
-   * Uma conexão de subscribe multiplexa todos os canais, então o roteamento por
-   * canal fica aqui em vez de abrir uma conexão por sessão.
+   * One subscribe connection multiplexes every channel, so per-channel routing
+   * lives here instead of opening one connection per session.
    */
   private ensureStarted(): void {
     if (this.started) return
@@ -73,7 +73,7 @@ export class CommandBus {
     })
   }
 
-  /** Passa a atender comandos desta sessão. Chamado ao adquirir o lease. */
+  /** Starts serving commands for this session. Called on acquiring the lease. */
   async claim(sessionId: string, handler: CommandHandler): Promise<void> {
     this.ensureStarted()
     this.handlers.set(sessionId, handler)
@@ -86,7 +86,7 @@ export class CommandBus {
     await this.deps.subscriber.subscribe(channel)
   }
 
-  /** Deixa de atender. Chamado ao soltar o lease. */
+  /** Stops serving. Called on releasing the lease. */
   async unclaim(sessionId: string): Promise<void> {
     const channel = commandChannel(sessionId)
     this.routes.delete(channel)
@@ -121,11 +121,11 @@ export class CommandBus {
   }
 
   /**
-   * Envia o comando ao dono e espera a resposta.
+   * Sends the command to the owner and waits for the reply.
    *
-   * A assinatura do canal de resposta acontece antes da publicação — invertida,
-   * a resposta poderia chegar antes de haver quem a escutasse, e o comando
-   * pareceria ter dado timeout mesmo tendo funcionado.
+   * Subscribing to the reply channel happens before publishing — the other way
+   * round, the reply could arrive before anyone was listening for it, and the
+   * command would look like it timed out even though it worked.
    */
   async send(input: {
     sessionId: string

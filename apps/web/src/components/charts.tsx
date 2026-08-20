@@ -19,9 +19,9 @@ import { horario, num } from '../lib/format'
 import { Empty } from './ui'
 
 /**
- * As séries chegam do servidor uma por métrica; o gráfico precisa de uma linha
- * por instante com todas as métricas juntas. A pivotagem acontece aqui, e não no
- * SQL, porque o mesmo endpoint alimenta gráfico e exportação.
+ * The series arrive from the server one per metric; the chart needs one row per
+ * instant with every metric together. The pivot happens here rather than in
+ * SQL, because the same endpoint feeds both the chart and the export.
  */
 export function pivotar(series: Serie[]): Array<Record<string, number | string>> {
   const porBucket = new Map<string, Record<string, number | string>>()
@@ -195,21 +195,21 @@ export function BarrasHorizontais({
 }
 
 /**
- * Funil de entrega em barras proporcionais.
+ * Delivery funnel as proportional bars.
  *
- * Não é um gráfico de biblioteca porque o que importa aqui é a **queda entre
- * etapas**, e nenhum tipo pronto mostra isso melhor que barras alinhadas na
- * mesma base.
+ * Not a library chart, because what matters here is the **drop between
+ * stages**, and no off-the-shelf type shows that better than bars aligned on
+ * the same baseline.
  */
 export interface EtapaDoFunil {
   rotulo: string
   valor: number
   cor: string
   /**
-   * Contra quem esta etapa é comparada. Por padrão, a etapa anterior — que é o
-   * que "funil" significa. Falha não é etapa seguinte de leitura: comparar as
-   * duas produziria uma porcentagem que não quer dizer nada, e por isso quem
-   * monta a lista pode apontar outra base.
+   * What this stage is measured against. By default the stage before it —
+   * which is what "funnel" means. Failed is not the stage after read: comparing
+   * the two would produce a percentage that means nothing, which is why
+   * whoever builds the list can point at another base.
    */
   base?: number
 }

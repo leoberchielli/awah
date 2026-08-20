@@ -94,9 +94,9 @@ export async function orgRoutes(app: FastifyInstance) {
   )
 
   /**
-   * Adiciona um membro. Se o e-mail ainda não existe na instância, cria o
-   * usuário com a senha informada — é o caminho de convite da onda 0. O fluxo
-   * com e-mail de convite entra junto do dashboard.
+   * Adds a member. If the email does not exist on this instance yet, it
+   * creates the user with the password given — this is wave 0's invite path.
+   * The flow with an invite email arrives together with the dashboard.
    */
   route.post(
     '/v1/org/members',
@@ -178,7 +178,7 @@ export async function orgRoutes(app: FastifyInstance) {
       const current = await identity.findMembership(auth.orgId, userId)
       if (!current) throw notFound('This user is not a member of the organization.')
 
-      // Rebaixar o último owner deixaria a org sem ninguém capaz de administrá-la.
+      // Demoting the last owner would leave the org with nobody able to run it.
       if (current === 'owner' && role !== 'owner' && (await orgs.ownerCount()) <= 1) {
         throw conflict('The organization must keep at least one owner.')
       }

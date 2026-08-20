@@ -5,12 +5,12 @@ import type { IntegrationSaved, SessionRow } from '../../lib/api'
 import { ApiError, put } from '../../lib/api'
 
 /**
- * Conectar o Typebot com o link que a pessoa já tem na mão.
+ * Connect Typebot with the link the person already has in hand.
  *
- * A versão anterior pedia "endereço" e "id do fluxo" em campos separados, o que
- * obriga quem integra a saber o que é `publicId` e onde procurá-lo. O link de
- * compartilhamento traz os dois, e é exatamente o que está na área de
- * transferência de quem acabou de publicar um fluxo.
+ * The previous version asked for "address" and "flow id" in separate fields,
+ * which forces whoever is integrating to know what a `publicId` is and where to
+ * look for it. The share link carries both, and it is exactly what is on the
+ * clipboard of someone who has just published a flow.
  */
 export function AssistenteTypebot({
   sessoes,
@@ -128,14 +128,15 @@ export function AssistenteTypebot({
             onChange={(e) => setPalavra(e.target.value)}
             className="rounded-md border border-line bg-surface-2 px-3 py-2 text-sm text-ink"
           />
-          {/* Quem digita isso já desistiu do robô: a mensagem nem chega ao fluxo. */}
+          {/* Whoever types this has given up on the bot: the message never reaches the flow. */}
           <span className="text-xs text-muted">{t('typebot.escapeWordHint')}</span>
         </label>
 
         {/*
-          Sai para o cliente final, e é a única mensagem do fluxo que o gateway
-          escreve sozinho. Deixá-la só no default significaria mandar inglês a
-          quem acabou de pedir um humano em português.
+          This goes out to the end customer, and it is the only message in the
+          flow the gateway writes on its own. Leaving it at the default would
+          mean sending English to someone who has just asked for a human in
+          Portuguese.
         */}
         <label className="flex flex-col gap-1.5">
           <span className="eyebrow">{t('typebot.handoffReply')}</span>

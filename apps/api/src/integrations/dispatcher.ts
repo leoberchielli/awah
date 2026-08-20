@@ -35,34 +35,36 @@ export interface IntegrationDispatcherDeps {
   encryptionKey: Buffer
   logger: DispatcherLogger
   maxAttempts: number
-  /** Injetáveis para teste. */
+  /** Injectable for tests. */
   chatwootFactory?: (config: ChatwootConfig) => ChatwootClient
   typebotFactory?: (config: TypebotConfig) => TypebotClient
   httpFactory?: (config: HttpConfig) => HttpConnector
 }
 
-/** Três tentativas em ~7 s cobrem o reinício de um contêiner do outro lado. */
+/** Three attempts over ~7 s cover a container restart on the other side. */
 const TENTATIVAS = 3
 const ESPERA_BASE_MS = 500
 
 /**
- * Leva o que chega do WhatsApp para as ferramentas ligadas à sessão.
+ * Carries what arrives from WhatsApp to the tools wired to the session.
  *
- * A decisão de arquitetura por trás disto: em vez de construir caixa de entrada
- * e construtor de fluxo próprios, o AWAH é o transporte de quem já resolveu bem
- * essas duas coisas. O que ele acrescenta — fila durável, ordem por conversa,
- * motor de risco — é justamente o que falta a elas, e é a razão de valer a pena
- * pôr o gateway embaixo em vez de ligar o Chatwoot direto na Meta.
+ * The architectural decision behind this: instead of building an inbox and a
+ * flow builder of its own, AWAH is the transport for the people who already
+ * solved those two things well. What it adds — a durable queue, per-conversation
+ * ordering, a risk engine — is exactly what they lack, and it is the reason it
+ * is worth putting the gateway underneath instead of wiring Chatwoot straight
+ * into Meta.
  */
 export class IntegrationDispatcher {
   constructor(private readonly deps: IntegrationDispatcherDeps) {}
 
   /**
-   * Nunca deixa uma falha escapar.
+   * Never lets a failure escape.
    *
-   * Este método roda no caminho da mensagem que chega da engine; uma exceção
-   * aqui derrubaria o tratamento do evento e, no limite, a conexão do WhatsApp.
-   * Ferramenta externa fora do ar é um problema dela, não da sessão.
+   * This method runs on the path of the message arriving from the engine; an
+   * exception here would take down the event handling and, at the limit, the
+   * WhatsApp connection. An external tool being down is its problem, not the
+   * session's.
    */
   async aoReceber(mensagem: MensagemRecebida): Promise<void> {
     if (!mensagem.body?.trim()) return
@@ -142,8 +144,8 @@ export class IntegrationDispatcher {
       cliente.criarMensagemRecebida({
         conversationId: vinculo.externalConversationId,
         content: mensagem.body ?? '',
-        // O id do WhatsApp viaja junto: é o que o webhook de volta usa para
-        // reconhecer o que veio daqui e não devolver em eco.
+        // The WhatsApp id travels along: it is what the webhook coming back
+        // uses to recognise what came from here and not echo it straight back.
         sourceId: mensagem.engineMessageId,
       }),
     )
@@ -157,11 +159,11 @@ export class IntegrationDispatcher {
     const { humanHandoffKeyword, humanHandoffReply, sessionTtlMinutes } = integracao.config
 
     /**
-     * O escape para o humano vem antes de qualquer chamada ao fluxo.
+     * The escape to a human comes before any call to the flow.
      *
-     * Quem digita "atendente" já desistiu do robô; mandar a mensagem para o
-     * fluxo primeiro produziria mais uma resposta automática justamente para
-     * quem pediu para parar de recebê-las.
+     * Someone who types "agent" has already given up on the bot; sending the
+     * message to the flow first would produce one more automated reply for
+     * exactly the person who asked to stop receiving them.
      */
     if (humanHandoffKeyword && texto.toLowerCase() === humanHandoffKeyword.toLowerCase()) {
       await expireLink(this.deps.db, integracao.row.id, mensagem.chatId)
@@ -180,7 +182,7 @@ export class IntegrationDispatcher {
       try {
         turno = await cliente.continuar(vinculo.externalConversationId, texto)
       } catch (erro) {
-        // Sessão que morreu do outro lado recomeça, em vez de calar o contato.
+        // A dead session over there restarts, instead of stranding the contact.
         if (!(erro instanceof TypebotError) || !erro.sessaoExpirada) throw erro
         turno = await cliente.iniciar(texto)
       }
@@ -193,7 +195,7 @@ export class IntegrationDispatcher {
         integrationId: integracao.row.id,
         chatId: mensagem.chatId,
         externalConversationId: turno.sessionId,
-        // Fluxo encerrado não guarda sessão: a próxima mensagem começa do zero.
+        // A finished flow keeps no session: the next message starts over.
         expiresAt: turno.aguardandoResposta
           ? new Date(Date.now() + sessionTtlMinutes * 60_000)
           : new Date(),
@@ -204,12 +206,12 @@ export class IntegrationDispatcher {
   }
 
   /**
-   * O escape para qualquer plataforma.
+   * The escape hatch to any platform.
    *
-   * Posta o evento e envia de volta o que a resposta trouxer. Diferente de um
-   * webhook comum, que avisa e esquece: aqui a resposta **é** a mensagem, e é
-   * isso que permite a um fluxo do n8n ou a uma função serverless ser o robô
-   * sem que ninguém escreva um conector dedicado aqui dentro.
+   * Posts the event and sends back whatever the response carries. Unlike an
+   * ordinary webhook, which tells you and forgets: here the response **is** the
+   * message, and that is what lets an n8n flow or a serverless function be the
+   * bot without anyone writing a dedicated connector in here.
    */
   private async paraHttp(
     integracao: LoadedIntegration<'http'>,
@@ -233,11 +235,12 @@ export class IntegrationDispatcher {
     )
 
     /**
-     * Resposta que não virou mensagem é registrada como erro, não engolida.
+     * A response that did not become a message is recorded as an error, not
+     * swallowed.
      *
-     * Silêncio aqui é o pior resultado possível: quem acabou de plugar uma
-     * plataforma nova ficaria olhando para uma conversa parada sem nenhuma
-     * pista de que o formato da resposta estava errado.
+     * Silence here is the worst possible outcome: someone who has just plugged
+     * in a new platform would be staring at a stalled conversation with no clue
+     * that the response format was wrong.
      */
     if (resultado.diagnostico) {
       throw new Error(resultado.diagnostico)
@@ -247,11 +250,11 @@ export class IntegrationDispatcher {
   }
 
   /**
-   * As respostas entram pela mesma fila de qualquer outro envio.
+   * The replies enter through the same queue as any other send.
    *
-   * É o ponto do arranjo: a resposta do fluxo herda ordem por conversa, motor de
-   * risco e reentrega. Um Typebot ligado direto na Meta não tem nada disso — ele
-   * dispara e torce.
+   * That is the point of the arrangement: the flow's reply inherits
+   * per-conversation ordering, the risk engine and redelivery. A Typebot wired
+   * straight into Meta has none of that — it fires and hopes.
    */
   private async enfileirar(
     mensagem: MensagemRecebida,
@@ -267,11 +270,11 @@ export class IntegrationDispatcher {
         sessionId: mensagem.sessionId,
         chatId: mensagem.chatId,
         /**
-         * A chave amarra a resposta à mensagem que a provocou.
+         * The key ties the reply to the message that provoked it.
          *
-         * Se o mesmo evento for processado duas vezes — reentrega da engine,
-         * reinício no meio —, o outbox reconhece a duplicata e o cliente não
-         * recebe a resposta em dobro.
+         * If the same event is processed twice — engine redelivery, a restart
+         * halfway through — the outbox recognises the duplicate and the
+         * customer does not get the reply twice.
          */
         clientMessageId: `${integrationId}:${mensagem.engineMessageId}:${indice}`,
         type: 'text',
@@ -295,11 +298,11 @@ export class IntegrationDispatcher {
 }
 
 /**
- * Repete só o que vale repetir.
+ * Retries only what is worth retrying.
  *
- * Erro 4xx do outro lado é configuração errada — token inválido, caixa que não
- * existe. Repetir produz a mesma recusa três vezes e atrasa o registro do erro
- * que o operador precisa ver.
+ * A 4xx from the other side is wrong configuration — invalid token, an inbox
+ * that does not exist. Retrying produces the same refusal three times and
+ * delays recording the error the operator needs to see.
  */
 async function tentar<T>(vezes: number, acao: () => Promise<T>): Promise<T> {
   let ultimo: unknown

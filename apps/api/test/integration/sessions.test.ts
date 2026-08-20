@@ -139,8 +139,9 @@ describe.skipIf(!hasInfra)('rotas de sessão', () => {
     })
 
     /**
-     * O token nunca deve reaparecer em leitura: quem tem `session:read` pode
-     * listar sessões sem por isso poder enviar mensagem em nome da empresa.
+     * The token must never reappear on a read: someone with `session:read` can
+     * list sessions without thereby being able to send messages in the
+     * company's name.
      */
     it('não devolve o token em nenhuma leitura da sessão', async () => {
       const sessionId = await criarOficial()
@@ -215,7 +216,7 @@ describe.skipIf(!hasInfra)('rotas de sessão', () => {
     expect(baileys.available).toBe(true)
     expect(baileys.capabilities.groups).toBe(true)
 
-    // A oficial existe desde a onda 7, mas com um recorte bem menor.
+    // The official one has been around since wave 7, with a much smaller slice.
     expect(cloud.available).toBe(true)
     expect(cloud.capabilities.groups).toBe(false)
     expect(cloud.capabilities.qrPairing).toBe(false)
@@ -266,8 +267,9 @@ describe.skipIf(!hasInfra)('rotas de sessão', () => {
     })
 
     /**
-     * Fora do escopo responde 404 e não 403 de propósito: 403 confirmaria que a
-     * sessão existe, e a existência já é informação que a chave não deve ter.
+     * Out of scope answers 404 and not 403 on purpose: a 403 would confirm the
+     * session exists, and its existence is already information this key must
+     * not have.
      */
     it('esconde sessão fora do escopo com 404, não 403', async () => {
       const response = await app.inject({
@@ -317,12 +319,12 @@ describe.skipIf(!hasInfra)('primeira execução', () => {
   let app: FastifyInstance
 
   /**
-   * A organização é criada aqui, e não herdada da suíte.
+   * The organization is created here, not inherited from the suite.
    *
-   * A primeira versão deste teste assumia que "sempre existe alguma org porque
-   * os outros arquivos criam" — e passava na minha máquina, onde o banco de
-   * desenvolvimento tem uma permanente. No CI, com banco limpo e cada arquivo
-   * limpando o que criou, a suposição caiu na primeira execução.
+   * The first version of this test assumed "there is always some org because
+   * the other files create one" — and it passed on my machine, where the dev
+   * database has a permanent one. On CI, with a clean database and every file
+   * cleaning up what it created, the assumption fell on the first run.
    */
   let org: SeededOrg
 
@@ -338,9 +340,9 @@ describe.skipIf(!hasInfra)('primeira execução', () => {
   })
 
   /**
-   * Sem esta rota o painel não tinha como saber que deve mostrar a tela de
-   * setup, e o primeiro acesso caía num login que ninguém conseguia usar — com
-   * a saída escondida num curl do README.
+   * Without this route the panel had no way to know it should show the setup
+   * screen, and the first visit landed on a login nobody could use — with the
+   * way out buried in a curl command in the README.
    */
   it('responde sem credencial nenhuma', async () => {
     const resposta = await app.inject({ method: 'GET', url: '/v1/auth/bootstrap' })

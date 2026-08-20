@@ -1,17 +1,17 @@
 import { AwahConnectionError, AwahError } from './errors'
 
 export interface AwahOptions {
-  /** Endereço da instância, com esquema. Ex.: `https://awah.suaempresa.com`. */
+  /** Address of the instance, with scheme. E.g. `https://awah.yourcompany.com`. */
   baseUrl: string
-  /** Chave no formato `awah_<prefixo>_<segredo>`. */
+  /** Key in the form `awah_<prefix>_<secret>`. */
   apiKey: string
-  /** Teto por requisição, incluindo a leitura do corpo. Padrão 30 s. */
+  /** Ceiling per request, including reading the body. Default 30 s. */
   timeoutMs?: number
-  /** Tentativas adicionais depois da primeira. Padrão 2. */
+  /** Extra attempts after the first one. Default 2. */
   maxRetries?: number
-  /** Injetável para teste e para runtimes com fetch próprio. */
+  /** Injectable for tests and for runtimes that bring their own fetch. */
   fetch?: typeof fetch
-  /** Cabeçalhos extras em toda requisição. Útil para tracing. */
+  /** Extra headers on every request. Handy for tracing. */
   headers?: Record<string, string>
 }
 
@@ -21,9 +21,9 @@ interface Pedido {
   body?: unknown
   query?: Record<string, string | number | boolean | undefined>
   /**
-   * Se repetir esta chamada é seguro. GET e DELETE são por natureza; POST só
-   * quando a rota tem chave de idempotência, e é por isso que o cliente sempre
-   * manda um `clientMessageId` no envio.
+   * Whether repeating this call is safe. GET and DELETE are by nature; POST only
+   * when the route takes an idempotency key, and that is why the client always
+   * sends a `clientMessageId` on a send.
    */
   idempotente?: boolean
   headers?: Record<string, string>
@@ -41,8 +41,8 @@ export class HttpClient {
   private readonly headersExtras: Record<string, string>
 
   constructor(options: AwahOptions) {
-    if (!options.baseUrl) throw new Error('baseUrl é obrigatório')
-    if (!options.apiKey) throw new Error('apiKey é obrigatório')
+    if (!options.baseUrl) throw new Error('baseUrl is required')
+    if (!options.apiKey) throw new Error('apiKey is required')
 
     this.baseUrl = options.baseUrl.replace(/\/+$/, '')
     this.apiKey = options.apiKey
@@ -71,8 +71,8 @@ export class HttpClient {
         const erro = await this.montarErro(resposta)
 
         /**
-         * Repetir 4xx que não seja 408 ou 429 é desperdício: o servidor rejeitou
-         * o conteúdo, e mandar de novo produz a mesma rejeição.
+         * Repeating a 4xx that is not 408 or 429 is waste: the server rejected
+         * the content, and sending it again produces the same rejection.
          */
         if (!erro.isRetryable || !podeRepetir || tentativa === this.maxRetries) throw erro
 
@@ -163,10 +163,10 @@ export class HttpClient {
   }
 
   /**
-   * Backoff exponencial com jitter, e `Retry-After` acima de tudo.
+   * Exponential backoff with jitter, and `Retry-After` above all else.
    *
-   * O jitter não é enfeite: sem ele, cem clientes que tomaram 429 juntos voltam
-   * juntos no mesmo milissegundo e tomam 429 de novo.
+   * The jitter is not decoration: without it, a hundred clients that took a 429
+   * together come back together in the same millisecond and take a 429 again.
    */
   private esperaAte(tentativa: number, retryAfter: string | null): number {
     if (retryAfter) {

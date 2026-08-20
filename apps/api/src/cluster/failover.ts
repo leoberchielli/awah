@@ -8,7 +8,7 @@ export interface FailoverScannerDeps {
   sessions: SessionManager
   logger: ManagerLogger
   intervalMs: number
-  /** Teto de adoções por ciclo, para um nó não engolir a frota inteira de uma vez. */
+  /** Cap on adoptions per cycle, so one node cannot swallow the whole fleet at once. */
   batchSize: number
 }
 
@@ -19,16 +19,17 @@ interface OrphanRow {
 }
 
 /**
- * Adoção de sessões órfãs.
+ * Adoption of orphaned sessions.
  *
- * Uma sessão fica órfã quando o nó que a detinha some sem soltar a posse — kill
- * -9, OOM, máquina desligada. O lease expira sozinho em segundos e a sessão
- * passa a não ter dono, mas continua com `desired_state = 'running'`: alguém
- * pediu que ela estivesse no ar e ninguém pediu o contrário.
+ * A session is orphaned when the node that held it disappears without releasing
+ * ownership — kill -9, OOM, machine powered off. The lease expires on its own
+ * within seconds and the session is left with no owner, but it still carries
+ * `desired_state = 'running'`: someone asked for it to be up and nobody asked
+ * for the opposite.
  *
- * O varredor é o que fecha esse ciclo sem coordenador nem eleição. Todos os nós
- * varrem, todos tentam adquirir, e o SET NX decide — quem perde a corrida
- * simplesmente segue para a próxima sessão.
+ * The scanner is what closes that loop, with no coordinator and no election.
+ * Every node scans, every node tries to acquire, and SET NX decides — whoever
+ * loses the race simply moves on to the next session.
  */
 export class FailoverScanner {
   private timer: NodeJS.Timeout | null = null
@@ -59,7 +60,7 @@ export class FailoverScanner {
     this.timer.unref()
   }
 
-  /** Candidatas: querem estar no ar e não estão rodando aqui. */
+  /** Candidates: they want to be up and they are not running here. */
   private async candidates(): Promise<OrphanRow[]> {
     const result = await this.deps.db.execute(sql`
       SELECT id, org_id, name
@@ -89,9 +90,9 @@ export class FailoverScanner {
       if (candidatas.length === 0) return
 
       /**
-       * Uma consulta de posse para o lote inteiro. Perguntar sessão a sessão
-       * multiplicaria as idas ao Redis por um número que cresce com a frota,
-       * num laço que roda em todos os nós ao mesmo tempo.
+       * One ownership lookup for the whole batch. Asking session by session
+       * would multiply the round trips to Redis by a number that grows with
+       * the fleet, in a loop that runs on every node at the same time.
        */
       const donos = await this.deps.lease.owners(candidatas.map((c) => c.id))
       const orfas = candidatas.filter((c) => !donos.has(c.id)).slice(0, this.deps.batchSize)
@@ -99,7 +100,7 @@ export class FailoverScanner {
       if (orfas.length === 0) return
 
       for (const orfa of orfas) {
-        // `adopt` tenta o lease; perder a corrida para outro nó é resultado normal.
+        // `adopt` tries for the lease; losing the race to another node is normal.
         const assumiu = await this.deps.sessions.adopt(orfa.orgId, orfa.id)
         if (assumiu) {
           this.deps.logger.info(

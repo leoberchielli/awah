@@ -14,18 +14,19 @@ import { badRequest, conflict, notFound } from '../lib/errors'
 import { SessionRepository } from '../repos/sessions'
 
 /**
- * O protocolo exige recriar o socket logo depois do pareamento e sinaliza isso
- * com 515. Não é falha: tratar como tal faria a primeira conexão de toda sessão
- * nova esperar o backoff exponencial sem motivo.
+ * The protocol requires the socket to be recreated right after pairing, and
+ * signals that with 515. It is not a failure: treating it as one would make the
+ * first connection of every new session sit through exponential backoff for no
+ * reason.
  */
 const RESTART_REQUIRED = 515
 const RESTART_DELAY_MS = 750
 
 /**
- * Superfície mínima de log de que o gerenciador precisa. Aceita tanto o logger
- * do Fastify quanto um pino puro, sem que o gerenciador dependa de nenhum dos
- * dois — o adapter do Baileys, esse sim, exige um pino de verdade e o recebe
- * pronto daqui.
+ * The minimal logging surface the manager needs. It takes either the Fastify
+ * logger or a bare pino, without the manager depending on either one — the
+ * Baileys adapter, on the other hand, does need a real pino, and gets one ready
+ * made from here.
  */
 export interface ManagerLogger {
   info(obj: object, msg?: string): void
@@ -38,13 +39,13 @@ export interface SessionManagerDeps {
   logger: ManagerLogger
   nodeId: string
   encryptionKey: Buffer
-  /** O Baileys é muito verboso; por padrão fica em silêncio. */
+  /** Baileys is very noisy; by default it is kept quiet. */
   engineLogLevel: string
   maxReconnectAttempts?: number
   lease: SessionLease
   qrCache: QrCache
   commands: CommandBus
-  /** Intervalo de renovação do lease. Precisa ser bem menor que o TTL. */
+  /** Lease renewal interval. It has to be well under the TTL. */
   leaseRenewMs?: number
 }
 
@@ -53,21 +54,22 @@ interface RunningSession {
   adapter: EngineAdapter
   attempts: number
   timer: NodeJS.Timeout | null
-  /** Renovação periódica da posse. */
+  /** Periodic renewal of ownership. */
   leaseTimer: NodeJS.Timeout | null
-  /** Impede que a reconexão automática ressuscite uma sessão que mandamos parar. */
+  /** Stops automatic reconnection from reviving a session we told to stop. */
   stopping: boolean
   qrAnnounced: boolean
   clearAuth: () => Promise<void>
 }
 
 /**
- * Runtime das sessões neste nó.
+ * Session runtime on this node.
  *
- * A onda 1 assume um nó só: quem chamou `start` é dono da sessão enquanto o
- * processo viver. A posse distribuída por lease no Redis entra na onda 4 — os
- * pontos de gancho são `ownerNodeId`, já gravado aqui, e `shutdown`, que a onda
- * 4 estende para soltar o lease em vez de apenas encerrar.
+ * Wave 1 assumes a single node: whoever called `start` owns the session for as
+ * long as the process lives. Ownership distributed by a Redis lease arrives in
+ * wave 4 — the hook points are `ownerNodeId`, already written here, and
+ * `shutdown`, which wave 4 extends to release the lease instead of only closing
+ * down.
  */
 export type MessageEventHandler = (
   context: { orgId: string; sessionId: string },
@@ -99,12 +101,12 @@ export class SessionManager {
     return this.running.has(sessionId)
   }
 
-  /** Sessões vivas neste nó. O scheduler só busca trabalho para estas. */
+  /** Sessions alive on this node. The scheduler only fetches work for these. */
   activeSessionIds(): string[] {
     return [...this.running.keys()]
   }
 
-  /** Adapter de uma sessão viva, para o scheduler acionar o envio. */
+  /** The adapter of a live session, for the scheduler to drive the send. */
   adapterFor(sessionId: string): EngineAdapter | null {
     return this.running.get(sessionId)?.adapter ?? null
   }
@@ -114,20 +116,20 @@ export class SessionManager {
   }
 
   /**
-   * Registra um observador de eventos de mensagem. É por aqui que a persistência
-   * de inbound e a reconciliação de ACK se conectam sem que o gerenciador
-   * precise conhecer o módulo de mensageria.
+   * Registers an observer of message events. This is where inbound persistence
+   * and ACK reconciliation hook in without the manager having to know anything
+   * about the messaging module.
    */
   onMessageEvent(handler: MessageEventHandler): void {
     this.messageHandlers.push(handler)
   }
 
-  /** Observadores de mudança de estado da sessão — usado para publicar webhooks. */
+  /** Observers of session state changes — used to publish webhooks. */
   onStatusChange(handler: StatusEventHandler): void {
     this.statusHandlers.push(handler)
   }
 
-  /** Um observador com problema nunca derruba a conexão do WhatsApp. */
+  /** A broken observer never takes the WhatsApp connection down. */
   private async notifyStatus(
     orgId: string,
     sessionId: string,
@@ -147,9 +149,9 @@ export class SessionManager {
   }
 
   /**
-   * QR corrente. Lê primeiro a memória local e cai no Redis quando a sessão está
-   * pareando em outra réplica — a requisição de pareamento pode chegar em
-   * qualquer nó.
+   * The current QR. Reads local memory first and falls back to Redis when the
+   * session is pairing on another replica — the pairing request can land on any
+   * node.
    */
   async currentQr(sessionId: string): Promise<string | null> {
     const local = this.running.get(sessionId)?.adapter.currentQr()
@@ -158,11 +160,11 @@ export class SessionManager {
   }
 
   /**
-   * Inicia a sessão por pedido do operador.
+   * Starts the session at the operator's request.
    *
-   * Grava a intenção antes de tentar conectar: se este nó morrer no meio, o
-   * failover de outra réplica só sabe que deve assumir porque `desired_state`
-   * ficou 'running'.
+   * Writes the intent before trying to connect: if this node dies halfway, the
+   * failover on another replica only knows it should take over because
+   * `desired_state` was left at 'running'.
    */
   async start(orgId: string, sessionId: string): Promise<void> {
     if (this.running.has(sessionId)) {
@@ -174,8 +176,8 @@ export class SessionManager {
   }
 
   /**
-   * Assume uma sessão órfã. Não mexe em `desired_state` — a intenção já era
-   * 'running', só faltava alguém executá-la.
+   * Takes over an orphan session. Does not touch `desired_state` — the intent
+   * was already 'running', it just needed someone to carry it out.
    */
   async adopt(orgId: string, sessionId: string): Promise<boolean> {
     if (this.running.has(sessionId)) return false
@@ -201,12 +203,12 @@ export class SessionManager {
     }
 
     /**
-     * A posse vem antes de qualquer coisa.
+     * Ownership comes before anything else.
      *
-     * Duas réplicas com o mesmo auth state abrem dois sockets para o mesmo
-     * número, e o WhatsApp derruba os dois alternadamente com 440 — o sintoma
-     * mais confuso que existe nesse protocolo. O SET NX garante que só um nó
-     * ganha, mesmo que todos tentem no mesmo milissegundo.
+     * Two replicas with the same auth state open two sockets to the same
+     * number, and WhatsApp knocks both of them down in turn with 440 — the most
+     * confusing symptom this protocol has. The SET NX guarantees that only one
+     * node wins, even if they all try in the same millisecond.
      */
     if (!(await this.deps.lease.acquire(sessionId))) {
       const dono = await this.deps.lease.owner(sessionId)
@@ -226,8 +228,9 @@ export class SessionManager {
 
     if (session.engine === 'cloud_api') {
       /**
-       * A engine oficial não tem pareamento nem socket: o vínculo é o token, e
-       * ele é configurado antes do start. Sem credenciais não há o que iniciar.
+       * The official engine has no pairing and no socket: the link is the
+       * token, and it is configured before the start. With no credentials there
+       * is nothing to start.
        */
       const credentials = await loadCloudApiCredentials(
         this.deps.db,
@@ -251,13 +254,13 @@ export class SessionManager {
       })
 
       /**
-       * Persiste a identidade recém-gerada antes de abrir o socket.
+       * Persist the freshly generated identity before opening the socket.
        *
-       * O Baileys só emite `creds.update` quando algo muda, e nada muda enquanto
-       * o QR está na tela. Sem esta gravação existe uma janela em que o usuário
-       * escaneia o código, o processo cai e o aparelho fica com um dispositivo
-       * pareado que o banco não conhece — um fantasma que só some manualmente,
-       * na lista de dispositivos conectados do celular.
+       * Baileys only emits `creds.update` when something changes, and nothing
+       * changes while the QR is on screen. Without this write there is a window
+       * where the user scans the code, the process dies, and the phone is left
+       * with a paired device the database knows nothing about — a ghost that
+       * only goes away by hand, from the linked devices list on the phone.
        */
       if (auth.isNew) {
         await auth.saveCreds()
@@ -287,7 +290,7 @@ export class SessionManager {
     }
     this.running.set(sessionId, entry)
 
-    // Passa a atender stop, logout e código de pareamento vindos de outras réplicas.
+    // Starts serving stop, logout and pairing code coming from other replicas.
     await this.deps.commands.claim(sessionId, (request) =>
       this.handleCommand(orgId, sessionId, request.command, request.payload),
     )
@@ -326,10 +329,11 @@ export class SessionManager {
   }
 
   /**
-   * Renova a posse. Perder a renovação significa soltar a sessão agora.
+   * Renews ownership. Losing the renewal means releasing the session now.
    *
-   * Insistir seria pior que parar: se o lease expirou, outra réplica já pode ter
-   * assumido, e dois sockets no mesmo número derrubam um ao outro.
+   * Pushing on would be worse than stopping: if the lease expired, another
+   * replica may already have taken over, and two sockets on the same number
+   * knock each other down.
    */
   private async renewLease(orgId: string, sessionId: string): Promise<void> {
     try {
@@ -356,7 +360,7 @@ export class SessionManager {
     })
   }
 
-  /** Desmonta o estado local sem tocar no banco nem no socket. */
+  /** Tears down the local state without touching the database or the socket. */
   private async teardown(sessionId: string): Promise<void> {
     const entry = this.running.get(sessionId)
     this.running.delete(sessionId)
@@ -368,7 +372,7 @@ export class SessionManager {
     await this.deps.lease.release(sessionId)
   }
 
-  /** Executa um comando que chegou por outra réplica. */
+  /** Runs a command that arrived from another replica. */
   private async handleCommand(
     orgId: string,
     sessionId: string,
@@ -396,13 +400,13 @@ export class SessionManager {
 
   async stop(orgId: string, sessionId: string, options?: { logout?: boolean }): Promise<void> {
     const repoInicial = this.repo(orgId)
-    // A intenção é gravada mesmo que a sessão rode em outro nó.
+    // The intent is written even if the session runs on another node.
     await repoInicial.setDesiredState(sessionId, 'stopped')
     await this.deps.qrCache.clear(sessionId)
 
     const entry = this.running.get(sessionId)
     if (!entry) {
-      // Parar algo que já está parado não é erro — o estado desejado é o mesmo.
+      // Stopping something already stopped is not an error — same desired state.
       if (options?.logout) await this.clearCredentials(orgId, sessionId)
       return
     }
@@ -441,12 +445,12 @@ export class SessionManager {
   }
 
   /**
-   * Para a sessão esteja ela onde estiver.
+   * Stops the session wherever it happens to be.
    *
-   * Se roda aqui, executa direto. Se roda em outra réplica, o comando viaja até
-   * o dono — sem isso, parar uma sessão funcionaria ou não conforme o
-   * balanceador escolhesse o nó, que é o tipo de comportamento intermitente
-   * impossível de depurar em produção.
+   * If it runs here, it runs straight away. If it runs on another replica, the
+   * command travels to the owner — without this, stopping a session would work
+   * or not depending on the node the balancer picked, which is the kind of
+   * intermittent behaviour that is impossible to debug in production.
    */
   async stopAnywhere(
     orgId: string,
@@ -459,11 +463,11 @@ export class SessionManager {
 
     const dono = await this.deps.lease.owner(sessionId)
     if (!dono || dono === this.deps.nodeId) {
-      // Sem dono: só resta acertar o estado no banco.
+      // No owner: all that is left is to set the state right in the database.
       return this.stop(orgId, sessionId, options)
     }
 
-    // A intenção é gravada por quem recebeu, para valer mesmo se o roteamento falhar.
+    // The receiving node writes the intent, so it holds even if routing fails.
     await this.repo(orgId).setDesiredState(sessionId, 'stopped')
 
     const resposta = await this.deps.commands.send({
@@ -477,7 +481,7 @@ export class SessionManager {
     }
   }
 
-  /** Código de pareamento, roteado ao nó dono quando necessário. */
+  /** Pairing code, routed to the owner node when needed. */
   async requestPairingCodeAnywhere(
     orgId: string,
     sessionId: string,
@@ -510,17 +514,17 @@ export class SessionManager {
     return code
   }
 
-  /** Nó que detém a sessão agora, ou null se estiver livre. */
+  /** The node that holds the session right now, or null if it is free. */
   async ownerOf(sessionId: string): Promise<string | null> {
     return this.deps.lease.owner(sessionId)
   }
 
-  /** Posse de várias sessões numa consulta só. */
+  /** Ownership of several sessions in a single query. */
   async ownersOf(sessionIds: string[]): Promise<Map<string, string>> {
     return this.deps.lease.owners(sessionIds)
   }
 
-  /** Apaga o auth state de uma sessão que não está rodando. */
+  /** Wipes the auth state of a session that is not running. */
   private async clearCredentials(orgId: string, sessionId: string): Promise<void> {
     const auth = await usePostgresAuthState({
       db: this.deps.db,
@@ -554,10 +558,10 @@ export class SessionManager {
 
     switch (event.type) {
       case 'qr': {
-        // Publicado para que qualquer réplica possa responder à consulta de QR.
+        // Published so that any replica can answer the QR query.
         await this.deps.qrCache.publish(sessionId, event.qr)
 
-        // O QR é renovado a cada poucos segundos: registrar todos viraria ruído.
+        // The QR is refreshed every few seconds: recording each one would be noise.
         if (entry && !entry.qrAnnounced) {
           entry.qrAnnounced = true
           await repo.setStatus(sessionId, 'pairing')
@@ -572,7 +576,7 @@ export class SessionManager {
       }
 
       case 'status': {
-        if (event.status === 'connected') return // tratado em 'paired'
+        if (event.status === 'connected') return // handled in 'paired'
         await repo.setStatus(sessionId, event.status)
         await this.notifyStatus(orgId, sessionId, { status: event.status })
         return
@@ -584,7 +588,7 @@ export class SessionManager {
           entry.qrAnnounced = false
         }
 
-        // Pareou: o código deixou de valer.
+        // Paired: the code stops being valid.
         await this.deps.qrCache.clear(sessionId)
 
         const now = new Date()
@@ -594,7 +598,7 @@ export class SessionManager {
           phoneNumber: event.phoneNumber,
           lastConnectedAt: now,
           ownerNodeId: this.deps.nodeId,
-          // A idade da sessão alimenta a curva de warmup: só marca no 1º pareamento.
+          // Session age feeds the warm-up curve: only stamped on the 1st pairing.
           ...(session?.pairedAt ? {} : { pairedAt: now }),
         })
 
@@ -617,7 +621,7 @@ export class SessionManager {
 
       case 'message.received':
       case 'message.status': {
-        // Um observador que falha não pode derrubar os outros nem a sessão.
+        // One failing observer must not take down the others or the session.
         await Promise.allSettled(
           this.messageHandlers.map((handler) => handler({ orgId, sessionId }, event)),
         ).then((results) => {
@@ -682,7 +686,7 @@ export class SessionManager {
   ): void {
     const isRestart = rawCode === RESTART_REQUIRED
 
-    // O reinício pós-pareamento não é falha, então não consome tentativa.
+    // The post-pairing restart is not a failure, so it spends no attempt.
     if (!isRestart) entry.attempts += 1
 
     if (entry.attempts > this.maxAttempts) {
@@ -710,19 +714,20 @@ export class SessionManager {
 
       void entry.adapter.connect().catch((error) => {
         this.deps.logger.error({ err: error, sessionId }, 'failed to reconnect')
-        // Socket que nem abre não emite 'close': reagenda a partir daqui.
+        // A socket that never opens emits no 'close': reschedule from here.
         this.scheduleReconnect(orgId, sessionId, entry, null)
       })
     }, delay)
   }
 
   /**
-   * Encerra tudo sem logout — as credenciais seguem válidas para o próximo boot.
+   * Shuts everything down without logging out — the credentials stay valid for
+   * the next boot.
    *
-   * Soltar os leases explicitamente é o que torna o desligamento planejado
-   * rápido: sem isso, as sessões só ficariam livres ao expirar o TTL, e outra
-   * réplica levaria até quinze segundos para assumir o que poderia assumir na
-   * hora. `desired_state` permanece 'running', então elas voltam sozinhas.
+   * Releasing the leases explicitly is what makes a planned shutdown fast:
+   * without it, sessions would only come free once the TTL expired, and another
+   * replica would take up to fifteen seconds to pick up what it could pick up
+   * right away. `desired_state` stays 'running', so they come back on their own.
    */
   async shutdown(): Promise<void> {
     const entries = [...this.running.entries()]

@@ -1,12 +1,13 @@
 import type Redis from 'ioredis'
 
 /**
- * Renova apenas se ainda formos o dono.
+ * Renew only if we are still the owner.
  *
- * Precisa ser atômico: entre um GET e um PEXPIRE separados cabe a expiração do
- * lease e a tomada por outro nó, e o PEXPIRE então estenderia a posse alheia —
- * dois processos convencidos de que mandam na mesma sessão é exatamente o
- * cenário que produz o 440 "sessão assumida em outro lugar".
+ * It has to be atomic: between a separate GET and PEXPIRE there is room for the
+ * lease to expire and another node to take it, and the PEXPIRE would then
+ * extend someone else's ownership — two processes convinced they are in charge
+ * of the same session is exactly the scenario that produces the 440 "Session
+ * taken over elsewhere".
  */
 const RENEW_SCRIPT = `
 if redis.call('get', KEYS[1]) == ARGV[1] then
@@ -15,7 +16,7 @@ end
 return 0
 `
 
-/** Solta apenas o que é nosso, pelo mesmo motivo. */
+/** Release only what is ours, for the same reason. */
 const RELEASE_SCRIPT = `
 if redis.call('get', KEYS[1]) == ARGV[1] then
   return redis.call('del', KEYS[1])
@@ -24,17 +25,18 @@ return 0
 `
 
 export interface LeaseOptions {
-  /** Vida do lease. Passado sem renovação, a sessão fica livre. */
+  /** Lease lifetime. Let it pass without a renewal and the session is free. */
   ttlMs?: number
 }
 
 /**
- * Posse exclusiva de sessão entre réplicas.
+ * Exclusive session ownership across replicas.
  *
- * O TTL curto com renovação frequente é deliberado: se o nó dono morre, ninguém
- * renova e a sessão fica disponível em segundos, sem precisar de coordenador,
- * eleição ou intervenção. O preço é que o dono precisa renovar sempre — e
- * perder a renovação significa soltar a sessão na hora, não insistir.
+ * The short TTL with frequent renewal is deliberate: if the owning node dies,
+ * nobody renews and the session becomes available within seconds, with no
+ * coordinator, no election and no intervention. The price is that the owner has
+ * to renew forever — and losing a renewal means releasing the session right
+ * then, not insisting.
  */
 export class SessionLease {
   private readonly ttlMs: number
@@ -51,13 +53,13 @@ export class SessionLease {
     return `awah:lease:${sessionId}`
   }
 
-  /** SET NX: só um nó ganha, mesmo com todos tentando ao mesmo tempo. */
+  /** SET NX: only one node wins, even with all of them trying at once. */
   async acquire(sessionId: string): Promise<boolean> {
     const result = await this.redis.set(this.key(sessionId), this.nodeId, 'PX', this.ttlMs, 'NX')
     return result === 'OK'
   }
 
-  /** Devolve false quando a posse foi perdida — quem chama deve soltar a sessão. */
+  /** Returns false when ownership is lost — the caller must release the session. */
   async renew(sessionId: string): Promise<boolean> {
     const result = await this.redis.eval(
       RENEW_SCRIPT,
@@ -81,7 +83,7 @@ export class SessionLease {
     return (await this.owner(sessionId)) === this.nodeId
   }
 
-  /** Sessões sob posse de alguém, dentre as informadas. */
+  /** Which of the given sessions are held by someone. */
   async owners(sessionIds: string[]): Promise<Map<string, string>> {
     if (sessionIds.length === 0) return new Map()
 

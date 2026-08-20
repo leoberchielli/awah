@@ -23,7 +23,7 @@ describe.skipIf(!hasInfra)('fluxo do Typebot', () => {
 
   let caminhos: string[]
 
-  /** Um fluxo que sempre responde e sempre espera a próxima mensagem. */
+  /** A flow that always answers and always waits for the next message. */
   function fetchDoTypebot(resposta?: unknown): typeof fetch {
     return vi.fn(async (url: string | URL) => {
       caminhos.push(String(url))
@@ -125,8 +125,8 @@ describe.skipIf(!hasInfra)('fluxo do Typebot', () => {
     await receber('quero saber o preço')
 
     /**
-     * Recomeçar o fluxo a cada mensagem apagaria tudo que o cliente já
-     * respondeu — ele ficaria preso na primeira pergunta para sempre.
+     * Restarting the flow on every message would erase everything the customer
+     * had already answered — they would be stuck on the first question forever.
      */
     expect(caminhos[0]).toContain('/sessions/sess-do-fluxo/continueChat')
   })
@@ -139,8 +139,9 @@ describe.skipIf(!hasInfra)('fluxo do Typebot', () => {
   })
 
   /**
-   * É o que torna este arranjo melhor que ligar o Typebot direto na Meta: a
-   * resposta do fluxo herda ordem por conversa, motor de risco e reentrega.
+   * This is what makes the arrangement better than wiring Typebot straight into
+   * Meta: the flow's reply inherits per-chat ordering, the risk engine and
+   * redelivery.
    */
   it('processar o mesmo evento duas vezes não duplica a resposta', async () => {
     const engineMessageId = `wamid.${randomUUID()}`
@@ -168,8 +169,8 @@ describe.skipIf(!hasInfra)('fluxo do Typebot', () => {
 
       await receber('agent')
 
-      // Mandar ao fluxo produziria mais uma resposta automática justamente para
-      // quem pediu para parar de recebê-las.
+      // Sending it on to the flow would produce one more automated reply for
+      // the very person who asked to stop getting them.
       expect(caminhos).toHaveLength(0)
       expect(await findLink(app.db, integrationId, CHAT_ID)).toBeNull()
     })
@@ -191,9 +192,9 @@ describe.skipIf(!hasInfra)('fluxo do Typebot', () => {
     await receber('quero encerrar', encerrado)
 
     /**
-     * Sem `input`, o Typebot informou que o fluxo acabou. O vínculo já nasce
-     * vencido para que a mensagem seguinte comece um fluxo novo, em vez de
-     * tentar continuar uma sessão que não existe mais.
+     * With no `input`, Typebot has said the flow is over. The link is born
+     * expired so the next message starts a fresh flow, instead of trying to
+     * continue a session that no longer exists.
      */
     expect(await findLink(app.db, integrationId, CHAT_ID)).toBeNull()
   })
@@ -206,7 +207,7 @@ describe.skipIf(!hasInfra)('fluxo do Typebot', () => {
       caminhos.push(String(url))
       chamada++
 
-      // O continueChat responde 404: a sessão morreu no Typebot.
+      // continueChat answers 404: the session died over in Typebot.
       if (chamada === 1) {
         return new Response(JSON.stringify({ message: 'session not found' }), { status: 404 })
       }

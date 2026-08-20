@@ -32,8 +32,8 @@ function montar(fetchImpl: typeof fetch) {
 
 describe('capacidades da engine oficial', () => {
   /**
-   * A matriz é o contrato com quem escolhe a engine. Estes valores existem para
-   * que a diferença apareça antes da migração, não depois.
+   * The matrix is the contract with whoever picks the engine. These values
+   * exist so the difference shows up before the migration, not after.
    */
   it('declara o que não faz', () => {
     const { adapter } = montar(vi.fn())
@@ -41,7 +41,7 @@ describe('capacidades da engine oficial', () => {
     expect(adapter.capabilities.groups).toBe(false)
     expect(adapter.capabilities.qrPairing).toBe(false)
     expect(adapter.capabilities.presence).toBe(false)
-    // Fora da janela de 24 h só passa template aprovado.
+    // Outside the 24 h window only an approved template gets through.
     expect(adapter.capabilities.freeformMessaging).toBe(false)
   })
 
@@ -52,7 +52,7 @@ describe('capacidades da engine oficial', () => {
     await expect(adapter.requestPairingCode()).rejects.toThrow(/pairing/i)
   })
 
-  /** Presença não existe na Cloud API; ignorar é melhor que falhar um envio. */
+  /** Presence does not exist in the Cloud API; ignoring it beats failing a send. */
   it('presença é silenciosamente ignorada', async () => {
     const chamadas = vi.fn()
     const { adapter } = montar(chamadas)
@@ -75,9 +75,9 @@ describe('conexão', () => {
   })
 
   /**
-   * Falhar aqui é o ponto: sem esta verificação, uma credencial errada só
-   * apareceria na primeira mensagem, já dentro da fila e contando como falha de
-   * entrega.
+   * Failing here is the whole point: without this check, a wrong credential
+   * would only surface on the first message, already inside the queue and
+   * counting as a delivery failure.
    */
   it('recusa credencial inválida antes de qualquer envio', async () => {
     const fetchImpl = vi.fn(async () =>
@@ -121,7 +121,7 @@ describe('envio', () => {
     expect(resultado.engineMessageId).toBe('wamid.ABC123')
   })
 
-  /** A Meta espera dígitos; o sufixo de JID é do protocolo não-oficial. */
+  /** Meta expects digits; the JID suffix belongs to the unofficial protocol. */
   it('converte JID para o formato da Meta', async () => {
     let corpoEnviado: Record<string, unknown> = {}
     const fetchImpl = vi.fn(async (_url: string, init?: RequestInit) => {
@@ -139,8 +139,9 @@ describe('envio', () => {
   })
 
   /**
-   * O erro mais confuso da Cloud API: sem tradução, quem integra vê um código
-   * numérico e conclui que a credencial quebrou, quando o problema é a janela.
+   * The most confusing Cloud API error: untranslated, whoever is integrating
+   * sees a numeric code and concludes the credential broke, when the real
+   * problem is the window.
    */
   it('traduz a janela de 24 h encerrada', async () => {
     const fetchImpl = vi.fn(async (_url: string, init?: RequestInit) => {

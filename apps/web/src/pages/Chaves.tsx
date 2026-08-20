@@ -92,7 +92,7 @@ function Emissor({
   const [erro, setErro] = useState<string | null>(null)
   const [emitida, setEmitida] = useState<ApiKeyCreated | null>(null)
 
-  /** Ninguém emite chave mais poderosa que o próprio papel — o servidor recusa. */
+  /** Nobody issues a key more powerful than their own role — the server refuses. */
   const disponiveis = PAPEIS.filter((p) => papelAoMenos(papelDoUsuario, p.valor))
   const escopoVazio = limitarSessoes && escolhidas.length === 0
 
@@ -109,8 +109,8 @@ function Emissor({
       const resposta = await post<ApiKeyCreated>('/v1/keys', {
         name: nome.trim(),
         role: papel,
-        // Omitido de propósito quando a chave vale para a organização inteira:
-        // lista vazia significaria "não alcança nada", que é outra coisa.
+        // Left out on purpose when the key covers the whole organization: an
+        // empty list would mean "reaches nothing", which is a different thing.
         ...(limitarSessoes ? { sessionScope: escolhidas } : {}),
         ...(validade ? { expiresInDays: Number(validade) } : {}),
       })
@@ -162,7 +162,7 @@ function Emissor({
               </option>
             ))}
           </select>
-          {/* O limite é a razão de existir da separação de credenciais. */}
+          {/* The limit is the whole reason separate credentials exist. */}
           <span className="text-xs text-muted">{t('keys.field.roleHint')}</span>
         </label>
 
@@ -258,11 +258,12 @@ function Emissor({
 }
 
 /**
- * O token completo, uma vez só.
+ * The full token, once only.
  *
- * O servidor guarda apenas o hash: fechar esta tela sem copiar significa emitir
- * outra chave. Por isso ela ocupa o lugar do formulário em vez de virar um
- * aviso discreto no canto — e não some sozinha.
+ * The server keeps just the hash: closing this screen without copying means
+ * issuing another key. That is why it takes the form's place instead of
+ * becoming a discreet notice in the corner — and why it does not disappear on
+ * its own.
  */
 function TokenRecemNascido({
   emitida,
@@ -293,8 +294,8 @@ function TokenRecemNascido({
                 await navigator.clipboard.writeText(emitida.token)
                 setCopia('copiado')
               } catch {
-                // Área de transferência exige contexto seguro e permissão; sem
-                // ela o texto acima continua selecionável, que é a saída.
+                // The clipboard needs a secure context and permission; without
+                // it the text above stays selectable, which is the way out.
                 setCopia('falhou')
               }
             }}
@@ -397,7 +398,7 @@ function LinhaDeChave({
             </button>
           </span>
         ) : (
-          /* Revogar não tem volta, e a próxima requisição com ela leva 401 na hora. */
+          /* Revoking has no undo, and the next request with it takes a 401 on the spot. */
           <button
             type="button"
             onClick={() => setConfirmando(true)}

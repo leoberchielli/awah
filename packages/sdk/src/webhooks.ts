@@ -3,32 +3,32 @@ export const TIMESTAMP_HEADER = 'x-awah-timestamp'
 
 export interface VerificarEntrega {
   /**
-   * O corpo **cru**, como chegou. Reserializar o objeto já parseado produz bytes
-   * parecidos, não idênticos — ordem de chaves e espaçamento podem diferir — e a
-   * verificação falharia de forma intermitente e inexplicável.
+   * The **raw** body, exactly as it arrived. Re-serializing the parsed object
+   * produces similar bytes, not identical ones — key order and spacing can
+   * differ — and verification would fail intermittently and inexplicably.
    */
   payload: string
   secret: string
-  /** Valor de `x-awah-signature`, no formato `sha256=<hex>`. */
+  /** Value of `x-awah-signature`, in the form `sha256=<hex>`. */
   signature: string
-  /** Valor de `x-awah-timestamp`, em segundos. */
+  /** Value of `x-awah-timestamp`, in seconds. */
   timestamp: number | string
-  /** Janela aceita, em segundos. Padrão 300. */
+  /** Accepted window, in seconds. Default 300. */
   toleranceSeconds?: number
-  /** Injetável para teste. */
+  /** Injectable for tests. */
   now?: () => number
 }
 
 /**
- * Verifica uma entrega de webhook.
+ * Verifies a webhook delivery.
  *
- * A assinatura cobre `timestamp.corpo`, não só o corpo. É o que impede replay:
- * uma entrega capturada não pode ser reenviada depois porque o receptor rejeita
- * timestamps velhos, e mudar o timestamp para escapar da janela invalida a
- * assinatura.
+ * The signature covers `timestamp.body`, not the body alone. That is what stops
+ * replay: a captured delivery cannot be sent again later because the receiver
+ * rejects old timestamps, and changing the timestamp to escape the window
+ * invalidates the signature.
  *
- * Usa WebCrypto, então roda igual em Node, Deno, Bun, Cloudflare Workers e no
- * navegador. É assíncrona por isso.
+ * Uses WebCrypto, so it runs the same in Node, Deno, Bun, Cloudflare Workers and
+ * the browser. That is why it is async.
  */
 export async function verifyWebhook(options: VerificarEntrega): Promise<boolean> {
   const { payload, secret, signature, toleranceSeconds = 300, now = Date.now } = options
@@ -43,7 +43,7 @@ export async function verifyWebhook(options: VerificarEntrega): Promise<boolean>
   return comparacaoConstante(esperada, signature)
 }
 
-/** Mesma assinatura que o servidor produz. Exportada para testar integrações. */
+/** The same signature the server produces. Exported so integrations can test. */
 export async function signWebhook(
   payload: string,
   secret: string,
@@ -73,11 +73,12 @@ export async function signWebhook(
 }
 
 /**
- * Comparação em tempo constante.
+ * Constant-time comparison.
  *
- * `===` sai no primeiro byte diferente, e essa diferença de tempo, medida em
- * volume, revela a assinatura correta byte a byte. Não é ataque teórico: é o
- * motivo de toda biblioteca de webhook trazer uma função como esta.
+ * `===` bails out at the first byte that differs, and that difference in timing,
+ * measured at volume, gives away the correct signature byte by byte. This is not
+ * a theoretical attack: it is why every webhook library ships a function like
+ * this one.
  */
 function comparacaoConstante(a: string, b: string): boolean {
   if (a.length !== b.length) return false
@@ -91,9 +92,9 @@ function comparacaoConstante(a: string, b: string): boolean {
 }
 
 /**
- * Atalho para quem recebe um `Request` padrão — Workers, Deno, Hono, Next.
+ * Shortcut for anyone holding a standard `Request` — Workers, Deno, Hono, Next.
  *
- * Consome o corpo como texto, que é justamente o que a verificação exige.
+ * It consumes the body as text, which is exactly what verification requires.
  */
 export async function verifyWebhookRequest(
   request: Request,

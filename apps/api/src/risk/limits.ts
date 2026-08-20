@@ -1,18 +1,18 @@
 /**
- * Tetos de envio por sessão, antes do warmup.
+ * Send caps per session, before warm-up.
  *
- * Os números não são exatos — o WhatsApp não publica limites, e quem afirma
- * conhecê-los está adivinhando. O que se sabe por observação é a forma do
- * problema: volume alto num chip novo, muitos destinatários que nunca
- * responderam e disparo em velocidade constante são os padrões que antecedem
- * bloqueio. Os defaults abaixo são conservadores de propósito; quem tem chip
- * maduro e histórico de conversa real pode subi-los por sessão.
+ * The numbers are not exact — WhatsApp does not publish its limits, and anyone
+ * who claims to know them is guessing. What observation does tell us is the
+ * shape of the problem: high volume on a fresh number, lots of recipients who
+ * never replied, and blasting at a constant rate are the patterns that come
+ * before a block. The defaults below are conservative on purpose; a mature
+ * number with a history of real conversation can raise them per session.
  */
 export interface SessionLimits {
   perMinute: number
   perHour: number
   perDay: number
-  /** Destinatários nunca contatados por esta sessão, por dia. */
+  /** Recipients this session has never contacted, per day. */
   newContactsPerDay: number
 }
 
@@ -24,9 +24,9 @@ export const DEFAULT_LIMITS: SessionLimits = {
 }
 
 /**
- * Lê os limites gravados em `sessions.config`, caindo nos defaults quando o
- * campo não existe ou veio corrompido. Configuração inválida nunca deve
- * destravar o limite — na dúvida, o valor conservador vence.
+ * Reads the limits stored in `sessions.config`, falling back to the defaults
+ * when the field is missing or came back corrupted. Invalid configuration must
+ * never unlock the limit — when in doubt, the conservative value wins.
  */
 export function resolveLimits(config: unknown): SessionLimits {
   if (typeof config !== 'object' || config === null) return DEFAULT_LIMITS

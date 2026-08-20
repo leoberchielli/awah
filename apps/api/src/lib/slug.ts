@@ -1,6 +1,6 @@
 /**
- * Slug de organização: minúsculas, sem acento, separado por hífen.
- * Usado no header `x-awah-org` como alternativa legível ao UUID.
+ * Organization slug: lowercase, no accents, hyphen-separated.
+ * Used in the `x-awah-org` header as a readable alternative to the UUID.
  */
 export function slugify(input: string): string {
   const base = input

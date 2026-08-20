@@ -14,9 +14,10 @@ import type {
 } from './schema/enums'
 
 /**
- * Tipos TypeScript derivados dos enums do banco. Derivar em vez de redeclarar
- * garante que schema e código não saiam de sincronia em silêncio: acrescentar um
- * valor no enum do Postgres quebra o `switch` exaustivo no TypeScript.
+ * TypeScript types derived from the database enums. Deriving instead of
+ * redeclaring guarantees schema and code never fall out of sync in silence:
+ * adding a value to the Postgres enum breaks the exhaustive `switch` in
+ * TypeScript.
  */
 export type MemberRole = (typeof memberRole.enumValues)[number]
 export type DesiredState = (typeof desiredState.enumValues)[number]

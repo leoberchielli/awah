@@ -12,9 +12,9 @@ describe('geração de chave', () => {
   })
 
   /**
-   * O segredo é base64url e pode conter `_`. Como o parse corta no primeiro
-   * separador depois do esquema, o prefixo precisa ser hex — este teste trava
-   * essa premissa.
+   * The secret is base64url and can contain `_`. Since the parse splits on the
+   * first separator after the scheme, the prefix has to be hex — this test
+   * pins that assumption down.
    */
   it('sobrevive a segredo contendo underscore', () => {
     const generated = generateApiKey()

@@ -5,7 +5,7 @@ import type { SessionLimits } from './limits'
 const MINUTE = 60_000
 const HOUR = 60 * MINUTE
 const DAY = 24 * HOUR
-/** Sobrevive à janela de 24 h com folga, sem vazar memória de sessão morta. */
+/** Outlives the 24 h window with room to spare; dead sessions do not leak. */
 const KEY_TTL_SECONDS = 26 * 60 * 60
 
 export interface BudgetUsage {
@@ -16,23 +16,23 @@ export interface BudgetUsage {
 }
 
 export interface BudgetVerdict {
-  /** Janela que está cheia, ou null quando há vaga. */
+  /** The window that is full, or null when a slot is free. */
   exceeded: keyof BudgetUsage | null
   usage: BudgetUsage
-  /** Quando a janela cheia abre. Null quando não há bloqueio. */
+  /** When the full window opens. Null when nothing is blocking. */
   availableAt: Date | null
 }
 
 /**
- * Contadores de envio em janela deslizante.
+ * Sliding-window send counters.
  *
- * Janela deslizante e não balde por hora cheia: um balde permitiria mandar o
- * teto inteiro às 13h59 e o teto de novo às 14h00, que é justamente a rajada
- * que se quer evitar. O ZSET guarda o instante de cada envio e a contagem
- * pergunta "quantos nos últimos N segundos".
+ * A sliding window and not a bucket per clock hour: a bucket would let you send
+ * the whole cap at 13:59 and the whole cap again at 14:00, which is precisely
+ * the burst we are trying to avoid. The ZSET stores the instant of every send
+ * and the count asks "how many in the last N seconds".
  *
- * Vive no Redis porque é consultado no caminho quente de cada envio, e porque a
- * partir da onda 4 várias réplicas compartilham o mesmo orçamento por sessão.
+ * It lives in Redis because it is read on the hot path of every send, and
+ * because from wave 4 on several replicas share the same per-session budget.
  */
 export class BudgetTracker {
   constructor(
@@ -68,10 +68,10 @@ export class BudgetTracker {
   }
 
   /**
-   * Confere as janelas contra os limites já ajustados pelo warmup.
+   * Checks the windows against the limits already adjusted by warm-up.
    *
-   * A ordem importa: reporta a janela mais restritiva primeiro, para que a ETA
-   * devolvida ao usuário seja a que realmente vale.
+   * Order matters: it reports the most restrictive window first, so the ETA
+   * handed back to the user is the one that actually applies.
    */
   async check(
     sessionId: string,
@@ -116,14 +116,14 @@ export class BudgetTracker {
   }
 
   /**
-   * Quando a janela volta a ter vaga: é o instante em que o registro mais antigo
-   * dentro dela sai. Devolver isto — e não um atraso fixo — é o que permite
-   * mostrar uma ETA honesta no dashboard em vez de "tente de novo depois".
+   * When the window has a free slot again: the instant the oldest entry inside
+   * it leaves. Returning this — and not a fixed delay — is what lets us show an
+   * honest ETA on the dashboard instead of "try again later".
    */
   private async windowOpensAt(key: string, windowMs: number): Promise<Date> {
     const agora = this.now()
 
-    // O registro mais antigo ainda dentro da janela; ao sair, abre uma vaga.
+    // The oldest entry still inside the window; when it leaves, a slot opens.
     const maisAntigo = await this.redis.zrangebyscore(
       key,
       agora - windowMs,
@@ -138,18 +138,18 @@ export class BudgetTracker {
     if (!score) return new Date(agora + 1000)
 
     const expira = Number(score) + windowMs
-    // Piso curto evita reavaliação em laço apertado quando a vaga é iminente.
+    // A short floor avoids a tight re-evaluation loop when a slot is imminent.
     return new Date(Math.max(expira, agora + 250))
   }
 
-  /** Registra o envio nas janelas. Chamado depois da entrega bem-sucedida. */
+  /** Records the send in the windows. Called after successful delivery. */
   async record(sessionId: string, chatId: string, isNewContact: boolean): Promise<void> {
     const agora = this.now()
     const sent = this.sentKey(sessionId)
     const pipeline = this.redis.pipeline()
 
     pipeline.zadd(sent, agora, `${agora}:${chatId}`)
-    // Poda o que já saiu da maior janela, para o ZSET não crescer sem limite.
+    // Prunes what left the largest window, so the ZSET cannot grow forever.
     pipeline.zremrangebyscore(sent, '-inf', agora - DAY)
     pipeline.expire(sent, KEY_TTL_SECONDS)
 
@@ -167,12 +167,12 @@ export class BudgetTracker {
   }
 
   /**
-   * Se esta sessão já trocou mensagem com o destinatário.
+   * Whether this session has already exchanged a message with the recipient.
    *
-   * O Redis é cache, não fonte de verdade: um miss consulta o Postgres e
-   * repovoa. Sem esse fallback, um restart do Redis faria a base inteira de
-   * contatos parecer nova e o teto diário de contatos novos travaria a operação
-   * de quem só está respondendo conversas antigas.
+   * Redis is a cache, not the source of truth: a miss goes to Postgres and
+   * repopulates. Without that fallback, a Redis restart would make the entire
+   * contact base look new, and the daily cap on new contacts would lock up an
+   * operation that is only replying to old conversations.
    */
   async isKnownContact(sessionId: string, chatId: string): Promise<boolean> {
     const cached = await this.redis.sismember(this.contactsKey(sessionId), chatId)
@@ -191,7 +191,7 @@ export class BudgetTracker {
     return true
   }
 
-  /** Zera os contadores de uma sessão. Usado no logout e em teste. */
+  /** Zeroes a session's counters. Used on logout and in tests. */
   async reset(sessionId: string): Promise<void> {
     await this.redis.del(
       this.sentKey(sessionId),

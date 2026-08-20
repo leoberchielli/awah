@@ -1,8 +1,8 @@
 /**
- * Ícones desenhados à mão, não uma biblioteca.
+ * Icons drawn by hand, not a library.
  *
- * São dez; uma dependência de ícones traria milhares e um passo de tree-shaking
- * para entregar exatamente estes dez.
+ * There are ten; an icon dependency would bring thousands and a tree-shaking
+ * step to deliver exactly these ten.
  */
 import type { SVGProps } from 'react'
 

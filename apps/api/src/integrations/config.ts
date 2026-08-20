@@ -4,11 +4,12 @@ import { decrypt, encrypt } from '../lib/crypto'
 import { badRequest } from '../lib/errors'
 
 /**
- * Credenciais das ferramentas externas.
+ * Credentials for the external tools.
  *
- * Cifradas pelo mesmo motivo do auth state: o token do Chatwoot escreve na
- * conta de atendimento do cliente e lê todas as conversas dela. É credencial,
- * não configuração, e acesso de leitura ao banco não deve revelá-la.
+ * Encrypted for the same reason as the auth state: the Chatwoot token writes
+ * into the customer's support account and reads every conversation in it. It is
+ * a credential, not configuration, and read access to the database must not
+ * reveal it.
  */
 export const chatwootConfigSchema = z.object({
   baseUrl: z
@@ -17,19 +18,19 @@ export const chatwootConfigSchema = z.object({
     .describe('Address of the instance. https://app.chatwoot.com on the hosted version.')
     .transform((valor) => valor.replace(/\/+$/, '')),
   accountId: z.coerce.number().int().positive(),
-  /** Precisa ser uma caixa do tipo API — as demais têm transporte próprio. */
+  /** Must be an API-type inbox — the others carry their own transport. */
   inboxId: z.coerce.number().int().positive(),
   apiAccessToken: z.string().min(10).describe('Access token of the profile or of the agent bot.'),
   /**
-   * Segredo que o Chatwoot apresenta ao chamar de volta.
+   * The secret Chatwoot presents when it calls back.
    *
-   * O webhook de caixa API do Chatwoot não assina o corpo e não permite
-   * cabeçalho próprio: o único lugar onde cabe um segredo é a própria URL. Por
-   * isso ela é secreta, e por isso a rota confere também `account.id` e
-   * `inbox.id` do payload — dois pontos de conferência valem mais que um.
+   * Chatwoot's API-inbox webhook does not sign the body and does not allow a
+   * header of your own: the only place a secret fits is the URL itself. That is
+   * why the URL is secret, and why the route also checks `account.id` and
+   * `inbox.id` from the payload — two checkpoints are worth more than one.
    */
   webhookToken: z.string().min(24),
-  /** Nome que aparece no contato quando o WhatsApp não informa o do perfil. */
+  /** Name shown on the contact when WhatsApp does not give the profile one. */
   fallbackName: z.string().min(1).default('WhatsApp contact'),
 })
 
@@ -39,52 +40,53 @@ export const typebotConfigSchema = z.object({
     .url()
     .describe('https://typebot.io on the hosted version, or your own domain.')
     .transform((valor) => valor.replace(/\/+$/, '')),
-  /** O `publicId` do fluxo, o mesmo que aparece na URL de compartilhamento. */
+  /** The flow's `publicId` — the same one that appears in the share URL. */
   typebotId: z.string().min(1),
-  /** Token de API. Só necessário quando o fluxo não é público. */
+  /** API token. Only needed when the flow is not public. */
   apiToken: z.string().min(10).optional(),
   /**
-   * Silêncio que encerra a sessão de fluxo.
+   * How much silence ends the flow session.
    *
-   * Sem expiração, alguém que voltasse a escrever três semanas depois cairia no
-   * meio de um formulário que já não faz sentido.
+   * Without an expiry, someone who wrote back three weeks later would land in
+   * the middle of a form that no longer makes any sense.
    */
   sessionTtlMinutes: z.coerce.number().int().min(1).max(10_080).default(360),
   /**
-   * O que o cliente digita para escapar do robô. Vazio desliga o escape — só
-   * faça isso se houver outro caminho até um humano.
+   * What the customer types to escape the bot. Empty turns the escape off — do
+   * that only if there is another route to a human.
    */
   humanHandoffKeyword: z.string().default('agent'),
-  /** Resposta ao escape, antes de o fluxo se calar para aquele contato. */
+  /** Reply to the escape, before the flow goes quiet for that contact. */
   humanHandoffReply: z.string().default('Got it — I am bringing in someone from the team.'),
 })
 
 /**
- * O conector para qualquer plataforma.
+ * The connector for any platform.
  *
- * Existe para que plugar uma ferramenta nova não dependa de alguém escrever um
- * conector dedicado aqui dentro. Qualquer coisa que aceite um POST e devolva
- * JSON serve: n8n, Make, uma função serverless, o sistema da casa.
+ * It exists so that plugging in a new tool does not depend on someone writing a
+ * dedicated connector in here. Anything that accepts a POST and returns JSON
+ * will do: n8n, Make, a serverless function, the in-house system.
  */
 export const httpConfigSchema = z.object({
   url: z.string().url().describe('Where the gateway posts each incoming message.'),
   /**
-   * Assina o corpo em HMAC-SHA256, no mesmo esquema dos webhooks — quem já
-   * valida webhook do AWAH valida isto com a mesma função. Opcional porque em
-   * rede fechada é peso sem ganho; obrigatório na prática se a URL for pública.
+   * Signs the body with HMAC-SHA256, the same scheme as the webhooks — anyone
+   * who already validates an AWAH webhook validates this with the same
+   * function. Optional because on a closed network it is weight for nothing;
+   * in practice mandatory if the URL is public.
    */
   secret: z.string().min(16).optional(),
-  /** Cabeçalhos fixos. É onde entra o token de autenticação do outro lado. */
+  /** Fixed headers. This is where the other side's auth token goes. */
   headers: z.record(z.string()).optional(),
   /**
-   * Teto de espera. Fica no caminho da mensagem, então é curto de propósito: a
-   * plataforma que demora 30 s para responder atrasa a fila inteira daquela
-   * conversa.
+   * Wait cap. It sits on the message path, so it is short on purpose: a
+   * platform that takes 30 s to answer delays the whole queue for that
+   * conversation.
    */
   timeoutMs: z.coerce.number().int().min(500).max(30_000).default(10_000),
-  /** Caminho por ponto até a resposta, quando ela vem aninhada. */
+  /** Dotted path to the reply, when it comes back nested. */
   replyPath: z.string().optional(),
-  /** Rótulo do painel, para distinguir quando houver mais de um. */
+  /** Label for the panel, to tell them apart when there is more than one. */
   label: z.string().min(1).default('External platform'),
 })
 
@@ -154,11 +156,11 @@ export async function saveIntegration(
     config: AnyIntegrationConfig
     active?: boolean
     /**
-     * Id escolhido de fora.
+     * Id chosen from outside.
      *
-     * O Chatwoot precisa da URL do webhook — que contém este id — no mesmo
-     * momento em que a caixa é criada, antes de a linha existir. Escolher o id
-     * antes quebra esse ovo-e-galinha sem uma segunda escrita.
+     * Chatwoot needs the webhook URL — which contains this id — at the very
+     * moment the inbox is created, before the row exists. Choosing the id up
+     * front breaks that chicken-and-egg without a second write.
      */
     id?: string
   },
@@ -180,7 +182,7 @@ export async function saveIntegration(
       set: {
         config: cifrada,
         active: input.active ?? true,
-        // Configuração nova zera o erro anterior: ele era do que foi trocado.
+        // New configuration clears the old error: it was about what changed.
         lastError: null,
         lastErrorAt: null,
         updatedAt: new Date(),
@@ -192,7 +194,7 @@ export async function saveIntegration(
   return linha
 }
 
-/** Integrações ativas de uma sessão. É a consulta do caminho de mensagem. */
+/** A session's active integrations. This is the message-path query. */
 export async function loadActiveIntegrations(
   db: Database,
   sessionId: string,
@@ -213,11 +215,11 @@ export async function loadActiveIntegrations(
       })
     } catch {
       /**
-       * Uma integração ilegível não pode derrubar as outras nem a mensagem.
+       * An unreadable integration must not take down the others or the message.
        *
-       * O caso real é rotação de ENCRYPTION_KEY. Quem operar vai ver a conversa
-       * parar de chegar na ferramenta; o erro fica registrado na linha para o
-       * painel explicar por quê.
+       * The real case is ENCRYPTION_KEY rotation. Whoever is operating will see
+       * conversations stop arriving in the tool; the error is recorded on the
+       * row so the panel can explain why.
        */
       await db
         .update(schema.integrations)
@@ -242,15 +244,15 @@ export async function findIntegrationById(
   id: string,
   encryptionKey: Buffer,
 ): Promise<LoadedIntegration | null> {
-  const [linha] = await db
+  const [found] = await db
     .select({ ...COLUMNS, config: schema.integrations.config })
     .from(schema.integrations)
     .where(eq(schema.integrations.id, id))
     .limit(1)
 
-  if (!linha) return null
+  if (!found) return null
 
-  const { config, ...row } = linha
+  const { config, ...row } = found
   try {
     return {
       row,
@@ -270,7 +272,7 @@ export async function deleteIntegration(db: Database, orgId: string, id: string)
   return removidas.length > 0
 }
 
-/** Registra a última falha para o painel conseguir explicar o silêncio. */
+/** Records the last failure so the panel can explain the silence. */
 export async function recordIntegrationError(
   db: Database,
   integrationId: string,

@@ -12,14 +12,14 @@ export interface MetricSeries {
 }
 
 /**
- * Leitura dos agregados horários.
+ * Reads of the hourly aggregates.
  *
- * Toda consulta daqui é indexada por `(org_id, metric, bucket)` e devolve
- * dezenas de linhas, não milhões — é o contrato que mantém o dashboard rápido
- * conforme a base cresce.
+ * Every query from here is indexed by `(org_id, metric, bucket)` and returns
+ * tens of rows, not millions — that is the contract that keeps the dashboard
+ * fast as the database grows.
  */
 export class MetricsRepository extends TenantRepository {
-  /** Séries temporais de uma ou mais métricas, opcionalmente por sessão. */
+  /** Time series for one or more metrics, optionally per session. */
   async series(input: {
     metrics: string[]
     since: Date
@@ -48,10 +48,10 @@ export class MetricsRepository extends TenantRepository {
       .orderBy(schema.metricsHourly.bucket)
 
     /**
-     * Quando não se filtra por sessão, há uma linha por sessão em cada balde.
-     * Somar é o comportamento certo para contagens — que é o que praticamente
-     * todas as métricas aqui são. Percentis são a exceção e por isso têm rota
-     * própria, sempre por sessão.
+     * With no session filter, there is one row per session in each bucket.
+     * Summing is the right behavior for counts — which is what practically
+     * every metric here is. Percentiles are the exception, and that is why they
+     * have a route of their own, always per session.
      */
     const agrupado = new Map<string, Map<number, number>>()
 
@@ -70,7 +70,7 @@ export class MetricsRepository extends TenantRepository {
     }))
   }
 
-  /** Soma de uma métrica no período. */
+  /** Sum of one metric over the period. */
   async total(metric: string, since: Date, sessionId?: string | null): Promise<number> {
     const filtros = [
       eq(schema.metricsHourly.orgId, this.orgId),
@@ -87,7 +87,7 @@ export class MetricsRepository extends TenantRepository {
     return Number(row?.total ?? 0)
   }
 
-  /** Vários totais numa consulta só, para montar um painel sem N idas ao banco. */
+  /** Several totals in one query, to build a panel without N trips to the database. */
   async totals(
     metrics: string[],
     since: Date,
@@ -117,7 +117,7 @@ export class MetricsRepository extends TenantRepository {
     return resultado
   }
 
-  /** Último valor conhecido de uma métrica por sessão. */
+  /** Last known value of a metric, per session. */
   async latestBySession(metric: string, since: Date): Promise<Map<string, number>> {
     const rows = await this.db
       .select({

@@ -4,16 +4,16 @@ import { sessions } from './sessions'
 import { orgs } from './tenancy'
 
 /**
- * Ligação de uma sessão com uma ferramenta de fora.
+ * The link between a session and an outside tool.
  *
- * A escolha aqui é deliberada: em vez de construir caixa de entrada e
- * construtor de fluxo próprios, o AWAH é o transporte de quem já resolveu isso
- * bem. Chatwoot cuida do atendimento humano, Typebot cuida do fluxo — e o
- * gateway entrega o que nenhum dos dois tem, que é fila durável, ordem por
- * conversa e motor de risco embaixo.
+ * The choice here is deliberate: instead of building our own inbox and flow
+ * builder, AWAH is the transport for the people who already got that right.
+ * Chatwoot handles human support, Typebot handles the flow — and the gateway
+ * delivers what neither of them has, which is a durable queue, per-conversation
+ * ordering and a risk engine underneath.
  *
- * `config` é cifrado porque guarda token de API: quem o obtém escreve na conta
- * de atendimento do cliente.
+ * `config` is encrypted because it holds an API token: whoever gets it writes
+ * into the customer's support account.
  */
 export const integrations = pgTable(
   'integrations',
@@ -26,10 +26,10 @@ export const integrations = pgTable(
       .notNull()
       .references(() => sessions.id, { onDelete: 'cascade' }),
     kind: integrationKind('kind').notNull(),
-    /** JSON cifrado em AES-256-GCM. Nunca devolvido em leitura. */
+    /** JSON encrypted with AES-256-GCM. Never returned on read. */
     config: text('config').notNull(),
     active: boolean('active').notNull().default(true),
-    /** Última falha ao falar com a ferramenta, para o painel explicar o silêncio. */
+    /** Last failure talking to the tool, so the panel can explain the silence. */
     lastError: text('last_error'),
     lastErrorAt: timestamp('last_error_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -38,26 +38,26 @@ export const integrations = pgTable(
   (t) => [
     index('integrations_org_idx').on(t.orgId),
     /**
-     * Uma integração de cada tipo por sessão.
+     * One integration of each kind per session.
      *
-     * Duas do mesmo tipo na mesma sessão duplicariam cada mensagem recebida na
-     * ferramenta de destino, e o operador veria a conversa em dobro sem
-     * entender por quê.
+     * Two of the same kind on the same session would duplicate every inbound
+     * message in the destination tool, and the operator would see the
+     * conversation twice over without understanding why.
      */
     unique('integrations_session_kind_key').on(t.sessionId, t.kind),
   ],
 )
 
 /**
- * O vínculo entre uma conversa do WhatsApp e a mesma conversa lá fora.
+ * The bond between a WhatsApp conversation and the same conversation outside.
  *
- * Sem esta tabela, cada mensagem recebida precisaria perguntar à ferramenta
- * "qual é o id desta conversa?" — uma chamada de rede a mais no caminho crítico
- * de toda mensagem, e um ponto de falha que colocaria a conversa em ordem
- * errada quando a API do outro lado estivesse lenta.
+ * Without this table, every inbound message would have to ask the tool "what is
+ * the id of this conversation?" — one more network call on the critical path of
+ * every message, and a failure point that would put the conversation in the
+ * wrong order whenever the API on the other side was slow.
  *
- * `externalConversationId` guarda o id da conversa no Chatwoot ou a sessão do
- * fluxo no Typebot, conforme o tipo.
+ * `externalConversationId` holds the conversation id in Chatwoot or the flow
+ * session in Typebot, depending on the kind.
  */
 export const integrationLinks = pgTable(
   'integration_links',
@@ -66,16 +66,16 @@ export const integrationLinks = pgTable(
     integrationId: uuid('integration_id')
       .notNull()
       .references(() => integrations.id, { onDelete: 'cascade' }),
-    /** JID do WhatsApp, do jeito que a engine entrega. */
+    /** WhatsApp JID, exactly as the engine hands it over. */
     chatId: text('chat_id').notNull(),
     externalConversationId: text('external_conversation_id').notNull(),
-    /** Contato no Chatwoot. Nulo no Typebot, que não tem esse conceito. */
+    /** Contact in Chatwoot. Null on Typebot, which has no such concept. */
     externalContactId: text('external_contact_id'),
-    /** Espaço para o que cada conector precisar guardar por conversa. */
+    /** Room for whatever each connector needs to keep per conversation. */
     metadata: jsonb('metadata').$type<Record<string, unknown>>(),
     /**
-     * Sessão de fluxo expira; conversa de atendimento não. Nulo significa "não
-     * expira".
+     * A flow session expires; a support conversation does not. Null means
+     * "never expires".
      */
     expiresAt: timestamp('expires_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

@@ -40,19 +40,20 @@ export function App() {
 }
 
 /**
- * Porteiro do dashboard.
+ * The dashboard's doorman.
  *
- * A verdadeira autorização é do servidor — toda rota já exige a permissão certa.
- * Isto aqui só evita mostrar um esqueleto de painel para quem vai levar 401 em
- * cada chamada, e o retorno é para `/entrar` levando a URL de origem junto.
+ * The real authorization is the server's — every route already demands the
+ * right permission. This only avoids showing a panel skeleton to someone who
+ * will take a 401 on every call, and it sends them back to `/entrar` carrying
+ * the URL they came from.
  */
 function Autenticado({ children }: { children: React.ReactNode }) {
   const { data, error, settled } = useQuery<Me>('/v1/auth/me')
   /**
-   * Instância vazia não tem para onde mandar quem chega.
+   * An empty instance has nowhere to send whoever arrives.
    *
-   * Sem esta pergunta, o primeiro acesso caía num formulário de login que
-   * ninguém conseguia usar, com a saída escondida num `curl` do README.
+   * Without this question, first access landed on a login form nobody could
+   * use, with the way out hidden in a `curl` in the README.
    */
   const bootstrap = useQuery<Bootstrap>('/v1/auth/bootstrap')
 

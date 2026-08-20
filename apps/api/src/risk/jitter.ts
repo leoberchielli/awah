@@ -1,10 +1,10 @@
 /**
- * Amostra de uma distribuição log-normal, por Box-Muller.
+ * A sample from a log-normal distribution, via Box-Muller.
  *
- * Log-normal e não uniforme porque é assim que intervalo humano se comporta: a
- * maioria das pausas fica perto da mediana, e de vez em quando aparece uma bem
- * mais longa — a pessoa foi buscar café. Intervalo uniforme produz um padrão
- * regular, que é justamente o que se quer evitar.
+ * Log-normal and not uniform because that is how human intervals behave: most
+ * pauses land near the median, and every so often one comes out much longer —
+ * the person went to get coffee. A uniform interval produces a regular pattern,
+ * which is exactly what we are trying to avoid.
  */
 export function logNormal(medianMs: number, sigma: number, random: () => number): number {
   const u1 = Math.max(random(), Number.EPSILON)
@@ -14,22 +14,22 @@ export function logNormal(medianMs: number, sigma: number, random: () => number)
 }
 
 export interface HumanDelayOptions {
-  /** Mediana do intervalo entre envios, em ms. */
+  /** Median interval between sends, in ms. */
   medianMs?: number
-  /** Dispersão da cauda. Acima de 1 produz pausas muito longas. */
+  /** Spread of the tail. Above 1 it produces very long pauses. */
   sigma?: number
-  /** Score de risco: quanto maior, mais lento o ritmo. */
+  /** Risk score: the higher it is, the slower the pace. */
   throttleFactor?: number
   maxMs?: number
   random?: () => number
 }
 
 /**
- * Intervalo antes do próximo envio.
+ * The interval before the next send.
  *
- * O `throttleFactor` divide o ritmo: fator 0,25 significa quatro vezes mais
- * espera entre mensagens. É assim que o freio do score chega ao comportamento
- * observável sem precisar recusar nada.
+ * `throttleFactor` divides the pace: a factor of 0.25 means four times the wait
+ * between messages. This is how the score's brake reaches observable behaviour
+ * without having to refuse anything.
  */
 export function humanDelayMs(options: HumanDelayOptions = {}): number {
   const {
@@ -47,11 +47,11 @@ export function humanDelayMs(options: HumanDelayOptions = {}): number {
 }
 
 /**
- * Quanto tempo exibir "digitando" antes de enviar.
+ * How long to show "typing" before sending.
  *
- * Proporcional ao texto, em ritmo de digitação humana. Uma mensagem de trezentos
- * caracteres que aparece instantaneamente denuncia automação para qualquer um
- * que esteja com a conversa aberta.
+ * Proportional to the text, at a human typing pace. A three-hundred-character
+ * message that appears instantly gives the automation away to anyone who has
+ * the chat open.
  */
 export function typingDurationMs(
   textLength: number,

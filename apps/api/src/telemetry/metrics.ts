@@ -2,17 +2,17 @@ import { type Database, sql } from '@awah/db'
 import { Counter, collectDefaultMetrics, Gauge, Histogram, Registry } from 'prom-client'
 
 /**
- * Registro de métricas em formato Prometheus.
+ * Metrics registry in Prometheus format.
  *
- * Separado dos agregados horários de propósito: aqui vive o que interessa a
- * quem opera a infraestrutura agora — fila crescendo, sessão caindo, latência
- * subindo. Os agregados respondem "como foi ontem"; isto responde "o que está
- * acontecendo neste segundo".
+ * Kept apart from the hourly aggregates on purpose: what lives here is what
+ * matters to whoever is running the infrastructure right now — queue growing,
+ * session dropping, latency climbing. The aggregates answer "how was
+ * yesterday"; this answers "what is happening this second".
  */
 export class AwahMetrics {
   readonly registry = new Registry()
 
-  /** Contadores incrementados no caminho quente. */
+  /** Counters incremented on the hot path. */
   readonly messagesSent: Counter<'session'>
   readonly messagesReceived: Counter<'session'>
   readonly messagesFailed: Counter<'session'>
@@ -23,17 +23,17 @@ export class AwahMetrics {
   readonly sendDuration: Histogram<'result'>
   readonly webhookDuration: Histogram<'outcome'>
 
-  /** Estado do momento, preenchido a cada coleta. */
+  /** State as of right now, filled in on every collection. */
   private readonly sessionsByStatus: Gauge<'status'>
   private readonly sessionsOwned: Gauge<string>
   private readonly outboxDepth: Gauge<'status'>
   private readonly webhookDepth: Gauge<'status'>
 
   constructor(nodeId: string) {
-    // Toda série carrega o nó, para distinguir réplicas no mesmo scrape.
+    // Every series carries the node, to tell replicas apart in one scrape.
     this.registry.setDefaultLabels({ node: nodeId })
 
-    // Heap, GC e atraso do event loop — o que denuncia um nó doente.
+    // Heap, GC and event loop delay — what gives away a sick node.
     collectDefaultMetrics({ register: this.registry, prefix: 'awah_' })
 
     this.messagesSent = new Counter({
@@ -82,8 +82,8 @@ export class AwahMetrics {
       name: 'awah_send_duration_seconds',
       help: 'Time between claiming the send and the engine confirming it.',
       labelNames: ['result'],
-      // Faixas escolhidas para o caminho real: o jitter humano coloca a maioria
-      // dos envios entre 1 s e 30 s, e a cauda importa mais que a média.
+      // Buckets chosen for the real path: human jitter puts most sends between
+      // 1 s and 30 s, and the tail matters more than the average.
       buckets: [0.1, 0.5, 1, 2, 5, 10, 30, 60, 120],
       registers: [this.registry],
     })
@@ -125,10 +125,10 @@ export class AwahMetrics {
   }
 
   /**
-   * Atualiza os gauges de estado.
+   * Updates the state gauges.
    *
-   * Roda no momento do scrape, e não em laço próprio: manter isso atualizado
-   * continuamente custaria consultas que ninguém leria entre um scrape e outro.
+   * Runs at scrape time rather than in a loop of its own: keeping this current
+   * all the time would cost queries nobody would read between two scrapes.
    */
   async collect(db: Database, ownedSessions: number): Promise<void> {
     this.sessionsOwned.set(ownedSessions)

@@ -4,9 +4,9 @@ import * as schema from './schema/index'
 
 export interface DbConfig {
   url: string
-  /** Tamanho máximo do pool. Cada réplica abre o seu. */
+  /** Maximum pool size. Each replica opens its own. */
   max?: number
-  /** Liga o log de query — só use em desenvolvimento. */
+  /** Turns on query logging — development only. */
   debug?: boolean
 }
 
@@ -19,9 +19,9 @@ export interface DbHandle {
 export function createDb(config: DbConfig): DbHandle {
   const sql = postgres(config.url, {
     max: config.max ?? 10,
-    // O driver emite avisos do servidor como notice; sem isto o log fica ruidoso.
+    // The driver emits server warnings as notices; without this the log gets noisy.
     onnotice: () => {},
-    // Reconexão fica a cargo do driver; o pool devolve erro enquanto isso.
+    // Reconnection is the driver's job; the pool returns errors meanwhile.
     connect_timeout: 10,
   })
 
@@ -39,5 +39,5 @@ export function createDb(config: DbConfig): DbHandle {
 export type Database = DbHandle['db']
 export type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0]
 
-/** Aceita tanto o handle quanto uma transação — use nos repositórios. */
+/** Takes either the handle or a transaction — use this in the repositories. */
 export type DbExecutor = Database | Transaction

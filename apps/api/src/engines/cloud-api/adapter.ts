@@ -3,12 +3,13 @@ import type { EngineAdapter, EngineCapabilities, EngineEventHandler, SendResult 
 import type { CloudApiCredentials } from './credentials'
 
 /**
- * O que a engine oficial faz e o que ela não faz.
+ * What the official engine does and what it does not.
  *
- * A matriz não é detalhe de documentação: é o contrato que permite a alguém
- * escolher entre as engines sabendo o que perde. A Cloud API não tem grupos nem
- * presença, e só conversa livremente dentro da janela de 24 h depois que o
- * cliente escreve — fora dela, exige template aprovado pela Meta.
+ * The matrix is not a documentation detail: it is the contract that lets
+ * someone choose between the engines knowing what they give up. The Cloud API
+ * has no groups and no presence, and only talks freely inside the 24 h window
+ * that opens once the customer writes — outside it, Meta requires an approved
+ * template.
  */
 const CAPABILITIES: EngineCapabilities = {
   qrPairing: false,
@@ -25,7 +26,7 @@ export interface CloudApiAdapterDeps {
   sessionId: string
   credentials: CloudApiCredentials
   onEvent: EngineEventHandler
-  /** Injetável para teste; por padrão o fetch global. */
+  /** Injectable for tests; the global fetch by default. */
   fetchImpl?: typeof fetch
   requestTimeoutMs?: number
 }
@@ -35,17 +36,17 @@ interface GraphError {
 }
 
 /**
- * Engine oficial da Meta.
+ * Meta's official engine.
  *
- * O ponto desta implementação não é a Cloud API em si — é ela caber no mesmo
- * `EngineAdapter` do Baileys. Com as duas atrás do mesmo contrato, quem integra
- * escreve o código uma vez e migra do não-oficial para o oficial trocando uma
- * linha de configuração: começa barato e sujeito a bloqueio, termina caro e
- * blindado, sem reescrever nada.
+ * The point of this implementation is not the Cloud API itself — it is that it
+ * fits the same `EngineAdapter` as Baileys. With both behind one contract, an
+ * integrator writes the code once and moves from the unofficial engine to the
+ * official one by changing a line of configuration: start cheap and liable to
+ * be blocked, end up expensive and bulletproof, without rewriting anything.
  *
- * Não há socket, sessão nem pareamento aqui. "Conectar" é verificar que o
- * número existe e que o token responde; mensagens chegam por webhook, não por
- * stream.
+ * There is no socket, session or pairing here. "Connecting" means checking that
+ * the number exists and that the token answers; messages arrive by webhook, not
+ * over a stream.
  */
 export class CloudApiAdapter implements EngineAdapter {
   readonly engine = 'cloud_api' as const
@@ -91,11 +92,11 @@ export class CloudApiAdapter implements EngineAdapter {
   }
 
   /**
-   * "Conectar" aqui é confirmar que o token alcança o número.
+   * "Connecting" here means confirming that the token reaches the number.
    *
-   * Falhar cedo importa: sem esta verificação, uma credencial errada só
-   * apareceria na primeira mensagem que o cliente tentasse enviar, já dentro da
-   * fila e contando como falha de entrega.
+   * Failing early matters: without this check, a wrong credential would only
+   * show up on the first message the customer tried to send, already inside the
+   * queue and counting as a delivery failure.
    */
   async connect(): Promise<void> {
     this.deps.onEvent({ type: 'status', status: 'connecting' })
@@ -110,7 +111,7 @@ export class CloudApiAdapter implements EngineAdapter {
         rawCode: status,
         cause: `Credentials rejected by Meta: ${detalhe}`,
         shouldReconnect: false,
-        // Token inválido exige reconfiguração, como um logout exigiria pareamento.
+        // An invalid token needs reconfiguring, as a logout would need pairing.
         loggedOut: status === 401 || status === 403,
       })
       throw badRequest(`Meta rejected the credentials: ${detalhe}`)
@@ -124,7 +125,7 @@ export class CloudApiAdapter implements EngineAdapter {
   }
 
   async disconnect(): Promise<void> {
-    // Não há conexão a fechar: o vínculo é o token, não um socket.
+    // There is no connection to close: the link is the token, not a socket.
     this.ready = false
   }
 
@@ -143,7 +144,7 @@ export class CloudApiAdapter implements EngineAdapter {
   }
 
   async sendPresence(): Promise<void> {
-    // A Cloud API não expõe presença; ignorar é melhor que falhar um envio.
+    // The Cloud API exposes no presence; ignoring beats failing a send.
   }
 
   async sendText(chatId: string, text: string): Promise<SendResult> {
@@ -151,7 +152,7 @@ export class CloudApiAdapter implements EngineAdapter {
       throw badRequest('The session is not connected. Check the Cloud API credentials.')
     }
 
-    // A Meta espera só dígitos, sem o sufixo de JID do protocolo não-oficial.
+    // Meta expects digits only, without the unofficial protocol's JID suffix.
     const destino = chatId.replace(/@.*$/, '').replace(/\D/g, '')
 
     const { ok, status, body } = await this.request(`${this.baseUrl}/messages`, {
@@ -168,10 +169,10 @@ export class CloudApiAdapter implements EngineAdapter {
     if (!ok) {
       const erro = (body as GraphError)?.error
       /**
-       * O código 131047 é o mais importante de traduzir: significa que a janela
-       * de 24 h fechou e a mensagem exigiria um template aprovado. Sem essa
-       * tradução, quem integra vê um erro genérico e conclui que a credencial
-       * quebrou.
+       * Code 131047 is the one most worth translating: it means the 24 h window
+       * has closed and the message would need an approved template. Without
+       * that translation, an integrator sees a generic error and concludes the
+       * credential broke.
        */
       if (erro?.code === 131047) {
         throw new Error(

@@ -77,7 +77,7 @@ function LinhaDeIntegracao({
         </span>
       </span>
 
-      {/* Silêncio na ferramenta tem explicação, e ela fica aqui. */}
+      {/* Silence on the tool's side has an explanation, and it lives here. */}
       {integracao.lastError ? (
         <Pill tone="crit">{t('integrations.state.error')}</Pill>
       ) : (

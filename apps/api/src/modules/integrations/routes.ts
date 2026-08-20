@@ -46,19 +46,19 @@ export async function integrationRoutes(app: FastifyInstance) {
   const base = () => app.env.PUBLIC_URL ?? `http://localhost:${app.env.PORT}`
 
   /**
-   * Valida antes de gravar.
+   * Validate before writing.
    *
-   * Credencial errada guardada em silêncio só apareceria na primeira mensagem
-   * de um cliente real — e como o dispatcher engole as próprias falhas para não
-   * derrubar a sessão, a conversa simplesmente não chegaria na ferramenta, sem
-   * ninguém saber por quê.
+   * A wrong credential saved in silence would only surface on the first message
+   * from a real customer — and because the dispatcher swallows its own failures
+   * to keep the session up, the conversation would simply never reach the tool,
+   * with nobody knowing why.
    */
   async function verificar(kind: IntegrationKind, config: AnyIntegrationConfig) {
     /**
-     * O conector genérico é exercitado de verdade: manda um evento de exemplo e
-     * conta o que voltou. Aceitar sem testar deixaria a plataforma calada até a
-     * primeira mensagem de um cliente real, que é justamente a hora errada de
-     * descobrir que a URL estava errada.
+     * The generic connector gets a real workout: it sends a sample event and
+     * reports what came back. Accepting it untested would leave the platform
+     * silent until the first message from a real customer, which is exactly
+     * the wrong moment to find out the URL was wrong.
      */
     if (kind === 'http') {
       const resultado = await new HttpConnector(config as HttpConfig).enviar(EVENTO_DE_TESTE)
@@ -96,11 +96,12 @@ export async function integrationRoutes(app: FastifyInstance) {
   }
 
   /**
-   * Deixa a caixa pronta e devolve o id dela.
+   * Get the inbox ready and return its id.
    *
-   * Três caminhos: `createInbox` cria uma nova já com o webhook apontado;
-   * `inboxId` reaproveita uma existente e corrige o webhook dela; e sem nenhum
-   * dos dois, quem integra assume a configuração manual do outro lado.
+   * Three paths: `createInbox` creates a new one with the webhook already
+   * pointed at us; `inboxId` reuses an existing one and fixes its webhook; and
+   * with neither, whoever is integrating takes on the manual setup on the
+   * other side.
    */
   async function prepararCaixa(
     bruto: Record<string, unknown>,
@@ -131,9 +132,9 @@ export async function integrationRoutes(app: FastifyInstance) {
       }
     } catch (erro) {
       /**
-       * Criar e editar caixa exige token de administrador; agente comum leva
-       * 403. Dizer isso é a diferença entre a pessoa trocar o token e a pessoa
-       * desistir achando que o gateway está quebrado.
+       * Creating and editing an inbox needs an administrator token; a plain
+       * agent gets a 403. Saying so is the difference between someone swapping
+       * the token and someone giving up, sure the gateway is broken.
        */
       if (erro instanceof ChatwootError && (erro.status === 401 || erro.status === 403)) {
         throw badRequest(
@@ -164,15 +165,15 @@ export async function integrationRoutes(app: FastifyInstance) {
   )
 
   /**
-   * O que este token do Chatwoot alcança.
+   * What this Chatwoot token reaches.
    *
-   * O `accountId` fica escondido na URL do Chatwoot e o `inboxId` também: pedir
-   * que a pessoa copie os dois de lá é a primeira coisa que trava a adoção. O
-   * token já sabe as respostas, então o painel pergunta a ele e mostra uma
-   * lista para escolher.
+   * The `accountId` is buried in the Chatwoot URL, and so is the `inboxId`:
+   * asking someone to copy both out of there is the first thing that stalls
+   * adoption. The token already knows the answers, so the panel asks it and
+   * shows a list to pick from.
    *
-   * Não grava nada — é só leitura, e por isso pode ser chamada quantas vezes o
-   * assistente precisar enquanto a pessoa corrige o endereço.
+   * Writes nothing — it is read-only, which is why it can be called as many
+   * times as the assistant needs while the person fixes the address.
    */
   route.post(
     '/v1/integrations/chatwoot/discover',
@@ -203,7 +204,7 @@ export async function integrationRoutes(app: FastifyInstance) {
                   id: z.number(),
                   name: z.string(),
                   channelType: z.string(),
-                  /** Só caixa do tipo API serve; as outras têm transporte próprio. */
+                  /** Only an API inbox works; the others have their own transport. */
                   usable: z.boolean(),
                 }),
               )
@@ -250,12 +251,12 @@ export async function integrationRoutes(app: FastifyInstance) {
   )
 
   /**
-   * Manda um evento de exemplo e conta o que voltou.
+   * Sends a sample event and reports what came back.
    *
-   * Quando alguém pluga uma plataforma que ninguém aqui conhece, a alternativa a
-   * este botão é adivinhação: a conversa simplesmente não responde e não há
-   * pista de onde está o engano. Aqui aparecem status, tempo, o corpo cru e o
-   * diagnóstico de por que a resposta não virou mensagem.
+   * When someone plugs in a platform nobody here has heard of, the alternative
+   * to this button is guesswork: the conversation just does not answer, and
+   * there is no clue where the mistake is. This shows the status, the timing,
+   * the raw body, and the diagnosis of why the reply did not become a message.
    */
   route.post(
     '/v1/integrations/http/test',
@@ -280,7 +281,7 @@ export async function integrationRoutes(app: FastifyInstance) {
             replies: z.array(z.string()),
             raw: z.string(),
             diagnostico: z.string().nullable(),
-            /** O que foi postado, para quem está montando o fluxo do outro lado. */
+            /** What was posted, for whoever builds the flow on the other side. */
             sentPayload: z.record(z.unknown()),
           }),
         },
@@ -299,8 +300,9 @@ export async function integrationRoutes(app: FastifyInstance) {
         }
       } catch (erro) {
         /**
-         * Falha de rede vira resposta, não erro da API: quem está testando quer
-         * ver o motivo na tela, e um 500 aqui só diria "deu errado".
+         * A network failure comes back as a response, not an API error: whoever
+         * is testing wants the reason on screen, and a 500 here would only say
+         * "it went wrong".
          */
         return {
           ok: false,
@@ -351,21 +353,22 @@ export async function integrationRoutes(app: FastifyInstance) {
       const bruto = { ...request.body }
 
       /**
-       * O id vem antes da gravação.
+       * The id is minted before the write.
        *
-       * A URL do webhook contém este id, e o Chatwoot precisa dela no mesmo
-       * momento em que a caixa é criada — antes de a linha existir. Escolher o
-       * id aqui quebra esse ovo-e-galinha sem uma segunda escrita.
+       * The webhook URL contains this id, and Chatwoot needs the URL at the
+       * very moment the inbox is created — before the row exists. Picking the
+       * id here breaks that chicken-and-egg without a second write.
        */
       const integrationId = randomUUID()
 
       if (kind === 'typebot' && typeof bruto.shareUrl === 'string') {
         /**
-         * O link de compartilhamento no lugar de dois campos.
+         * The share link instead of two fields.
          *
-         * Pedir "baseUrl" e "typebotId" separados obriga quem integra a saber o
-         * que é `publicId` e onde procurá-lo. O link já traz os dois, e é o que
-         * está na área de transferência de quem acabou de publicar um fluxo.
+         * Asking for "baseUrl" and "typebotId" separately forces whoever is
+         * integrating to know what a `publicId` is and where to look for it.
+         * The link already carries both, and it is what is on the clipboard of
+         * someone who just published a flow.
          */
         try {
           Object.assign(bruto, derivarDoLink(bruto.shareUrl))
@@ -376,11 +379,12 @@ export async function integrationRoutes(app: FastifyInstance) {
       }
 
       /**
-       * O token do webhook é gerado aqui, não pedido a quem chama.
+       * The webhook token is generated here, not asked of the caller.
        *
-       * O webhook de caixa API do Chatwoot não assina o corpo e não aceita
-       * cabeçalho próprio: o único lugar onde cabe um segredo é a URL. Deixar
-       * essa escolha com quem integra produziria "chatwoot" como token.
+       * Chatwoot's API inbox webhook does not sign the body and does not accept
+       * a header of our own: the only place a secret fits is the URL. Leaving
+       * that choice to whoever is integrating would produce "chatwoot" as the
+       * token.
        */
       if (kind === 'chatwoot' && !bruto.webhookToken) {
         bruto.webhookToken = randomToken(24)
@@ -389,11 +393,12 @@ export async function integrationRoutes(app: FastifyInstance) {
       const webhookUrl = `${base()}/webhooks/chatwoot/${integrationId}/${bruto.webhookToken}`
 
       /**
-       * Cria ou reaproveita a caixa, e aponta o webhook sozinho.
+       * Creates or reuses the inbox, and points the webhook by itself.
        *
-       * São os dois passos que mais travam a adoção: criar a caixa clicando no
-       * Chatwoot e depois voltar lá para colar a URL. Com `createInbox` ou
-       * `inboxId`, quem integra não abre a outra aba.
+       * These are the two steps that stall adoption most: creating the inbox by
+       * clicking around Chatwoot and then going back to paste the URL. With
+       * `createInbox` or `inboxId`, whoever is integrating never opens the
+       * other tab.
        */
       if (kind === 'chatwoot') {
         bruto.inboxId = await prepararCaixa(bruto, webhookUrl)
@@ -414,8 +419,9 @@ export async function integrationRoutes(app: FastifyInstance) {
         integration,
         detail,
         /**
-         * Nulo quando o gateway já apontou o webhook sozinho — não há nada para
-         * a pessoa fazer, e mostrar uma URL sugeriria que há.
+         * Null when the gateway already pointed the webhook itself — there is
+         * nothing for the person to do, and showing a URL would suggest there
+         * is.
          */
         webhookUrl:
           kind === 'chatwoot' && !bruto.webhookConfigurado
@@ -446,13 +452,13 @@ export async function integrationRoutes(app: FastifyInstance) {
   )
 
   /**
-   * Resposta do agente, vinda do Chatwoot.
+   * Agent reply, coming from Chatwoot.
    *
-   * Público por necessidade: quem chama é o servidor do Chatwoot, sem chave de
-   * API. Toda a defesa está no token na URL — o webhook de caixa API não assina
-   * o corpo e não aceita cabeçalho próprio, então a URL **é** o segredo. A rota
-   * confere também `account` e `inbox` do payload, porque dois pontos de
-   * conferência valem mais que um.
+   * Public out of necessity: the caller is the Chatwoot server, with no API
+   * key. The whole defence is the token in the URL — the API inbox webhook
+   * does not sign the body and does not accept a header of our own, so the URL
+   * **is** the secret. The route also checks `account` and `inbox` from the
+   * payload, because two checkpoints are worth more than one.
    */
   route.post(
     '/webhooks/chatwoot/:integrationId/:token',
@@ -483,7 +489,7 @@ export async function integrationRoutes(app: FastifyInstance) {
         throw forbidden('Event from another Chatwoot account.')
       }
 
-      // Responde antes de processar: erro nosso não deve virar reentrega deles.
+      // Answer before processing: our error must not become their redelivery.
       void processar(
         app,
         integracao.row.id,
@@ -512,11 +518,11 @@ interface EventoChatwoot {
 }
 
 /**
- * O que vira mensagem no WhatsApp e o que é descartado.
+ * What becomes a WhatsApp message and what is dropped.
  *
- * Cada descarte aqui existe por um motivo concreto, e tirar qualquer um deles
- * produz um sintoma conhecido: laço de eco, nota interna vazando para o
- * cliente, ou a própria mensagem do cliente voltando para ele.
+ * Every drop here exists for a concrete reason, and removing any one of them
+ * produces a known symptom: an echo loop, an internal note leaking to the
+ * customer, or the customer's own message coming back to them.
  */
 async function processar(
   app: FastifyInstance,
@@ -527,15 +533,15 @@ async function processar(
 ): Promise<void> {
   if (evento?.event !== 'message_created') return
 
-  // Só resposta de agente sai daqui. 'incoming' é o que nós mesmos criamos.
+  // Only an agent reply leaves here. 'incoming' is what we created ourselves.
   if (String(evento.message_type) !== 'outgoing' && Number(evento.message_type) !== 1) return
 
-  // Nota interna é conversa da equipe sobre o cliente, não com ele.
+  // An internal note is the team talking about the customer, not to them.
   if (evento.private) return
 
   /**
-   * `source_id` presente significa que a mensagem nasceu no WhatsApp e nós a
-   * criamos no Chatwoot. Devolvê-la seria o laço de eco clássico.
+   * A `source_id` present means the message was born on WhatsApp and we created
+   * it in Chatwoot. Sending it back would be the classic echo loop.
    */
   if (evento.source_id) return
 
@@ -558,10 +564,10 @@ async function processar(
     sessionId,
     chatId: vinculo.chatId,
     /**
-     * O id da mensagem no Chatwoot é a chave de idempotência.
+     * The Chatwoot message id is the idempotency key.
      *
-     * O Chatwoot reentrega webhook quando não recebe 200 a tempo; sem esta
-     * chave, uma reentrega mandaria a mesma resposta duas vezes ao cliente.
+     * Chatwoot redelivers a webhook when it does not get a 200 in time; without
+     * this key, a redelivery would send the same reply to the customer twice.
      */
     clientMessageId: `chatwoot:${evento.id}`,
     type: 'text',

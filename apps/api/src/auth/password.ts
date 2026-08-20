@@ -1,13 +1,13 @@
 import { hash, verify } from '@node-rs/argon2'
 
 /**
- * Parâmetros do argon2id na recomendação do OWASP: 19 MiB de memória, 2
- * iterações, paralelismo 1. Custo alto o bastante para tornar força bruta cara,
- * baixo o bastante para um login não segurar o event loop.
+ * argon2id parameters as OWASP recommends them: 19 MiB of memory, 2
+ * iterations, parallelism 1. Costly enough to make brute force expensive, cheap
+ * enough that a login does not hold up the event loop.
  *
- * O algoritmo não é passado explicitamente porque argon2id já é o padrão da
- * biblioteca, e `Algorithm` é um const enum ambiente — importá-lo quebra sob
- * `verbatimModuleSyntax`.
+ * The algorithm is not passed explicitly because argon2id is already the
+ * library's default, and `Algorithm` is an ambient const enum — importing it
+ * breaks under `verbatimModuleSyntax`.
  */
 const OPTIONS = {
   memoryCost: 19456,
@@ -20,9 +20,9 @@ export function hashPassword(plain: string): Promise<string> {
 }
 
 /**
- * Devolve false em vez de propagar erro quando o digest está corrompido — quem
- * chama trata "senha errada" e "hash quebrado" da mesma forma, e a diferença
- * entre os dois não deve vazar para o cliente.
+ * Returns false instead of propagating an error when the digest is corrupt —
+ * callers treat "wrong password" and "broken hash" the same way, and the
+ * difference between the two must not leak to the client.
  */
 export async function verifyPassword(digest: string, plain: string): Promise<boolean> {
   try {

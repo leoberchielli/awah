@@ -6,11 +6,11 @@ import { z } from 'zod'
 const startedAt = Date.now()
 
 /**
- * Identidade do build, gravada na imagem.
+ * Build identity, baked into the image.
  *
- * A primeira pergunta de qualquer suporte é "qual versão você está rodando", e
- * até agora a única resposta possível era abrir o contêiner. Vem do Dockerfile
- * via ARG; fora dele fica `dev`, que é a verdade.
+ * The first question in any support case is "which version are you running",
+ * and until now the only way to answer was to open the container. It comes from
+ * the Dockerfile via ARG; outside it, `dev`, which is the truth.
  */
 const VERSAO = process.env.AWAH_VERSION ?? 'dev'
 const REVISAO = process.env.AWAH_REVISION ?? 'unknown'
@@ -18,7 +18,7 @@ const REVISAO = process.env.AWAH_REVISION ?? 'unknown'
 export async function healthRoutes(app: FastifyInstance) {
   const route = app.withTypeProvider<ZodTypeProvider>()
 
-  /** Liveness: só afirma que o processo responde. Nunca toca dependência. */
+  /** Liveness: only claims the process answers. Never touches a dependency. */
   route.get(
     '/health',
     {
@@ -47,8 +47,8 @@ export async function healthRoutes(app: FastifyInstance) {
   )
 
   /**
-   * Readiness: só devolve 200 quando Postgres e Redis respondem. É esta rota que
-   * o orquestrador deve consultar antes de mandar tráfego para a réplica.
+   * Readiness: only returns 200 when Postgres and Redis answer. This is the
+   * route the orchestrator should ask before sending traffic to the replica.
    */
   route.get(
     '/health/ready',

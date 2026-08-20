@@ -10,12 +10,12 @@ import { recordMessage, recordStatus } from '../../messaging/persistence'
 import { emitWebhook } from '../../webhooks/emit'
 
 /**
- * Callback da Meta.
+ * Meta's callback.
  *
- * Diferente do Baileys, a engine oficial não mantém stream: as mensagens chegam
- * como POST da Meta neste endpoint. Ele é necessariamente público — quem chama
- * é a infraestrutura deles, sem a nossa chave de API — e por isso a
- * autenticação é a assinatura do corpo, não um bearer.
+ * Unlike Baileys, the official engine keeps no stream: messages arrive as a
+ * POST from Meta on this endpoint. It is necessarily public — the caller is
+ * their infrastructure, without our API key — and so the authentication is the
+ * signature of the body, not a bearer.
  */
 export async function metaRoutes(app: FastifyInstance) {
   const route = app.withTypeProvider<ZodTypeProvider>()
@@ -23,12 +23,12 @@ export async function metaRoutes(app: FastifyInstance) {
   const encryptionKey = Buffer.from(app.env.ENCRYPTION_KEY, 'base64')
 
   /**
-   * Handshake de verificação.
+   * Verification handshake.
    *
-   * A Meta chama uma vez ao configurar o webhook e espera receber de volta o
-   * `hub.challenge`, mas só se o `hub.verify_token` bater com o que o dono
-   * cadastrou. É o que impede alguém de apontar o webhook de outra conta para
-   * esta instância.
+   * Meta calls once when the webhook is configured and expects the
+   * `hub.challenge` back, but only if the `hub.verify_token` matches what the
+   * owner registered. It is what stops someone from pointing another account's
+   * webhook at this instance.
    */
   route.get(
     '/webhooks/meta/:sessionId',
@@ -67,12 +67,12 @@ export async function metaRoutes(app: FastifyInstance) {
   )
 
   /**
-   * Recebimento de eventos.
+   * Event intake.
    *
-   * Responde 200 sempre que a assinatura confere, mesmo se o processamento
-   * falhar: a Meta reentrega em caso de erro, e um 500 aqui viraria uma
-   * tempestade de reentregas justamente quando algo já está quebrado. O
-   * processamento fica fora do caminho da resposta.
+   * Answers 200 whenever the signature checks out, even if the processing
+   * fails: Meta redelivers on error, and a 500 here would turn into a storm of
+   * redeliveries exactly when something is already broken. The processing
+   * stays off the response path.
    */
   route.post(
     '/webhooks/meta/:sessionId',
@@ -101,12 +101,12 @@ export async function metaRoutes(app: FastifyInstance) {
       if (!credenciais) throw notFound('Session without configured credentials.')
 
       /**
-       * O corpo **cru**, não o reserializado.
+       * The **raw** body, not the reserialized one.
        *
-       * `JSON.stringify(request.body)` produz bytes parecidos, não idênticos:
-       * ordem de chaves, escapes e espaçamento podem diferir do que a Meta
-       * assinou, e o HMAC falharia de forma intermitente e inexplicável. O
-       * parser em `app.ts` guarda o buffer original para este uso.
+       * `JSON.stringify(request.body)` produces similar bytes, not identical
+       * ones: key order, escapes and spacing can differ from what Meta signed,
+       * and the HMAC would fail intermittently and inexplicably. The parser in
+       * `app.ts` keeps the original buffer for this use.
        */
       const corpo = request.rawBody
       if (!corpo) {
@@ -119,7 +119,7 @@ export async function metaRoutes(app: FastifyInstance) {
         throw forbidden('Invalid event signature.')
       }
 
-      // Responde primeiro; processa depois. Erro nosso não vira reentrega da Meta.
+      // Answer first, process after. Our error must not become a Meta redelivery.
       void processarEvento(app, sessao.orgId, sessionId, request.body).catch((error) => {
         app.log.error({ err: error, sessionId }, 'failed to process Meta event')
       })
@@ -170,7 +170,7 @@ interface MetaEnvelope {
   }>
 }
 
-/** Estados da Cloud API mapeados para os mesmos do restante do sistema. */
+/** Cloud API states mapped onto the same ones the rest of the system uses. */
 const STATUS_META: Record<string, number> = {
   sent: 2,
   delivered: 3,

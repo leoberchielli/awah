@@ -50,13 +50,13 @@ const SESSION_COLUMNS = {
 
 export class SessionRepository extends TenantRepository {
   /**
-   * `scope` vem do `sessionScope` da chave de API: nulo alcança todas as sessões
-   * da org, uma lista restringe às informadas.
+   * `scope` comes from the API key's `sessionScope`: null reaches every session
+   * in the org, a list narrows it to the ones given.
    */
   async list(scope?: string[] | null): Promise<SessionRow[]> {
     const filters = [eq(schema.sessions.orgId, this.orgId)]
     if (scope) {
-      // Escopo vazio não alcança nada — devolver tudo aqui seria o pior default.
+      // Empty scope reaches nothing — returning everything would be the worst default.
       if (scope.length === 0) return []
       filters.push(inArray(schema.sessions.id, scope))
     }
@@ -114,7 +114,7 @@ export class SessionRepository extends TenantRepository {
       .where(and(eq(schema.sessions.id, id), eq(schema.sessions.orgId, this.orgId)))
   }
 
-  /** Grava a intenção do operador. O failover só assume o que está 'running'. */
+  /** Records the operator's intent. Failover only adopts what is 'running'. */
   async setDesiredState(id: string, desired: DesiredState): Promise<void> {
     await this.db
       .update(schema.sessions)
@@ -123,10 +123,10 @@ export class SessionRepository extends TenantRepository {
   }
 
   /**
-   * Mescla um patch em `sessions.config`, preservando as demais chaves.
+   * Merges a patch into `sessions.config`, preserving the other keys.
    *
-   * Sobrescrever o objeto inteiro apagaria configuração de outras áreas — proxy,
-   * opções da engine — a cada ajuste de limite de risco.
+   * Overwriting the whole object would wipe configuration from other areas —
+   * proxy, engine options — on every tweak of a risk limit.
    */
   async updateConfig(id: string, patch: Record<string, unknown>): Promise<void> {
     const [session] = await this.db
@@ -147,9 +147,9 @@ export class SessionRepository extends TenantRepository {
   }
 
   /**
-   * Registra um ponto da trilha de conexão. Toda queda vira uma linha aqui, com
-   * o código bruto do protocolo ao lado da causa traduzida — é o que alimenta a
-   * timeline de desconexão do dashboard.
+   * Records one point on the connection trail. Every drop becomes a row here,
+   * with the raw protocol code next to the translated cause — it is what feeds
+   * the disconnect timeline in the dashboard.
    */
   async recordEvent(input: {
     sessionId: string

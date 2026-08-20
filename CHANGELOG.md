@@ -2,7 +2,7 @@
 
 *[Português](CHANGELOG.pt-BR.md)*
 
-Format based on [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
+Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 The project follows [SemVer](https://semver.org/lang/pt-BR/) from v1.0 onward.
 
 ## [Unreleased]

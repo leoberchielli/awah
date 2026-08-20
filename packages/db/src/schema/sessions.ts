@@ -13,9 +13,9 @@ import { desiredState, engineType, sessionEventType, sessionStatus } from './enu
 import { orgs } from './tenancy'
 
 /**
- * Sessão de WhatsApp. `ownerNodeId` + `leaseExpiresAt` implementam a posse
- * distribuída do §4.4: a réplica dona renova o lease a cada 5 s e qualquer
- * réplica pode assumir uma sessão cujo lease tenha expirado.
+ * WhatsApp session. `ownerNodeId` + `leaseExpiresAt` implement the distributed
+ * ownership of §4.4: the owning replica renews the lease every 5 s and any
+ * replica may take over a session whose lease has expired.
  */
 export const sessions = pgTable(
   'sessions',
@@ -27,23 +27,23 @@ export const sessions = pgTable(
     name: text('name').notNull(),
     engine: engineType('engine').notNull().default('baileys'),
     status: sessionStatus('status').notNull().default('created'),
-    /** Onde a sessão deveria estar. O failover só assume o que está 'running'. */
+    /** Where the session should be. Failover only takes over what is 'running'. */
     desiredState: desiredState('desired_state').notNull().default('stopped'),
     phoneNumber: text('phone_number'),
 
-    /** Réplica que detém a sessão agora. Nulo quando ninguém a detém. */
+    /** Replica that holds the session right now. Null when nobody holds it. */
     ownerNodeId: text('owner_node_id'),
     leaseExpiresAt: timestamp('lease_expires_at', { withTimezone: true }),
 
     /**
-     * Primeiro pareamento bem-sucedido. A idade derivada daqui alimenta a curva
-     * de warmup do motor de risco (§4.1) — número novo envia menos.
+     * First successful pairing. The age derived from this feeds the risk
+     * engine's warm-up curve (§4.1) — a new number sends less.
      */
     pairedAt: timestamp('paired_at', { withTimezone: true }),
     lastConnectedAt: timestamp('last_connected_at', { withTimezone: true }),
     lastDisconnectedAt: timestamp('last_disconnected_at', { withTimezone: true }),
 
-    /** Overrides de orçamento de risco, proxy e opções da engine. */
+    /** Risk budget overrides, proxy, and engine options. */
     config: jsonb('config').notNull().default({}),
 
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -53,36 +53,36 @@ export const sessions = pgTable(
     unique('sessions_org_name_key').on(t.orgId, t.name),
     index('sessions_org_idx').on(t.orgId),
     index('sessions_status_idx').on(t.status),
-    // O varredor de failover procura leases vencidos por aqui.
+    // The failover sweeper looks for expired leases through here.
     index('sessions_lease_idx').on(t.leaseExpiresAt),
   ],
 )
 
 /**
- * Credenciais da engine, cifradas em repouso com AES-256-GCM.
+ * Engine credentials, encrypted at rest with AES-256-GCM.
  *
- * Esta tabela é a decisão que destrava o cluster inteiro (§4.4): enquanto o auth
- * state do Baileys vive em arquivo, a sessão está presa ao disco de um nó.
+ * This table is the decision that unlocks the whole cluster (§4.4): as long as
+ * the Baileys auth state lives in a file, the session is stuck to one node's disk.
  */
 export const sessionAuth = pgTable('session_auth', {
   sessionId: uuid('session_id')
     .primaryKey()
     .references(() => sessions.id, { onDelete: 'cascade' }),
-  /** Payload cifrado: iv.authTag.ciphertext em base64url. */
+  /** Encrypted payload: iv.authTag.ciphertext in base64url. */
   creds: text('creds').notNull(),
-  /** Versão da chave de cifra, para permitir rotação sem downtime. */
+  /** Encryption key version, so keys can be rotated with no downtime. */
   keyVersion: integer('key_version').notNull().default(1),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
 /**
- * Signal key store do Baileys, uma linha por chave.
+ * Baileys Signal key store, one row per key.
  *
- * Poderia ser um blob único dentro de `session_auth`, e o desenho original era
- * esse. Mas o store cresce sem teto — pre-keys, sessions e sender-keys por
- * contato — e o Baileys escreve nele a cada mensagem. Com blob único, cada
- * mensagem recebida obrigaria a ler, decifrar, mesclar, cifrar e regravar
- * megabytes. Linha por chave transforma isso em um upsert pontual.
+ * It could be a single blob inside `session_auth`, and that was the original
+ * design. But the store grows with no ceiling — pre-keys, sessions and
+ * sender-keys per contact — and Baileys writes to it on every message. With a
+ * single blob, each inbound message would force a read, decrypt, merge, encrypt
+ * and rewrite of megabytes. One row per key turns that into a targeted upsert.
  */
 export const sessionAuthKeys = pgTable(
   'session_auth_keys',
@@ -90,10 +90,10 @@ export const sessionAuthKeys = pgTable(
     sessionId: uuid('session_id')
       .notNull()
       .references(() => sessions.id, { onDelete: 'cascade' }),
-    /** Categoria do Signal: pre-key, session, sender-key, app-state-sync-key… */
+    /** Signal category: pre-key, session, sender-key, app-state-sync-key… */
     keyType: text('key_type').notNull(),
     keyId: text('key_id').notNull(),
-    /** Valor cifrado, mesmo formato de `session_auth.creds`. */
+    /** Encrypted value, same format as `session_auth.creds`. */
     value: text('value').notNull(),
     keyVersion: integer('key_version').notNull().default(1),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -105,9 +105,9 @@ export const sessionAuthKeys = pgTable(
 )
 
 /**
- * Trilha de conexão e queda. `rawCode` guarda o código do protocolo como veio
- * (428, 440, 515, …) e `cause` guarda a tradução legível — é o que alimenta a
- * timeline de desconexão do dashboard (§4.3).
+ * Trail of connections and drops. `rawCode` keeps the protocol code as it came
+ * (428, 440, 515, …) and `cause` keeps the readable translation — this is what
+ * feeds the dashboard's disconnection timeline (§4.3).
  */
 export const sessionEvents = pgTable(
   'session_events',

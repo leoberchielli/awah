@@ -110,8 +110,8 @@ do seu host derivou mais que isso, toda entrega legítima é rejeitada como repl
 ## O painel não abre
 
 **Página em branco, API respondendo.** O build do dashboard não foi encontrado. O
-log do boot diz qual caso é: `dashboard sendo servido pela API` com a raiz, ou
-`dashboard não empacotado`. No segundo caso, rode `pnpm --filter @awah/web build`
+log do boot diz qual caso é: `dashboard served by the API` com a raiz, ou
+`dashboard not bundled`. No segundo caso, rode `pnpm --filter @awah/web build`
 ou aponte `DASHBOARD_DIR`.
 
 **Rota de cliente devolvendo JSON de 404.** Você pediu `application/json` no

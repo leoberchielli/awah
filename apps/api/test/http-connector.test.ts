@@ -31,9 +31,9 @@ function conector(corpo: string, status = 200, extra?: Partial<typeof CONFIG>) {
 
 describe('formatos de resposta aceitos', () => {
   /**
-   * Ser permissivo aqui é decisão de adoção: quem monta um fluxo no n8n devolve
-   * `{"reply": "..."}` sem pensar, e recusar isso porque a documentação pedia
-   * `replies` seria rigor que só produz frustração.
+   * Being permissive here is an adoption decision: someone wiring up a flow in
+   * n8n returns `{"reply": "..."}` without thinking, and rejecting that because
+   * the docs asked for `replies` is rigour that only produces frustration.
    */
   it('aceita as formas que aparecem na prática', () => {
     const formas = [
@@ -62,7 +62,7 @@ describe('formatos de resposta aceitos', () => {
     expect(extrairRespostas('{"replies":["um","   ","dois"]}').replies).toEqual(['um', 'dois'])
   })
 
-  /** Nem todo evento pede resposta: quem só registra o que chega devolve vazio. */
+  /** Not every event wants a reply: a flow that only logs arrivals returns empty. */
   it('corpo vazio é resposta válida, não erro', () => {
     expect(extrairRespostas('')).toEqual({ replies: [], diagnostico: null })
     expect(extrairRespostas('   ')).toEqual({ replies: [], diagnostico: null })
@@ -76,8 +76,8 @@ describe('formatos de resposta aceitos', () => {
 
 describe('diagnóstico de quem acabou de plugar', () => {
   /**
-   * Silêncio é o pior resultado possível: a pessoa fica olhando para uma
-   * conversa parada sem nenhuma pista do que está errado.
+   * Silence is the worst possible outcome: the person sits staring at a dead
+   * conversation with no clue what is wrong.
    */
   it('explica resposta que não é JSON', () => {
     const { diagnostico } = extrairRespostas('<html>erro</html>')
@@ -110,8 +110,8 @@ describe('envio', () => {
   })
 
   /**
-   * Mesma assinatura dos webhooks, de propósito: quem já valida webhook do AWAH
-   * valida isto com a mesma função, e o SDK serve aos dois.
+   * Same signature as the webhooks, on purpose: anyone already validating an
+   * AWAH webhook validates this with the same function, and the SDK serves both.
    */
   it('assina com o mesmo esquema dos webhooks', async () => {
     const segredo = 'segredo-do-conector-http'
@@ -178,14 +178,14 @@ describe('envio', () => {
 
   it('separa erro de configuração de indisponibilidade', () => {
     expect(new HttpConnectorError(422, 'x').isPermanente).toBe(true)
-    // Estes valem repetir: são do outro lado, e passam.
+    // These are worth retrying: they belong to the other side, and they pass.
     expect(new HttpConnectorError(429, 'x').isPermanente).toBe(false)
     expect(new HttpConnectorError(502, 'x').isPermanente).toBe(false)
   })
 
   /**
-   * O conector fica no caminho da mensagem: uma plataforma que demora atrasa a
-   * fila daquela conversa inteira.
+   * The connector sits in the message path: a slow platform delays the queue
+   * for that entire conversation.
    */
   it('o teto de espera é curto por padrão e limitado', () => {
     expect(CONFIG.timeoutMs).toBe(10_000)

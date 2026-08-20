@@ -4,23 +4,23 @@ import { decrypt, encrypt } from '../../lib/crypto'
 import { badRequest } from '../../lib/errors'
 
 /**
- * Credenciais da Cloud API.
+ * Cloud API credentials.
  *
- * Guardadas na mesma tabela cifrada do auth state do Baileys, e não em
- * `sessions.config`: o token de acesso permite enviar mensagem em nome da
- * empresa e ler as conversas dela — é credencial, não configuração. Reaproveitar
- * `session_auth` mantém a promessa de que nada disso fica legível para quem só
- * tem acesso de leitura ao banco.
+ * Kept in the same encrypted table as the Baileys auth state, not in
+ * `sessions.config`: the access token can send messages on the company's behalf
+ * and read its chats — that is a credential, not configuration. Reusing
+ * `session_auth` keeps the promise that none of it is readable to someone who
+ * only has read access to the database.
  */
 export const cloudApiCredentialsSchema = z.object({
   phoneNumberId: z.string().min(5).describe('Phone number ID in WhatsApp Business.'),
   accessToken: z.string().min(20).describe('Permanent token of the Meta app.'),
-  /** Segredo que a Meta ecoa no handshake de verificação do webhook. */
+  /** The secret Meta echoes back in the webhook verification handshake. */
   verifyToken: z.string().min(8),
   /**
-   * App Secret da Meta. Obrigatório: é ele que assina o corpo dos eventos, e o
-   * webhook é o único endpoint público do sistema. Sem assinatura para conferir,
-   * qualquer um poderia injetar mensagens falsas na conta de qualquer cliente.
+   * Meta's App Secret. Required: it is what signs the body of the events, and
+   * the webhook is the only public endpoint in the system. With no signature to
+   * check, anyone could inject fake messages into any customer's account.
    */
   appSecret: z.string().min(8),
   graphVersion: z.string().default('v21.0'),

@@ -11,11 +11,11 @@ const IV_BYTES = 12
 const TAG_BYTES = 16
 
 /**
- * Cifra em AES-256-GCM. Usado para o auth state das sessões, que é material de
- * credencial: quem lê a tabela `session_auth` sem a chave não consegue assumir
- * o WhatsApp de ninguém.
+ * AES-256-GCM encryption. Used for the sessions' auth state, which is
+ * credential material: anyone who reads the `session_auth` table without the
+ * key cannot take over anybody's WhatsApp.
  *
- * Formato de saída: `iv.tag.ciphertext`, tudo em base64url.
+ * Output format: `iv.tag.ciphertext`, all in base64url.
  */
 export function encrypt(plaintext: string, key: Buffer): string {
   const iv = randomBytes(IV_BYTES)
@@ -33,7 +33,7 @@ export function encrypt(plaintext: string, key: Buffer): string {
 export function decrypt(payload: string, key: Buffer): string {
   const parts = payload.split('.')
   if (parts.length !== 3) {
-    throw new Error('payload cifrado malformado')
+    throw new Error('malformed encrypted payload')
   }
 
   const [ivPart, tagPart, dataPart] = parts as [string, string, string]
@@ -42,7 +42,7 @@ export function decrypt(payload: string, key: Buffer): string {
   const ciphertext = Buffer.from(dataPart, 'base64url')
 
   if (iv.length !== IV_BYTES || tag.length !== TAG_BYTES) {
-    throw new Error('payload cifrado malformado')
+    throw new Error('malformed encrypted payload')
   }
 
   const decipher = createDecipheriv(ALGORITHM, key, iv)
@@ -52,15 +52,15 @@ export function decrypt(payload: string, key: Buffer): string {
 }
 
 /**
- * Hash para valores de alta entropia — tokens de sessão e segredos de API key.
- * SHA-256 basta aqui: diferente de senha, o segredo já é aleatório, então não há
- * ataque de dicionário a encarecer.
+ * Hash for high-entropy values — session tokens and API key secrets. SHA-256 is
+ * enough here: unlike a password, the secret is already random, so there is no
+ * dictionary attack to make expensive.
  */
 export function hashToken(token: string): string {
   return createHash('sha256').update(token).digest('base64url')
 }
 
-/** Comparação em tempo constante, tolerante a tamanhos diferentes. */
+/** Constant-time comparison, tolerant of differing lengths. */
 export function safeEqual(a: string, b: string): boolean {
   const bufA = Buffer.from(a)
   const bufB = Buffer.from(b)

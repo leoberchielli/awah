@@ -19,7 +19,7 @@ describe.skipIf(!hasInfra)('telemetria', () => {
   let token: string
   let app: FastifyInstance
 
-  /** Uma hora atrás: cai num balde fechado, sem depender do relógio da borda. */
+  /** One hour ago: falls in a closed bucket, not hostage to the clock's edge. */
   const umaHoraAtras = new Date(Date.now() - 60 * 60 * 1000)
 
   beforeAll(async () => {
@@ -29,7 +29,7 @@ describe.skipIf(!hasInfra)('telemetria', () => {
     sessionId = await createSession(db, org.orgId)
     token = await createApiKey(db, org.orgId, { role: 'admin' })
 
-    // Duas saídas e uma entrada, com um ACK de entrega para render latência.
+    // Two outbound and one inbound, with a delivery ACK to yield a latency figure.
     const enviadas = await db
       .insert(schema.messages)
       .values([
@@ -72,7 +72,7 @@ describe.skipIf(!hasInfra)('telemetria', () => {
         orgId: org.orgId,
         messageId: primeira.id,
         status: 'delivered',
-        // Cinco segundos até a entrega.
+        // Five seconds to delivery.
         occurredAt: new Date(umaHoraAtras.getTime() + 5000),
       })
     }
@@ -131,7 +131,7 @@ describe.skipIf(!hasInfra)('telemetria', () => {
     })
 
     it('calcula percentis de latência', async () => {
-      // Único ACK, cinco segundos: todos os percentis valem o mesmo.
+      // A single ACK, five seconds: every percentile comes out the same.
       expect(await metrica('latency.delivered.p50')).toBe(5000)
       expect(await metrica('latency.delivered.p95')).toBe(5000)
     })
@@ -150,8 +150,8 @@ describe.skipIf(!hasInfra)('telemetria', () => {
     })
 
     /**
-     * A propriedade que permite a todas as réplicas agregarem a mesma janela sem
-     * coordenação, e que faz uma passada perdida se corrigir na seguinte.
+     * The property that lets every replica aggregate the same window without
+     * coordination, and that makes a missed pass fix itself on the next one.
      */
     it('reprocessar a mesma janela não duplica nada', async () => {
       await new MetricsAggregator({
@@ -232,7 +232,7 @@ describe.skipIf(!hasInfra)('telemetria', () => {
 
       const body = res.json()
       expect(body.activeChats).toBe(2)
-      // Uma entrada seguida de saída um minuto depois.
+      // One inbound followed by an outbound a minute later.
       expect(body.firstResponseSeconds.p50).toBe(60)
       expect(body.responseRate).toBe(1)
       expect(body.byType.some((t: { type: string }) => t.type === 'text')).toBe(true)
@@ -245,7 +245,7 @@ describe.skipIf(!hasInfra)('telemetria', () => {
         url: '/v1/kpi/delivery',
         headers: { authorization: `Bearer ${semPermissao}` },
       })
-      // viewer alcança metrics:read; a rota não pode ser aberta a quem não autentica.
+      // viewer reaches metrics:read; the route must not be open to the unauthenticated.
       expect(res.statusCode).toBe(200)
 
       const anonima = await app.inject({ method: 'GET', url: '/v1/kpi/delivery' })

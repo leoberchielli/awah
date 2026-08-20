@@ -1,17 +1,17 @@
 import type Redis from 'ioredis'
 
 /**
- * QR de pareamento compartilhado entre réplicas.
+ * Pairing QR shared across replicas.
  *
- * O QR nasce na memória do nó que detém a sessão, mas a requisição que vai
- * buscá-lo pode chegar em qualquer outro. Poderia ser resolvido roteando o
- * pedido até o dono; publicar num lugar comum é mais simples e mais rápido, e o
- * dado é efêmero por natureza — o WhatsApp troca o código a cada poucos
- * segundos, então cache velho não é um problema a evitar, é o comportamento
- * esperado.
+ * The QR is born in the memory of the node that holds the session, but the
+ * request that goes looking for it can land on any other one. Routing the
+ * request to the owner would solve it; publishing to a common place is simpler
+ * and faster, and the data is ephemeral by nature — WhatsApp swaps the code
+ * every few seconds, so a stale cache is not a problem to avoid, it is the
+ * expected behavior.
  *
- * O TTL curto garante que um QR de sessão já pareada não fique disponível
- * depois de perder a validade.
+ * The short TTL makes sure the QR of an already-paired session is not still
+ * available after it stopped being valid.
  */
 export class QrCache {
   constructor(
@@ -31,7 +31,7 @@ export class QrCache {
     return this.redis.get(this.key(sessionId))
   }
 
-  /** Chamado ao parear ou desligar: o código deixou de valer. */
+  /** Called on pairing or shutting down: the code stopped being valid. */
   async clear(sessionId: string): Promise<void> {
     await this.redis.del(this.key(sessionId))
   }

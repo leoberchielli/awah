@@ -2,7 +2,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { runMigrations } from './migrate'
 
-/** Entrada usada por `pnpm db:migrate` durante o desenvolvimento. */
+/** Entry point used by `pnpm db:migrate` during development. */
 async function main() {
   const url = process.env.DATABASE_URL
   if (!url) {
@@ -14,11 +14,11 @@ async function main() {
   const migrationsFolder = join(here, '..', 'migrations')
 
   try {
-    console.log('aplicando migrations...')
+    console.log('applying migrations…')
     await runMigrations({ url, migrationsFolder })
-    console.log('migrations aplicadas.')
+    console.log('migrations applied.')
   } catch (error) {
-    console.error('falha ao migrar:', error)
+    console.error('migration failed:', error)
     process.exit(1)
   }
 }

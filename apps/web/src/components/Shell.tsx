@@ -20,7 +20,7 @@ import {
 import { LanguagePicker } from './LanguagePicker'
 import { cx } from './ui'
 
-/** Janelas oferecidas. Mais que isso vira menu; menos, vira limitação. */
+/** The windows on offer. More than this is a menu; fewer is a limitation. */
 export const JANELAS = [
   { horas: 1, valor: 1, unidade: 'hour' },
   { horas: 6, valor: 6, unidade: 'hour' },
@@ -30,11 +30,12 @@ export const JANELAS = [
 ] as const satisfies ReadonlyArray<{ horas: number; valor: number; unidade: 'hour' | 'day' }>
 
 /**
- * A janela e o filtro de sessão moram na URL.
+ * The window and the session filter live in the URL.
  *
- * Um operador que vê algo estranho manda o link para o colega, e o colega abre
- * exatamente a mesma tela. Guardar isso em estado de componente transformaria
- * toda conversa sobre um incidente em "clica em 7 dias, depois filtra por...".
+ * An operator who sees something odd sends the link to a colleague, and the
+ * colleague opens exactly the same screen. Keeping this in component state
+ * would turn every conversation about an incident into "click 7 days, then
+ * filter by...".
  */
 export function useFiltro() {
   const [params, setParams] = useSearchParams()
@@ -56,7 +57,7 @@ export function useFiltro() {
       else proximo.delete('sessao')
       setParams(proximo, { replace: true })
     },
-    /** Sufixo pronto para concatenar na URL do endpoint. */
+    /** Suffix ready to append to the endpoint URL. */
     query: `hours=${horas}${sessao ? `&sessionId=${sessao}` : ''}`,
   }
 }
@@ -65,7 +66,7 @@ interface Aba {
   para: string
   chave: TranslationKey
   Icone: (props: { width?: number; height?: number }) => ReactNode
-  /** Papel mínimo para a aba existir. Ausente, ela vale para todo mundo. */
+  /** Minimum role for the tab to exist. Absent, it applies to everyone. */
   minimo?: 'admin'
 }
 
@@ -79,10 +80,11 @@ const ABAS: Aba[] = [
 ]
 
 /**
- * Abas que este papel alcança.
+ * The tabs this role can reach.
  *
- * Mostrar a aba de chaves para quem vai levar 403 ao abrir não é transparência,
- * é uma porta pintada na parede. A autorização continua sendo do servidor.
+ * Showing the keys tab to someone who will get a 403 on opening it is not
+ * transparency, it is a door painted on the wall. Authorization stays with the
+ * server.
  */
 function useAbas() {
   const me = useMe()
@@ -105,12 +107,12 @@ export function Shell({ children, acoes }: { children: ReactNode; acoes?: ReactN
 }
 
 /**
- * Navegação no celular.
+ * Navigation on a phone.
  *
- * O rail lateral não cabe em tela estreita, e escondê-lo sem substituto deixaria
- * as outras duas abas inalcançáveis — o painel viraria uma tela só para quem
- * abre do telefone, que é justamente quem está fora do escritório com um
- * incidente na mão.
+ * The side rail does not fit on a narrow screen, and hiding it with nothing in
+ * its place would leave the other two tabs out of reach — the panel would
+ * become a single screen for whoever opens it on a phone, which is exactly the
+ * person who is out of the office with an incident on their hands.
  */
 function CabecalhoMovel() {
   const { search } = useLocation()
@@ -236,7 +238,7 @@ function TopBar({ acoes }: { acoes?: ReactNode }) {
   return (
     <div className="chrome -mx-3 flex flex-wrap items-center justify-between gap-3 border-b border-line/70 px-3 py-3 sm:sticky sm:top-0 sm:z-10 sm:-mx-5 sm:px-5">
       <div className="flex flex-1 flex-wrap items-center gap-2">
-        {/* biome-ignore lint/a11y/useSemanticElements: fieldset exige legend visível e traz layout próprio; aqui são botões de alternância, não campos de formulário */}
+        {/* biome-ignore lint/a11y/useSemanticElements: a fieldset demands a visible legend and brings its own layout; these are toggle buttons, not form fields */}
         <div
           role="group"
           aria-label={t('common.timeWindow')}
@@ -281,7 +283,7 @@ function AlternadorDeTema() {
   ]
 
   return (
-    // biome-ignore lint/a11y/useSemanticElements: mesma razão do seletor de janela
+    // biome-ignore lint/a11y/useSemanticElements: same reason as the window picker
     <div
       role="group"
       aria-label={t('common.theme')}
@@ -307,7 +309,7 @@ function AlternadorDeTema() {
   )
 }
 
-/** Seletor de sessão, montado pelas telas que já têm a lista carregada. */
+/** Session picker, mounted by the screens that already have the list loaded. */
 export function FiltroDeSessao({ sessoes }: { sessoes: Array<{ id: string; name: string }> }) {
   const { sessao, definirSessao } = useFiltro()
   const t = useT()

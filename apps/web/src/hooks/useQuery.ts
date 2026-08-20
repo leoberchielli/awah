@@ -5,18 +5,19 @@ export interface QueryState<T> {
   data: T | null
   error: ApiError | Error | null
   loading: boolean
-  /** Já houve pelo menos uma resposta. Distingue "carregando" de "revalidando". */
+  /** At least one response has landed. Tells "loading" apart from "revalidating". */
   settled: boolean
   refetch: () => void
 }
 
 /**
- * Busca com polling, sem biblioteca de estado de servidor.
+ * Polling fetch, without a server-state library.
  *
- * Um dashboard de operação precisa de três coisas: repetir a chamada, cancelar a
- * anterior e não piscar o layout enquanto revalida. Isso cabe em quarenta linhas
- * e evita somar uns cem quilobytes ao bundle de uma ferramenta interna — a
- * mesma lógica de leveza que vale para a imagem do servidor vale aqui.
+ * An operations dashboard needs three things: repeat the call, cancel the
+ * previous one, and not flash the layout while revalidating. That fits in forty
+ * lines and avoids adding a hundred kilobytes or so to the bundle of an
+ * internal tool — the same argument for staying light that governs the server
+ * image governs this.
  */
 export function useQuery<T>(path: string | null, intervalMs = 0): QueryState<T> {
   const [data, setData] = useState<T | null>(null)
@@ -24,7 +25,7 @@ export function useQuery<T>(path: string | null, intervalMs = 0): QueryState<T> 
   const [loading, setLoading] = useState(Boolean(path))
   const [settled, setSettled] = useState(false)
 
-  // Só a resposta da requisição mais recente pode escrever no estado.
+  // Only the response from the most recent request may write to state.
   const geracao = useRef(0)
 
   const executar = useCallback(async () => {
@@ -53,8 +54,8 @@ export function useQuery<T>(path: string | null, intervalMs = 0): QueryState<T> 
     if (!intervalMs) return
 
     const timer = setInterval(() => {
-      // Aba escondida não gera tráfego: o navegador congela o timer de qualquer
-      // forma, e acordar com uma rajada de requisições só atrapalha.
+      // A hidden tab generates no traffic: the browser freezes the timer
+      // anyway, and waking up to a burst of requests only gets in the way.
       if (document.visibilityState === 'visible') void executar()
     }, intervalMs)
 

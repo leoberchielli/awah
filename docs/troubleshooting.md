@@ -100,10 +100,10 @@ verifying against the reserialized JSON, not against the raw bytes.
 ones — key order, escapes and spacing can all differ. In Express, that means
 `express.raw()` or `verify` in `express.json()`.
 
-The signature covers `timestamp.corpo`, not just the body:
+The signature covers `timestamp.body`, not just the body:
 
 ```js
-const esperado = 'sha256=' + createHmac('sha256', segredo).update(`${timestamp}.${corpoCru}`).digest('hex')
+const expected = 'sha256=' + createHmac('sha256', secret).update(`${timestamp}.${rawBody}`).digest('hex')
 ```
 
 Or use the SDK, which already does this: `verifyWebhookRequest(request, secret)`.
@@ -114,8 +114,8 @@ drifted more than that, every legitimate delivery is rejected as a replay.
 ## The dashboard doesn't open
 
 **Blank page, API responding.** The dashboard build was not found. The boot log
-says which case it is: `dashboard sendo servido pela API` with the root, or
-`dashboard não empacotado`. In the second case, run `pnpm --filter @awah/web build`
+says which case it is: `dashboard served by the API` with the root, or
+`dashboard not bundled`. In the second case, run `pnpm --filter @awah/web build`
 or point `DASHBOARD_DIR` at it.
 
 **A client route returning a 404 JSON.** You asked for `application/json` in
@@ -151,8 +151,8 @@ repository. Generate your own with the commands the message itself shows.
 **"Invalid environment configuration".** The message lists field by field what is
 wrong. The common mistakes: an `ENCRYPTION_KEY` that is not 32 bytes in base64
 (generate it with `openssl rand -base64 32`, do not make one up), and a
-`PUBLIC_URL` with no scheme — `awah.exemplo.com` is not a URL,
-`https://awah.exemplo.com` is.
+`PUBLIC_URL` with no scheme — `awah.example.com` is not a URL,
+`https://awah.example.com` is.
 
 **Pending migration.** The API does not apply migrations by itself on boot. Run
 `pnpm db:migrate` first.

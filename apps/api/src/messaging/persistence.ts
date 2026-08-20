@@ -18,11 +18,11 @@ export interface RecordMessageInput {
 }
 
 /**
- * Grava a mensagem materializada, respeitando a retenção da organização.
+ * Writes the materialized message, respecting the organization's retention.
  *
- * O upsert em `(org_id, session_id, engine_message_id)` existe porque o mesmo
- * evento chega mais de uma vez na prática: reconexão reentrega, e uma mensagem
- * enviada por nós também volta pelo `messages.upsert` do próprio número.
+ * The upsert on `(org_id, session_id, engine_message_id)` is there because the
+ * same event arrives more than once in practice: a reconnect redelivers, and a
+ * message we sent also comes back through the number's own `messages.upsert`.
  */
 export async function recordMessage(
   db: Database,
@@ -59,12 +59,12 @@ export async function recordMessage(
 }
 
 /**
- * Avança a trilha de ACK.
+ * Advances the ACK trail.
  *
- * Dois cuidados aqui, os dois vindos de como o protocolo se comporta de fato:
- * ACKs chegam fora de ordem, então o status só avança e nunca regride; e o
- * mesmo ACK chega repetido, então a trilha usa `onConflictDoNothing` para não
- * duplicar a linha que alimenta as latências por etapa.
+ * Two precautions here, both of them from how the protocol actually behaves:
+ * ACKs arrive out of order, so the status only moves forward and never back;
+ * and the same ACK arrives twice, so the trail uses `onConflictDoNothing` not
+ * to duplicate the row that feeds the per-step latencies.
  */
 export async function recordStatus(
   db: Database,
@@ -88,7 +88,7 @@ export async function recordStatus(
     )
     .limit(1)
 
-  // ACK de mensagem que não conhecemos: comum logo após conectar.
+  // ACK for a message we do not know: common right after connecting.
   if (!message) return false
   if (!isStatusAdvance(message.status, input.status)) return false
 
@@ -115,10 +115,10 @@ export async function recordStatus(
 }
 
 /**
- * Apaga o conteúdo já vencido, preservando os metadados.
+ * Erases content that has already expired, keeping the metadata.
  *
- * A linha continua existindo — é isso que mantém volume, latência e funil de
- * entrega intactos depois que o corpo da mensagem foi descartado.
+ * The row goes on existing — that is what keeps volume, latency and the
+ * delivery funnel intact after the message body has been dropped.
  */
 export async function purgeExpiredContent(db: Database, limit = 1000): Promise<number> {
   const result = await db.execute(sql`

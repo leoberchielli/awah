@@ -14,11 +14,12 @@ export class TypebotError extends Error {
   }
 
   /**
-   * A sessão de fluxo acabou do lado do Typebot.
+   * The flow session ended on the Typebot side.
    *
-   * Acontece quando o fluxo chega ao fim ou quando o servidor dele é
-   * reiniciado. Não é falha: é sinal de que a próxima mensagem começa um fluxo
-   * novo, e tratar como erro deixaria o contato mudo para sempre.
+   * It happens when the flow reaches its end or when their server is
+   * restarted. It is not a failure: it is the signal that the next message
+   * starts a new flow, and treating it as an error would leave that contact
+   * without an answer forever.
    */
   get sessaoExpirada(): boolean {
     return this.status === 404
@@ -43,24 +44,24 @@ interface MensagemTypebot {
 interface RespostaChat {
   sessionId?: string
   messages?: MensagemTypebot[]
-  /** Presente quando o fluxo espera resposta. Ausente significa fluxo encerrado. */
+  /** Present when the flow expects an answer. Absent means the flow is over. */
   input?: { type?: string } | null
 }
 
 export interface TurnoDeFluxo {
   sessionId: string | null
   textos: string[]
-  /** Falso quando o fluxo terminou e não espera mais nada. */
+  /** False when the flow has finished and expects nothing more. */
   aguardandoResposta: boolean
 }
 
 /**
- * Cliente do Chat API do Typebot.
+ * Client for Typebot's Chat API.
  *
- * O fluxo vive lá; aqui só entram a mensagem do cliente e a resposta que o
- * fluxo produziu. É o que permite ao operador desenhar no editor do Typebot,
- * que já é bom, e ainda assim receber a entrega durável e o motor de risco do
- * gateway embaixo.
+ * The flow lives over there; all that passes through here is the customer's
+ * message and the answer the flow produced. It is what lets the operator design
+ * in Typebot's editor, which is already good, and still get the durable
+ * delivery and the risk engine of the gateway underneath.
  */
 export class TypebotClient {
   private readonly fetchImpl: typeof fetch
@@ -92,20 +93,20 @@ export class TypebotClient {
       })
 
       const texto = await resposta.text()
-      const corpo = texto ? safeJson(texto) : null
+      const parsed = texto ? safeJson(texto) : null
 
       if (!resposta.ok) {
-        const detalhe = (corpo as { message?: string })?.message ?? texto.slice(0, 200)
+        const detalhe = (parsed as { message?: string })?.message ?? texto.slice(0, 200)
         throw new TypebotError(resposta.status, `Typebot responded ${resposta.status}: ${detalhe}`)
       }
 
-      return corpo as T
+      return parsed as T
     } finally {
       clearTimeout(timer)
     }
   }
 
-  /** Valida o endereço e o fluxo antes de gravar a integração. */
+  /** Validates the address and the flow before saving the integration. */
   async verificar(): Promise<void> {
     await this.iniciar()
   }
@@ -133,17 +134,17 @@ function interpretar(resposta: RespostaChat): TurnoDeFluxo {
   return {
     sessionId: resposta.sessionId ?? null,
     textos: (resposta.messages ?? []).map(paraTexto).filter((t): t is string => Boolean(t)),
-    // Sem `input`, o fluxo chegou ao fim e a próxima mensagem recomeça do zero.
+    // With no `input`, the flow is over and the next message starts from zero.
     aguardandoResposta: Boolean(resposta.input),
   }
 }
 
 /**
- * Achata o formato do Typebot para o texto que o WhatsApp aceita.
+ * Flattens Typebot's format into the text WhatsApp accepts.
  *
- * O `richText` é uma árvore de parágrafos com filhos; o WhatsApp só entende
- * texto corrido. Mídia vira a URL — honesto e útil enquanto o gateway não envia
- * anexo, e melhor que engolir a mensagem em silêncio.
+ * `richText` is a tree of paragraphs with children; WhatsApp only understands
+ * running text. Media becomes the URL — honest and useful while the gateway
+ * does not send attachments, and better than swallowing the message in silence.
  */
 function paraTexto(mensagem: MensagemTypebot): string | null {
   if (mensagem.content?.richText?.length) {
@@ -171,12 +172,12 @@ function safeJson(texto: string): unknown {
 }
 
 /**
- * Deriva endereço e id do fluxo a partir do link que a pessoa tem em mãos.
+ * Derives the address and the flow id from the link the person already has.
  *
- * Pedir "baseUrl" e "typebotId" em campos separados obriga quem integra a saber
- * o que é `publicId` e onde ele aparece. O link de compartilhamento já tem os
- * dois, e é o que está na área de transferência de quem acabou de publicar um
- * fluxo.
+ * Asking for "baseUrl" and "typebotId" in separate fields forces the integrator
+ * to know what a `publicId` is and where it shows up. The share link already has
+ * both, and it is what is on the clipboard of someone who has just published a
+ * flow.
  */
 export function derivarDoLink(link: string): { baseUrl: string; typebotId: string } {
   let url: URL
@@ -189,11 +190,11 @@ export function derivarDoLink(link: string): { baseUrl: string; typebotId: strin
   const partes = url.pathname.split('/').filter(Boolean)
 
   /**
-   * A URL do editor traz o id interno, que o Chat API não aceita.
+   * The editor URL carries the internal id, which the Chat API does not accept.
    *
-   * É o erro mais provável de quem está com o Typebot aberto: copiar da barra de
-   * endereços do editor em vez do link de compartilhamento. Sem esta conferência
-   * a integração é aceita e só falha depois, na primeira mensagem de um cliente.
+   * It is the most likely mistake for someone with Typebot open: copying from
+   * the editor's address bar instead of the share link. Without this check the
+   * integration is accepted and only fails later, on a customer's first message.
    */
   if (partes[0] === 'typebots' || url.hostname.startsWith('app.')) {
     throw new Error(

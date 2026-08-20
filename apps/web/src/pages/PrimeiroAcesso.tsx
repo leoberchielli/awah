@@ -5,14 +5,15 @@ import { Rich, useT } from '../i18n'
 import { ApiError, post } from '../lib/api'
 
 /**
- * Primeira execução da instância.
+ * The instance's first run.
  *
- * Sem esta tela, a única forma de criar a primeira organização era montar um
- * `curl` a partir do README — e essa é a trava mais cara que um projeto
- * self-hosted pode ter, porque acontece antes de a pessoa ver qualquer valor.
+ * Without this screen, the only way to create the first organization was to
+ * assemble a `curl` from the README — and that is the most expensive block a
+ * self-hosted project can have, because it happens before anyone has seen any
+ * value.
  *
- * A rota fecha sozinha assim que existir uma organização, então esta tela só
- * aparece uma vez na vida da instância.
+ * The route closes itself as soon as an organization exists, so this screen
+ * shows up once in the life of the instance.
  */
 export function PrimeiroAcesso() {
   const t = useT()
@@ -32,7 +33,7 @@ export function PrimeiroAcesso() {
 
     try {
       await post('/v1/auth/register', { organizationName, name, email, password })
-      // O registro já devolve a sessão pronta: entra direto, sem pedir login.
+      // Registration hands back a live session: go straight in, no login prompt.
       window.location.assign('/sessions')
     } catch (falha) {
       setErro(falha instanceof ApiError ? falha.message : t('setup.apiUnreachable'))

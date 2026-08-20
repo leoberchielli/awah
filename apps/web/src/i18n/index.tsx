@@ -48,8 +48,8 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 
     document.documentElement.lang = target.code
     document.documentElement.dir = target.dir
-    // Números, datas e durações não passam pelo catálogo: quem localiza é o
-    // `Intl`, e ele precisa saber em que idioma o painel está.
+    // Numbers, dates and durations do not go through the catalog: `Intl` is
+    // what localises them, and it needs to know what language the panel is in.
     usarIdioma(target.code)
 
     if (target.code === FALLBACK) {

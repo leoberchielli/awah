@@ -24,13 +24,13 @@ export function Sessoes() {
   const alvo = lista.find((s) => s.id === selecionada) ?? null
 
   /**
-   * Sessão esperando um QR ganha a tela inteira, sem ninguém precisar clicar
-   * nela.
+   * A session waiting for a QR takes the whole screen, with nobody having to
+   * click it.
    *
-   * O código expira em segundos e o aparelho está na mão do operador: é o único
-   * momento em que a tela tem uma coisa só a fazer. Deixar o QR escondido atrás
-   * de uma seleção — como estava — torna o passo mais importante do produto
-   * invisível para quem acabou de apertar "Iniciar".
+   * The code expires in seconds and the phone is in the operator's hand: it is
+   * the one moment when the screen has exactly one thing to do. Leaving the QR
+   * hidden behind a selection — as it was — makes the most important step in
+   * the product invisible to whoever just pressed "Start".
    */
   const pareando = lista.find((s) => PAREANDO.includes(s.status)) ?? null
 
@@ -88,7 +88,7 @@ export function Sessoes() {
   )
 }
 
-/** O passo do pareamento, com o QR e o que fazer no aparelho lado a lado. */
+/** The pairing step, with the QR and what to do on the phone side by side. */
 function Pareamento({ sessao, aoMudar }: { sessao: SessionRow; aoMudar: () => void }) {
   const t = useT()
 
@@ -174,7 +174,7 @@ function LinhaDeSessao({
     setErro(null)
     try {
       await post(`/v1/sessions/${sessao.id}/${acao}`)
-      // Quem apertou Iniciar quer ver o que aconteceu com esta sessão.
+      // Whoever pressed Start wants to see what happened to this session.
       if (acao === 'start') aoIniciar()
       aoMudar()
     } catch (falha) {
@@ -185,10 +185,11 @@ function LinhaDeSessao({
   }
 
   /**
-   * Divergência entre intenção e realidade.
+   * Intent and reality disagree.
    *
-   * "Deveria rodar, mas não está" é o estado que custa dinheiro em silêncio: a
-   * fila continua aceitando mensagens e nada sai. Ele ganha destaque próprio.
+   * "Should be running, but isn't" is the state that costs money quietly: the
+   * queue keeps accepting messages and nothing goes out. It gets its own
+   * highlight.
    */
   const divergente = sessao.desiredState === 'running' && !sessao.running
 
@@ -308,7 +309,7 @@ function NovaSessao({ aoCriar }: { aoCriar: () => void }) {
   return (
     <form onSubmit={criar} className="flex flex-wrap items-center gap-2">
       <input
-        // biome-ignore lint/a11y/noAutofocus: o formulário só existe depois do clique explícito
+        // biome-ignore lint/a11y/noAutofocus: the form only exists after an explicit click
         autoFocus
         required
         value={nome}
@@ -341,21 +342,21 @@ function NovaSessao({ aoCriar }: { aoCriar: () => void }) {
 }
 
 /**
- * O QR expira em segundos e é regerado pela engine.
+ * The QR expires in seconds and the engine regenerates it.
  *
- * Buscar a cada dois segundos é o que faz a imagem na tela ser a mesma que o
- * WhatsApp aceita — um QR de dez segundos atrás já falhou.
+ * Fetching every two seconds is what keeps the image on screen the same one
+ * WhatsApp will accept — a QR from ten seconds ago has already failed.
  */
 function PainelDeQr({ sessionId }: { sessionId: string }) {
   const t = useT()
   const qr = useQuery<QrResponse>(`/v1/sessions/${sessionId}/qr`, 2000)
 
   /**
-   * Fundo branco sempre, inclusive no tema escuro.
+   * White background always, dark theme included.
    *
-   * Leitor de QR precisa de contraste entre módulo e fundo; inverter as cores
-   * junto com o resto da interface faria a câmera do celular simplesmente não
-   * enxergar o código.
+   * A QR reader needs contrast between module and background; inverting the
+   * colours along with the rest of the interface would make the phone's camera
+   * simply not see the code.
    */
   if (!qr.data) {
     return (
@@ -439,7 +440,7 @@ function PainelDeRisco({ sessionId }: { sessionId: string }) {
           />
         </div>
 
-        {/* Fator que não pontuou não explica nada; o cabeçalho sozinho só ocupa espaço. */}
+        {/* A factor that scored nothing explains nothing; the heading alone just takes space. */}
         {pontuando.length > 0 && (
           <div className="flex flex-col gap-1.5">
             <span className="eyebrow">{t('risk.factors')}</span>

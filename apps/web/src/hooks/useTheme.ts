@@ -10,10 +10,11 @@ function ler(): Tema {
 }
 
 /**
- * Tema em três estados, não dois.
+ * Theme in three states, not two.
  *
- * "system" não escreve nada no documento: sem o atributo, quem manda é o
- * `prefers-color-scheme`, que é o comportamento certo para quem nunca escolheu.
+ * "system" writes nothing to the document: with no attribute there,
+ * `prefers-color-scheme` is in charge, which is the right behaviour for anyone
+ * who never chose.
  */
 export function useTheme(): [Tema, (proximo: Tema) => void] {
   const [tema, setTema] = useState<Tema>(ler)

@@ -3,11 +3,11 @@ import { runMigrations } from '@awah/db'
 import { loadEnv } from './env'
 
 /**
- * Entrada de migration empacotada na imagem, para que o container consiga
- * migrar sem depender de tsx ou das devDependencies.
+ * Migration entry point bundled into the image, so the container can migrate
+ * without depending on tsx or the devDependencies.
  *
- * No compose isto roda como serviço `migrate`, que a API espera concluir antes
- * de subir.
+ * In compose this runs as the `migrate` service, which the API waits for before
+ * it starts.
  */
 async function main() {
   const env = loadEnv()
@@ -15,11 +15,11 @@ async function main() {
     process.env.MIGRATIONS_DIR ?? join(process.cwd(), 'packages', 'db', 'migrations')
 
   try {
-    console.log(`aplicando migrations de ${migrationsFolder}...`)
+    console.log(`applying migrations from ${migrationsFolder}…`)
     await runMigrations({ url: env.DATABASE_URL, migrationsFolder })
-    console.log('migrations aplicadas.')
+    console.log('migrations applied.')
   } catch (error) {
-    console.error('falha ao migrar:', error)
+    console.error('migration failed:', error)
     process.exit(1)
   }
 }

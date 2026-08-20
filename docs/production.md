@@ -75,7 +75,7 @@ AWAH speaks HTTP. HTTPS is spoken by whatever sits in front of it.
 ```nginx
 server {
   listen 443 ssl http2;
-  server_name awah.suaempresa.com;
+  server_name awah.yourcompany.com;
 
   # The QR and the dashboard tolerate it fine; what does not is a short webhook timeout.
   proxy_read_timeout 65s;
@@ -93,7 +93,7 @@ server {
 With that in place, set in the API's environment:
 
 ```bash
-PUBLIC_URL=https://awah.suaempresa.com
+PUBLIC_URL=https://awah.yourcompany.com
 TRUST_PROXY=127.0.0.1
 NODE_ENV=production
 ```

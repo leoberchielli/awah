@@ -7,14 +7,14 @@ import { hashToken } from '../../src/lib/crypto'
 
 export interface SeededOrg {
   orgId: string
-  /** Token pronto para `Authorization: Bearer`. */
+  /** Token ready to drop into `Authorization: Bearer`. */
   token: string
   cleanup: () => Promise<void>
 }
 
 /**
- * Cria uma organização descartável com uma chave de API. Cada teste tem a sua,
- * para que a suíte não dependa de ordem nem de estado deixado por outro arquivo.
+ * Creates a throwaway org with one API key. Every test gets its own, so the
+ * suite never depends on ordering or on state another file left behind.
  */
 export async function seedOrg(
   db: Database,
@@ -42,7 +42,7 @@ export async function seedOrg(
   return {
     orgId: org.id,
     token: generated.token,
-    // Cascade leva sessões, chaves e eventos junto.
+    // Cascade takes the sessions, keys and events with it.
     cleanup: async () => {
       await db.delete(schema.orgs).where(eq(schema.orgs.id, org.id))
     },
@@ -56,11 +56,11 @@ export interface SeededUser {
 }
 
 /**
- * Cria um usuário com senha conhecida dentro de uma org existente.
+ * Creates a user with a known password inside an existing org.
  *
- * Existe porque chave de API não administra identidade — emitir chave, promover
- * membro e alterar a organização exigem sessão de usuário, por design. Testar
- * essas rotas obriga a passar pelo login de verdade.
+ * It exists because an API key does not administer identity — issuing a key,
+ * promoting a member and changing the org all need a user session, by design.
+ * Testing those routes means going through a real login.
  */
 export async function seedUser(
   db: Database,
@@ -91,7 +91,7 @@ export async function seedUser(
   return { email, password, userId: user.id }
 }
 
-/** Cria mais uma chave dentro de uma org existente, com papel e escopo próprios. */
+/** Creates one more key inside an existing org, with its own role and scope. */
 export async function createApiKey(
   db: Database,
   orgId: string,

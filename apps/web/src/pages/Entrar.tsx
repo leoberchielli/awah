@@ -9,16 +9,17 @@ import { ApiError, post } from '../lib/api'
 import { PrimeiroAcesso } from './PrimeiroAcesso'
 
 /**
- * Entrada do dashboard.
+ * The dashboard's front door.
  *
- * Só usuário e senha: chave de API nunca entra aqui. Uma chave colada no
- * navegador fica ao alcance de qualquer extensão instalada, e ela é a credencial
- * que envia mensagem em nome de todas as sessões da organização.
+ * User and password only: an API key never goes in here. A key pasted into the
+ * browser is within reach of every installed extension, and it is the
+ * credential that sends messages on behalf of every session in the
+ * organization.
  */
 export function Entrar() {
   const t = useT()
   const [params] = useSearchParams()
-  // Quem abre /entrar numa instância vazia precisa da tela de setup, não do login.
+  // Whoever opens /entrar on an empty instance needs the setup screen, not login.
   const bootstrap = useQuery<Bootstrap>('/v1/auth/bootstrap')
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
@@ -46,8 +47,8 @@ export function Entrar() {
     <div className="grid min-h-dvh place-items-center bg-ground px-4">
       <div className="w-full max-w-sm">
         <div className="mb-6 flex flex-col gap-2">
-          {/* O seletor vem antes do formulário: quem não lê o idioma detectado
-              precisa trocá-lo aqui, e não depois de conseguir entrar. */}
+          {/* The picker comes before the form: whoever cannot read the detected
+              language has to change it here, not after managing to sign in. */}
           <div className="flex items-start justify-between gap-3">
             <Marca />
             <LanguagePicker />

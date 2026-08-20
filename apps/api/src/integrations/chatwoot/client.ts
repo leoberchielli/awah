@@ -9,7 +9,7 @@ export class ChatwootError extends Error {
     this.name = 'ChatwootError'
   }
 
-  /** Erro de configuração, não de disponibilidade: repetir não conserta. */
+  /** Configuration error, not availability: retrying does not fix it. */
   get isPermanente(): boolean {
     return this.status >= 400 && this.status < 500 && this.status !== 429
   }
@@ -18,10 +18,11 @@ export class ChatwootError extends Error {
 export interface ContatoChatwoot {
   contactId: number
   /**
-   * Identificador do contato **dentro da caixa**.
+   * The contact's identifier **inside the inbox**.
    *
-   * O Chatwoot exige este valor para abrir conversa numa caixa do tipo API, e
-   * ele não é o id do contato — confundir os dois devolve 404 sem explicar nada.
+   * Chatwoot demands this value to open a conversation in an API-type inbox,
+   * and it is not the contact id — confusing the two returns a 404 that
+   * explains nothing.
    */
   sourceId: string
 }
@@ -39,10 +40,10 @@ interface RespostaContato {
 }
 
 /**
- * Cliente do Chatwoot, só com o que o gateway usa.
+ * Chatwoot client, with only what the gateway uses.
  *
- * Não é um SDK: são cinco chamadas, e depender de uma biblioteca inteira para
- * elas contrariaria a aposta de leveza do projeto.
+ * It is not an SDK: it is five calls, and depending on a whole library for them
+ * would go against the project's bet on staying light.
  */
 export class ChatwootClient {
   private readonly fetchImpl: typeof fetch
@@ -60,7 +61,7 @@ export class ChatwootClient {
     return this.absoluto<T>(`/api/v1/accounts/${this.config.accountId}${caminho}`, init)
   }
 
-  /** O perfil não vive sob `/accounts/{id}` — daí os dois caminhos. */
+  /** The profile does not live under `/accounts/{id}` — hence the two paths. */
   private async absoluto<T>(caminho: string, init?: RequestInit): Promise<T> {
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), this.timeoutMs)
@@ -97,11 +98,11 @@ export class ChatwootClient {
   }
 
   /**
-   * Contas que este token alcança.
+   * The accounts this token can reach.
    *
-   * O `accountId` fica escondido na URL do Chatwoot, e pedir que a pessoa o
-   * copie de lá é a primeira coisa que trava a adoção. O token já sabe a
-   * resposta — basta perguntar.
+   * `accountId` is buried in the Chatwoot URL, and asking the person to copy it
+   * out of there is the first thing that stalls adoption. The token already
+   * knows the answer — you just have to ask.
    */
   async contas(): Promise<Array<{ id: number; name: string; role: string }>> {
     const perfil = await this.absoluto<{
@@ -113,7 +114,7 @@ export class ChatwootClient {
       .map((c) => ({ id: c.id, name: c.name ?? `Conta ${c.id}`, role: c.role ?? 'agent' }))
   }
 
-  /** Caixas existentes, para reaproveitar uma em vez de criar outra. */
+  /** Existing inboxes, so one can be reused instead of creating another. */
   async caixas(): Promise<Array<{ id: number; name: string; channelType: string }>> {
     const resposta = await this.request<{
       payload?: Array<{ id?: number; name?: string; channel_type?: string }>
@@ -131,11 +132,11 @@ export class ChatwootClient {
   }
 
   /**
-   * Cria a caixa API já com o webhook apontado para o gateway.
+   * Creates the API inbox with the webhook already pointed at the gateway.
    *
-   * São os dois passos mais chatos do manual — criar a caixa clicando e depois
-   * voltar para colar a URL — resolvidos numa chamada. Exige token de
-   * administrador; agente comum recebe 403, e a mensagem diz isso.
+   * These are the two most tedious steps of the manual — clicking to create the
+   * inbox and then coming back to paste the URL — settled in one call. It needs
+   * an admin token; a plain agent gets a 403, and the message says so.
    */
   async criarCaixa(nome: string, webhookUrl: string): Promise<{ id: number; name: string }> {
     const caixa = await this.request<{ id?: number; name?: string }>('/inboxes', {
@@ -150,7 +151,7 @@ export class ChatwootClient {
     return { id: caixa.id, name: caixa.name ?? nome }
   }
 
-  /** Aponta o webhook de uma caixa que já existia. */
+  /** Points the webhook of an inbox that already existed. */
   async apontarWebhook(inboxId: number, webhookUrl: string): Promise<void> {
     await this.request(`/inboxes/${inboxId}`, {
       method: 'PATCH',
@@ -158,7 +159,7 @@ export class ChatwootClient {
     })
   }
 
-  /** Confere credenciais e a caixa antes de gravar qualquer coisa. */
+  /** Checks the credentials and the inbox before saving anything. */
   async verificar(): Promise<{ inboxName: string; channelType: string }> {
     const inbox = await this.request<{ name?: string; channel_type?: string }>(
       `/inboxes/${this.config.inboxId}`,
@@ -171,11 +172,12 @@ export class ChatwootClient {
   }
 
   /**
-   * Encontra ou cria o contato na caixa.
+   * Finds or creates the contact in the inbox.
    *
-   * O Chatwoot recusa contato duplicado com 422 em vez de devolver o existente,
-   * então a busca vem primeiro. `identifier` é o telefone em dígitos: é o único
-   * dado estável que o WhatsApp entrega em toda mensagem.
+   * Chatwoot refuses a duplicate contact with a 422 instead of returning the
+   * existing one, so the search comes first. `identifier` is the phone number
+   * in digits: the only stable piece of data WhatsApp hands over on every
+   * message.
    */
   async garantirContato(input: {
     identifier: string
@@ -199,7 +201,7 @@ export class ChatwootClient {
       const extraido = this.extrairContato(criado)
       if (extraido) return extraido
     } catch (erro) {
-      // 422 aqui é corrida: outro processo criou o contato entre a busca e agora.
+      // A 422 here is a race: another process created it since the search.
       if (!(erro instanceof ChatwootError) || erro.status !== 422) throw erro
     }
 
@@ -222,11 +224,11 @@ export class ChatwootClient {
   }
 
   /**
-   * O `source_id` da caixa certa, entre todas as caixas do contato.
+   * The `source_id` of the right inbox, among all of the contact's inboxes.
    *
-   * Um contato que já conversou por e-mail e por WhatsApp tem um
-   * `contact_inbox` para cada. Pegar o primeiro da lista abriria a conversa na
-   * caixa errada.
+   * A contact who has already talked over e-mail and over WhatsApp has one
+   * `contact_inbox` for each. Taking the first from the list would open the
+   * conversation in the wrong inbox.
    */
   private extrairContato(resposta: RespostaContato): ContatoChatwoot | null {
     const contato = resposta.payload?.contact ?? resposta.payload
@@ -256,11 +258,11 @@ export class ChatwootClient {
   }
 
   /**
-   * Registra a mensagem do cliente na conversa.
+   * Records the customer's message on the conversation.
    *
-   * `source_id` recebe o id da mensagem no WhatsApp: é ele que permite ao
-   * webhook de volta reconhecer o que veio daqui e não reenviar — o eco que
-   * transforma uma conversa em laço infinito.
+   * `source_id` gets the WhatsApp message id: it is what lets the webhook
+   * coming back recognise what came from here and not resend it — the echo that
+   * turns a conversation into an infinite loop.
    */
   async criarMensagemRecebida(input: {
     conversationId: string

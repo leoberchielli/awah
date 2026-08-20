@@ -16,14 +16,15 @@ export interface MembershipRecord {
 }
 
 /**
- * Identidade é global e vive fora do escopo de tenant: o mesmo usuário pode
- * pertencer a várias organizações com papéis diferentes. Por isso este
- * repositório não estende TenantRepository — a ligação com a org é a membership.
+ * Identity is global and lives outside the tenant scope: the same user can
+ * belong to several organizations with different roles. That is why this
+ * repository does not extend TenantRepository — the membership is the link to
+ * the org.
  */
 export class IdentityRepository {
   constructor(private readonly db: Database) {}
 
-  /** Usado para decidir se o registro de bootstrap ainda está aberto. */
+  /** Used to decide whether bootstrap registration is still open. */
   async organizationCount(): Promise<number> {
     const [row] = await this.db.select({ value: count() }).from(schema.orgs)
     return row?.value ?? 0
@@ -45,9 +46,9 @@ export class IdentityRepository {
   }
 
   /**
-   * Cria organização, usuário e a membership de owner em uma transação. Os três
-   * só fazem sentido juntos — org sem owner é órfã e usuário sem membership não
-   * consegue entrar em lugar nenhum.
+   * Creates the organization, the user and the owner membership in one
+   * transaction. The three only make sense together — an org with no owner is
+   * orphaned, and a user with no membership cannot get in anywhere.
    */
   async createOrgWithOwner(input: {
     orgName: string
@@ -126,7 +127,7 @@ export class IdentityRepository {
     })
   }
 
-  /** Resolve a sessão do cookie. Sessão expirada é tratada como inexistente. */
+  /** Resolves the cookie's session. An expired session is treated as absent. */
   async findSessionUser(
     tokenHash: string,
   ): Promise<{ sessionId: string; userId: string; email: string; name: string } | null> {
@@ -161,7 +162,7 @@ export class IdentityRepository {
     await this.db.delete(schema.userSessions).where(eq(schema.userSessions.tokenHash, tokenHash))
   }
 
-  /** Remove sessões vencidas. Chamado por job periódico a partir da onda 5. */
+  /** Removes expired sessions. Called by a periodic job from wave 5 onwards. */
   async purgeExpiredSessions(): Promise<number> {
     const result = await this.db
       .delete(schema.userSessions)
@@ -195,7 +196,7 @@ export class IdentityRepository {
   }
 }
 
-/** E-mail é sempre comparado e gravado em minúsculas. */
+/** E-mail is always compared and stored in lower case. */
 export function normalizeEmail(email: string): string {
   return email.trim().toLowerCase()
 }

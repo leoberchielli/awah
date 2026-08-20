@@ -29,12 +29,12 @@ export async function authRoutes(app: FastifyInstance) {
   }
 
   /**
-   * Se a instância ainda precisa ser inicializada.
+   * Whether the instance still needs to be initialized.
    *
-   * Público de propósito, e não vaza nada: quem alcança a porta descobriria o
-   * mesmo tentando o registro. Existe para o painel poder mostrar a tela de
-   * primeira execução em vez de um formulário de login que ninguém consegue
-   * usar ainda — a alternativa era o usuário ler o README e montar um curl.
+   * Public on purpose, and it leaks nothing: anyone who reaches the port would
+   * find out the same by trying to register. It exists so the panel can show
+   * the first-run screen instead of a login form nobody can use yet — the
+   * alternative was the user reading the README and putting together a curl.
    */
   route.get(
     '/v1/auth/bootstrap',
@@ -58,12 +58,12 @@ export async function authRoutes(app: FastifyInstance) {
   )
 
   /**
-   * Bootstrap da instância: cria a primeira organização e o seu owner.
+   * Instance bootstrap: creates the first organization and its owner.
    *
-   * Fecha sozinho assim que existir qualquer organização — mesmo com
-   * ALLOW_OPEN_REGISTRATION ligado. Uma instância exposta na internet com
-   * registro aberto permanente é uma porta de entrada, não uma conveniência.
-   * Depois do bootstrap, novos usuários entram por convite (POST /v1/org/members).
+   * It closes itself as soon as any organization exists — even with
+   * ALLOW_OPEN_REGISTRATION on. An instance exposed to the internet with
+   * permanently open registration is a way in, not a convenience. After the
+   * bootstrap, new users arrive by invite (POST /v1/org/members).
    */
   route.post(
     '/v1/auth/register',
@@ -152,9 +152,9 @@ export async function authRoutes(app: FastifyInstance) {
       const user = await identity.findUserByEmail(email)
 
       /**
-       * Verifica a senha mesmo quando o usuário não existe, contra um hash
-       * descartável. Sem isso, a diferença de tempo entre "e-mail inexistente" e
-       * "senha errada" vira um oráculo de enumeração de contas.
+       * Verifies the password even when the user does not exist, against a
+       * throwaway hash. Without this, the time difference between "no such
+       * email" and "wrong password" becomes an account-enumeration oracle.
        */
       const digest = user?.passwordHash ?? (await decoyHash())
       const ok = await verifyPassword(digest, password)
@@ -244,12 +244,12 @@ export async function authRoutes(app: FastifyInstance) {
 }
 
 /**
- * Hash-isca sobre uma senha aleatória, calculado sob demanda e reaproveitado.
+ * A decoy hash over a random password, computed on demand and reused.
  *
- * Precisa ser gerado pelo mesmo argon2 com os mesmos parâmetros — um literal
- * escrito à mão não serve: se o digest for inválido, `verifyPassword` cai no
- * catch e retorna cedo, que é exatamente a diferença de tempo que este código
- * existe para eliminar.
+ * It has to come from the same argon2 with the same parameters — a literal
+ * written by hand will not do: if the digest is invalid, `verifyPassword` falls
+ * into the catch and returns early, which is exactly the timing difference this
+ * code exists to eliminate.
  */
 let decoyHashPromise: Promise<string> | null = null
 function decoyHash(): Promise<string> {
