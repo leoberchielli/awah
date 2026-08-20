@@ -5,7 +5,7 @@ import { useQuery } from '../hooks/useQuery'
 import { type TranslationKey, useT } from '../i18n'
 import { ApiError, del, type Member, patch, post, type Role } from '../lib/api'
 import { dateTime } from '../lib/format'
-import { roleAtLeast, useMe } from '../lib/sessao'
+import { roleAtLeast, useMe } from '../lib/session'
 
 const PAPEIS: Array<{ value: Role; label: TranslationKey }> = [
   { value: 'viewer', label: 'keys.role.viewer' },

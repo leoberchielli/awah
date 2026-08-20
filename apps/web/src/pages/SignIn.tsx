@@ -6,7 +6,7 @@ import { useQuery } from '../hooks/useQuery'
 import { useT } from '../i18n'
 import type { Bootstrap } from '../lib/api'
 import { ApiError, post } from '../lib/api'
-import { FirstRun } from './PrimeiroAcesso'
+import { FirstRun } from './FirstRun'
 
 /**
  * The dashboard's front door.

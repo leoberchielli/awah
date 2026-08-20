@@ -520,10 +520,7 @@ function Timeline({ sessionId }: { sessionId: string }) {
                   <span className="ml-1.5 font-mono opacity-70">({event.rawCode})</span>
                 )}
               </span>
-              <span
-                className="font-mono text-xs text-muted tnum"
-                title={dateTime(event.createdAt)}
-              >
+              <span className="font-mono text-xs text-muted tnum" title={dateTime(event.createdAt)}>
                 {since(event.createdAt)}
               </span>
             </li>

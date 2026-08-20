@@ -6,9 +6,9 @@ import { type TranslationKey, useT } from '../i18n'
 import type { Integration, SessionRow } from '../lib/api'
 import { del } from '../lib/api'
 import { dateTime } from '../lib/format'
-import { ChatwootWizard } from './integracoes/AssistenteChatwoot'
-import { HttpWizard } from './integracoes/AssistenteHttp'
-import { TypebotWizard } from './integracoes/AssistenteTypebot'
+import { ChatwootWizard } from './integrations/ChatwootWizard'
+import { HttpWizard } from './integrations/HttpWizard'
+import { TypebotWizard } from './integrations/TypebotWizard'
 
 const NAMES: Record<Integration['kind'], TranslationKey> = {
   chatwoot: 'integrations.kind.chatwoot',

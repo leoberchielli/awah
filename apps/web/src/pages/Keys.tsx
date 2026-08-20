@@ -6,7 +6,7 @@ import { type TranslationKey, useT } from '../i18n'
 import type { SessionRow } from '../lib/api'
 import { ApiError, type ApiKeyCreated, type ApiKeyRow, del, post, type Role } from '../lib/api'
 import { dateTime, since } from '../lib/format'
-import { roleAtLeast, useMe } from '../lib/sessao'
+import { roleAtLeast, useMe } from '../lib/session'
 import { statusLabel } from '../lib/sessionStatus'
 
 const PAPEIS: Array<{ value: Role; label: TranslationKey; summary: TranslationKey }> = [

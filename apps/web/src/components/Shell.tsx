@@ -4,7 +4,7 @@ import { useTheme } from '../hooks/useTheme'
 import { type TranslationKey, useT } from '../i18n'
 import { post } from '../lib/api'
 import { windowLabel } from '../lib/format'
-import { roleAtLeast, useMe } from '../lib/sessao'
+import { roleAtLeast, useMe } from '../lib/session'
 import {
   BusinessIcon,
   KeyIcon,
