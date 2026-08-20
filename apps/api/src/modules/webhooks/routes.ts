@@ -27,8 +27,8 @@ export async function webhookRoutes(app: FastifyInstance) {
       preHandler: app.requirePermission('webhook:read'),
       schema: {
         tags: ['webhooks'],
-        summary: 'Listar assinaturas',
-        description: 'O segredo de assinatura nunca é devolvido depois da criação.',
+        summary: 'List subscriptions',
+        description: 'The signing secret is never returned after creation.',
         response: { 200: z.object({ webhooks: z.array(webhookSchema) }) },
       },
     },
@@ -57,12 +57,12 @@ export async function webhookRoutes(app: FastifyInstance) {
       preHandler: app.requirePermission('webhook:write'),
       schema: {
         tags: ['webhooks'],
-        summary: 'Criar assinatura',
+        summary: 'Create subscription',
         description:
-          'O segredo aparece uma única vez nesta resposta. Use-o para validar o header x-awah-signature.',
+          'The secret appears only once, in this response. Use it to validate the x-awah-signature header.',
         body: z.object({
           url: z.string().url(),
-          events: z.array(eventField).min(1).describe('Use "*" para receber todos.'),
+          events: z.array(eventField).min(1).describe('Use "*" to receive all of them.'),
           sessionScope: z.array(z.string().uuid()).nullish(),
         }),
         response: { 201: z.object({ webhook: webhookSchema, secret: z.string() }) },
@@ -90,7 +90,7 @@ export async function webhookRoutes(app: FastifyInstance) {
           createdAt: schema.webhooks.createdAt,
         })
 
-      if (!webhook) throw new Error('falha ao criar webhook')
+      if (!webhook) throw new Error('failed to create webhook')
       return reply.code(201).send({ webhook, secret })
     },
   )
@@ -101,7 +101,7 @@ export async function webhookRoutes(app: FastifyInstance) {
       preHandler: app.requirePermission('webhook:write'),
       schema: {
         tags: ['webhooks'],
-        summary: 'Atualizar assinatura',
+        summary: 'Update subscription',
         params: z.object({ id: z.string().uuid() }),
         body: z.object({
           url: z.string().url().optional(),
@@ -129,7 +129,7 @@ export async function webhookRoutes(app: FastifyInstance) {
           createdAt: schema.webhooks.createdAt,
         })
 
-      if (!updated) throw notFound('Webhook não encontrado.')
+      if (!updated) throw notFound('Webhook not found.')
       return updated
     },
   )
@@ -140,7 +140,7 @@ export async function webhookRoutes(app: FastifyInstance) {
       preHandler: app.requirePermission('webhook:write'),
       schema: {
         tags: ['webhooks'],
-        summary: 'Excluir assinatura',
+        summary: 'Delete subscription',
         params: z.object({ id: z.string().uuid() }),
         response: { 204: z.null() },
       },
@@ -154,7 +154,7 @@ export async function webhookRoutes(app: FastifyInstance) {
         )
         .returning({ id: schema.webhooks.id })
 
-      if (rows.length === 0) throw notFound('Webhook não encontrado.')
+      if (rows.length === 0) throw notFound('Webhook not found.')
       return reply.code(204).send(null)
     },
   )
@@ -165,8 +165,8 @@ export async function webhookRoutes(app: FastifyInstance) {
       preHandler: app.requirePermission('webhook:read'),
       schema: {
         tags: ['webhooks'],
-        summary: 'Entregas e fila morta',
-        description: 'Filtre por status=dead para ver o que esgotou as tentativas.',
+        summary: 'Deliveries and dead queue',
+        description: 'Filter by status=dead to see what exhausted its attempts.',
         querystring: z.object({
           status: z.enum(['pending', 'delivering', 'delivered', 'retrying', 'dead']).optional(),
           limit: z.coerce.number().int().min(1).max(500).default(100),
@@ -224,9 +224,9 @@ export async function webhookRoutes(app: FastifyInstance) {
       preHandler: app.requirePermission('webhook:write'),
       schema: {
         tags: ['webhooks'],
-        summary: 'Reprocessar fila morta',
+        summary: 'Reprocess dead queue',
         description:
-          'Sem corpo, recoloca todas as entregas mortas da organização. Com ids, apenas as informadas.',
+          'With no body, requeues every dead delivery in the organization. With ids, only the ones given.',
         body: z
           .object({ ids: z.array(z.string().uuid()).optional() })
           .optional()

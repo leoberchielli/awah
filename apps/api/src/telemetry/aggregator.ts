@@ -100,7 +100,7 @@ export class MetricsAggregator {
         try {
           await executar()
         } catch (error) {
-          this.deps.logger.error({ err: error, etapa: nome }, 'falha ao agregar métrica')
+          this.deps.logger.error({ err: error, etapa: nome }, 'failed to aggregate metric')
         }
       }
     } finally {

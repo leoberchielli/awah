@@ -104,12 +104,12 @@ export class FailoverScanner {
         if (assumiu) {
           this.deps.logger.info(
             { sessionId: orfa.id, name: orfa.name },
-            'sessão órfã assumida por este nó',
+            'orphan session adopted by this node',
           )
         }
       }
     } catch (error) {
-      this.deps.logger.error({ err: error }, 'falha na varredura de failover')
+      this.deps.logger.error({ err: error }, 'failover scan failed')
     } finally {
       this.scanning = false
     }

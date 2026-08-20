@@ -166,7 +166,7 @@ describe.skipIf(!hasInfra)('fluxo do Typebot', () => {
       await receber('oi')
       caminhos = []
 
-      await receber('atendente')
+      await receber('agent')
 
       // Mandar ao fluxo produziria mais uma resposta automática justamente para
       // quem pediu para parar de recebê-las.
@@ -175,10 +175,10 @@ describe.skipIf(!hasInfra)('fluxo do Typebot', () => {
     })
 
     it('reconhece a palavra em qualquer caixa e avisa o cliente', async () => {
-      const id = await receber('ATENDENTE')
+      const id = await receber('AGENT')
 
       const aviso = (await fila()).find((l) => l.clientMessageId.includes(id))
-      expect((aviso?.payload as { text?: string })?.text).toMatch(/equipe/i)
+      expect((aviso?.payload as { text?: string })?.text).toMatch(/team/i)
     })
   })
 

@@ -23,7 +23,8 @@ export function AssistenteTypebot({
   const [sessionId, setSessionId] = useState('')
   const [shareUrl, setShareUrl] = useState('')
   const [apiToken, setApiToken] = useState('')
-  const [humanHandoffKeyword, setPalavra] = useState('atendente')
+  const [humanHandoffKeyword, setPalavra] = useState('agent')
+  const [humanHandoffReply, setResposta] = useState('')
   const [erro, setErro] = useState<string | null>(null)
   const [ocupado, setOcupado] = useState(false)
   const [pronto, setPronto] = useState<IntegrationSaved | null>(null)
@@ -39,6 +40,7 @@ export function AssistenteTypebot({
           shareUrl,
           ...(apiToken.trim() ? { apiToken: apiToken.trim() } : {}),
           humanHandoffKeyword,
+          ...(humanHandoffReply.trim() ? { humanHandoffReply } : {}),
         }),
       )
       aoSalvar()
@@ -128,6 +130,21 @@ export function AssistenteTypebot({
           />
           {/* Quem digita isso já desistiu do robô: a mensagem nem chega ao fluxo. */}
           <span className="text-xs text-muted">{t('typebot.escapeWordHint')}</span>
+        </label>
+
+        {/*
+          Sai para o cliente final, e é a única mensagem do fluxo que o gateway
+          escreve sozinho. Deixá-la só no default significaria mandar inglês a
+          quem acabou de pedir um humano em português.
+        */}
+        <label className="flex flex-col gap-1.5">
+          <span className="eyebrow">{t('typebot.handoffReply')}</span>
+          <input
+            value={humanHandoffReply}
+            onChange={(e) => setResposta(e.target.value)}
+            className="rounded-md border border-line bg-surface-2 px-3 py-2 text-sm text-ink"
+          />
+          <span className="text-xs text-muted">{t('typebot.handoffReplyHint')}</span>
         </label>
 
         {erro && (

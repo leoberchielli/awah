@@ -25,7 +25,7 @@ describe('segredos de desenvolvimento', () => {
    * decifragem do auth state a qualquer um que leia o projeto.
    */
   it('derrubam o processo em produção', () => {
-    expect(() => loadEnv({ ...BASE, NODE_ENV: 'production' })).toThrow(/desenvolvimento/i)
+    expect(() => loadEnv({ ...BASE, NODE_ENV: 'production' })).toThrow(/development secrets/i)
   })
 
   it('a mensagem diz quais são e como gerar os próprios', () => {

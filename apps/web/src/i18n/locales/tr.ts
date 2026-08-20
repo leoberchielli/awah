@@ -279,6 +279,9 @@ export const tr: Catalog = {
   'typebot.escapeWord': 'Çıkış sözcüğü',
   'typebot.escapeWordHint':
     'Bunu yazan akıştan çıkar ve bir insana bağlanır. Yalnızca bir kişiye ulaşmanın başka bir yolu varsa boş bırakın.',
+  'typebot.handoffReply': 'Akıştan çıkışta verilecek yanıt',
+  'typebot.handoffReplyHint':
+    'Müşteri bir kişi istediği anda gönderilir. Müşterilerinizin konuştuğu dilde yazın — bu mesaj, konuşmayı bir insan görmeden önce ağ geçidinden çıkar.',
   'typebot.submit': 'Dene ve bağla',
   'typebot.submitting': 'Akış deneniyor…',
 

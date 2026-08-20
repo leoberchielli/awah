@@ -73,7 +73,7 @@ export const dashboardPlugin = fp(async (app: FastifyInstance) => {
   if (!raiz) {
     app.decorate('spaIndex', null)
     app.log.info(
-      'dashboard não empacotado; a API sobe só com as rotas HTTP (`pnpm --filter @awah/web build` gera os arquivos)',
+      'dashboard not bundled; the API starts with the HTTP routes only (`pnpm --filter @awah/web build` generates the files)',
     )
     return
   }
@@ -104,5 +104,5 @@ export const dashboardPlugin = fp(async (app: FastifyInstance) => {
   })
 
   app.decorate('spaIndex', await readFile(join(raiz, 'index.html'), 'utf8'))
-  app.log.info({ raiz }, 'dashboard sendo servido pela API')
+  app.log.info({ raiz }, 'dashboard served by the API')
 })

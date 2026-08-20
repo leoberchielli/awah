@@ -72,7 +72,7 @@ export class IdentityRepository {
         .returning({ id: schema.users.id })
 
       if (!org || !user) {
-        throw new Error('falha ao criar organização e usuário')
+        throw new Error('failed to create organization and user')
       }
 
       await tx.insert(schema.memberships).values({
@@ -190,7 +190,7 @@ export class IdentityRepository {
       })
       .returning({ id: schema.users.id })
 
-    if (!row) throw new Error('falha ao criar usuário')
+    if (!row) throw new Error('failed to create user')
     return row
   }
 }

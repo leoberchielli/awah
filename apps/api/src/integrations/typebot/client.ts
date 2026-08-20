@@ -96,7 +96,7 @@ export class TypebotClient {
 
       if (!resposta.ok) {
         const detalhe = (corpo as { message?: string })?.message ?? texto.slice(0, 200)
-        throw new TypebotError(resposta.status, `Typebot respondeu ${resposta.status}: ${detalhe}`)
+        throw new TypebotError(resposta.status, `Typebot responded ${resposta.status}: ${detalhe}`)
       }
 
       return corpo as T
@@ -183,7 +183,7 @@ export function derivarDoLink(link: string): { baseUrl: string; typebotId: strin
   try {
     url = new URL(link.trim())
   } catch {
-    throw new Error('Isso não parece uma URL. Cole o link de compartilhamento do seu fluxo.')
+    throw new Error('That does not look like a URL. Paste the share link of your flow.')
   }
 
   const partes = url.pathname.split('/').filter(Boolean)
@@ -197,14 +197,14 @@ export function derivarDoLink(link: string): { baseUrl: string; typebotId: strin
    */
   if (partes[0] === 'typebots' || url.hostname.startsWith('app.')) {
     throw new Error(
-      'Esse é o link do editor, que usa o id interno do fluxo. Publique o fluxo e use o link de compartilhamento — em Share, no Typebot.',
+      'That is the editor link, which uses the internal flow id. Publish the flow and use the share link — under Share, in Typebot.',
     )
   }
 
   const typebotId = partes[0]
   if (!typebotId) {
     throw new Error(
-      'Não encontrei o id do fluxo nesse link. Ele deve terminar com o nome do fluxo, como https://typebot.io/meu-fluxo.',
+      'Could not find the flow id in that link. It must end with the flow name, like https://typebot.io/my-flow.',
     )
   }
 

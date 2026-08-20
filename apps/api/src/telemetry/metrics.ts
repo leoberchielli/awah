@@ -38,49 +38,49 @@ export class AwahMetrics {
 
     this.messagesSent = new Counter({
       name: 'awah_messages_sent_total',
-      help: 'Mensagens entregues à engine com sucesso.',
+      help: 'Messages successfully handed to the engine.',
       labelNames: ['session'],
       registers: [this.registry],
     })
 
     this.messagesReceived = new Counter({
       name: 'awah_messages_received_total',
-      help: 'Mensagens recebidas de terceiros.',
+      help: 'Messages received from third parties.',
       labelNames: ['session'],
       registers: [this.registry],
     })
 
     this.messagesFailed = new Counter({
       name: 'awah_messages_failed_total',
-      help: 'Envios que esgotaram as tentativas e foram para a fila morta.',
+      help: 'Sends that exhausted their attempts and went to the dead-letter queue.',
       labelNames: ['session'],
       registers: [this.registry],
     })
 
     this.riskDecisions = new Counter({
       name: 'awah_risk_decisions_total',
-      help: 'Decisões do motor de risco por tipo de ação.',
+      help: 'Risk engine decisions by action type.',
       labelNames: ['action'],
       registers: [this.registry],
     })
 
     this.webhookDeliveries = new Counter({
       name: 'awah_webhook_deliveries_total',
-      help: 'Tentativas de entrega de webhook por desfecho.',
+      help: 'Webhook delivery attempts by outcome.',
       labelNames: ['outcome'],
       registers: [this.registry],
     })
 
     this.sessionDisconnects = new Counter({
       name: 'awah_session_disconnects_total',
-      help: 'Quedas de sessão por causa traduzida.',
+      help: 'Session drops by translated cause.',
       labelNames: ['cause'],
       registers: [this.registry],
     })
 
     this.sendDuration = new Histogram({
       name: 'awah_send_duration_seconds',
-      help: 'Tempo entre reservar o envio e a engine confirmar.',
+      help: 'Time between claiming the send and the engine confirming it.',
       labelNames: ['result'],
       // Faixas escolhidas para o caminho real: o jitter humano coloca a maioria
       // dos envios entre 1 s e 30 s, e a cauda importa mais que a média.
@@ -90,7 +90,7 @@ export class AwahMetrics {
 
     this.webhookDuration = new Histogram({
       name: 'awah_webhook_duration_seconds',
-      help: 'Tempo de resposta do endpoint que recebe o webhook.',
+      help: 'Response time of the endpoint that receives the webhook.',
       labelNames: ['outcome'],
       buckets: [0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10],
       registers: [this.registry],
@@ -98,27 +98,27 @@ export class AwahMetrics {
 
     this.sessionsByStatus = new Gauge({
       name: 'awah_sessions',
-      help: 'Sessões por estado, em todo o cluster.',
+      help: 'Sessions by state, across the whole cluster.',
       labelNames: ['status'],
       registers: [this.registry],
     })
 
     this.sessionsOwned = new Gauge({
       name: 'awah_sessions_owned',
-      help: 'Sessões que este nó detém agora.',
+      help: 'Sessions this node currently owns.',
       registers: [this.registry],
     })
 
     this.outboxDepth = new Gauge({
       name: 'awah_outbox_depth',
-      help: 'Envios na fila por estado.',
+      help: 'Queued sends by state.',
       labelNames: ['status'],
       registers: [this.registry],
     })
 
     this.webhookDepth = new Gauge({
       name: 'awah_webhook_depth',
-      help: 'Entregas de webhook pendentes por estado.',
+      help: 'Pending webhook deliveries by state.',
       labelNames: ['status'],
       registers: [this.registry],
     })

@@ -1,163 +1,168 @@
 # Changelog
 
-Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
-O projeto segue [SemVer](https://semver.org/lang/pt-BR/) a partir do v1.0.
+*[Português](CHANGELOG.pt-BR.md)*
 
-## [Não lançado]
+Format based on [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
+The project follows [SemVer](https://semver.org/lang/pt-BR/) from v1.0 onward.
 
-Tudo abaixo está na `main` e ainda não teve release. A numeração começa no v1.0,
-quando o conjunto estiver exercitado contra tráfego real.
+## [Unreleased]
 
-### Adicionado
+Everything below is on `main` and has not been released. Numbering starts at
+v1.0, once the whole thing has been exercised against real traffic.
 
-**Fundação**
+### Added
 
-- Monorepo pnpm com Fastify 5, TypeScript e Drizzle sobre Postgres e Redis.
-- Autenticação em duas credenciais: sessão de usuário por cookie assinado
-  (argon2id) e chave de API por bearer (segredo guardado só como hash).
-- RBAC com quatro papéis e escopo de sessão por chave. Chave de API nunca
-  administra identidade.
-- Imagem Docker multiestágio com usuário não-root, `tini` como PID 1 e
-  healthcheck. CI com Postgres e Redis reais.
+**Foundation**
+
+- pnpm monorepo with Fastify 5, TypeScript and Drizzle over Postgres and Redis.
+- Two-credential authentication: user session via signed cookie (argon2id) and
+  API key via bearer (the secret is stored only as a hash).
+- RBAC with four roles and per-key session scope. An API key never administers
+  identity.
+- Multi-stage Docker image with a non-root user, `tini` as PID 1 and a
+  healthcheck. CI with real Postgres and Redis.
 
 **Engines**
 
-- Contrato `EngineAdapter` e matriz de capacidades publicada em `GET /v1/engines`.
-- Adapter Baileys com auth state cifrado no Postgres — é o que torna o failover
-  possível.
-- Adapter Cloud API atrás do mesmo contrato, com credenciais cifradas e webhook
-  da Meta com verificação de assinatura sobre os bytes crus.
-- Tabela de códigos de desconexão traduzidos, com reconexão automática só nos
-  casos em que reconectar ajuda.
+- `EngineAdapter` contract and a capability matrix published at `GET /v1/engines`.
+- Baileys adapter with auth state encrypted in Postgres — this is what makes
+  failover possible.
+- Cloud API adapter behind the same contract, with encrypted credentials and a
+  Meta webhook whose signature is verified over the raw bytes.
+- Table of translated disconnect codes, with automatic reconnection only in the
+  cases where reconnecting helps.
 
-**Fila**
+**Queue**
 
-- Outbox transacional com ordem total por `seq` e FIFO por conversa, com chats
-  diferentes em paralelo.
-- Idempotência por `clientMessageId`.
-- Retry com backoff, fila morta consultável e replay.
-- Sessão caída ou em pareamento devolve o envio à fila **sem** consumir
-  tentativa.
+- Transactional outbox with total ordering by `seq` and FIFO per conversation,
+  with different chats running in parallel.
+- Idempotency by `clientMessageId`.
+- Retry with backoff, a queryable dead-letter queue and replay.
+- A session that is down or pairing returns the send to the queue **without**
+  consuming an attempt.
 
-**Motor de risco**
+**Risk engine**
 
-- Orçamento por janela deslizante (minuto, hora, dia) e teto separado de contatos
-  novos por dia.
-- Curva de warmup: 5% do teto no primeiro dia, 100% em trinta.
-- Score 0–100 com quatro sinais e a contribuição de cada um exposta.
-- Jitter log-normal e presença de digitação proporcional ao texto.
-- Nunca descarta: o que não passa agora espera, com ETA real.
+- Sliding-window budget (minute, hour, day) and a separate daily cap for new
+  contacts.
+- Warm-up curve: 5% of the cap on day one, 100% by day thirty.
+- Score 0–100 from four signals, with each signal's contribution exposed.
+- Log-normal jitter and typing presence proportional to the text.
+- Never drops: whatever does not pass now is held, with a real ETA.
 
 **Cluster**
 
-- Posse de sessão por lease no Redis, sem nó primário nem eleição.
-- Failover automático medido em ~20 s com `SIGKILL`.
-- Comandos roteados ao nó dono por pub/sub; QR compartilhado entre réplicas.
-- Intenção (`desired_state`) separada de estado (`status`).
+- Session ownership by lease in Redis, with no primary node and no election.
+- Automatic failover measured at ~20 s with `SIGKILL`.
+- Commands routed to the owning node over pub/sub; QR shared across replicas.
+- Intent (`desired_state`) kept separate from state (`status`).
 
-**Observabilidade**
+**Observability**
 
-- Agregados horários e quatro famílias de KPI.
-- `/metrics` em formato Prometheus, protegido por token.
-- Instrumentação com a API do OpenTelemetry, sem SDK embutido.
+- Hourly aggregates and four KPI families.
+- `/metrics` in Prometheus format, protected by a token.
+- Instrumentation with the OpenTelemetry API, no bundled SDK.
 
-**Painel**
+**Dashboard**
 
-- Dashboard React servido pela própria API, na mesma origem — é o que permite
-  cookie `httpOnly` em vez de token no `localStorage`.
-- Três telas: operação, negócio e sessões, com janela e filtro na URL.
-- Tema claro, escuro e do sistema.
+- React dashboard served by the API itself, on the same origin — this is what
+  allows an `httpOnly` cookie instead of a token in `localStorage`.
+- Three screens: operations, business and sessions, with the window and filter
+  in the URL.
+- Light, dark and system themes.
 
 **SDK**
 
-- `@awah/sdk`: cliente TypeScript sem dependências, sobre `fetch` e WebCrypto.
-- Idempotência automática no envio, que é o que torna o retry embutido seguro.
-- Verificação de assinatura de webhook que roda em Node, Deno, Bun, Workers e no
-  navegador.
+- `@awah/sdk`: dependency-free TypeScript client, built on `fetch` and WebCrypto.
+- Automatic idempotency on send, which is what makes the built-in retry safe.
+- Webhook signature verification that runs on Node, Deno, Bun, Workers and in
+  the browser.
 
-**Integrações**
+**Integrations**
 
-- Conectores nativos de Chatwoot e Typebot, ligados por sessão. A decisão por
-  trás deles: em vez de construir caixa de entrada e construtor de fluxo
-  próprios, ser o transporte de quem já resolveu bem essas duas coisas — e
-  entregar embaixo delas o que nenhuma tem, que é fila durável, ordem por
-  conversa e motor de risco.
-- Chatwoot nos dois sentidos, com prevenção de eco por `source_id` e
-  idempotência pelo id da mensagem de lá, o que torna a reentrega deles
-  inofensiva.
-- Typebot com sessão de fluxo por contato, expiração por silêncio e escape para
-  atendimento humano que não passa pelo fluxo.
-- Credenciais cifradas e nunca devolvidas em leitura; conexão testada antes de
-  gravar, porque credencial errada guardada em silêncio só apareceria na
-  primeira mensagem de um cliente real.
-- Falha de ferramenta externa nunca derruba a sessão: o dispatcher engole a
-  própria exceção e registra o erro na integração, para o painel explicar o
-  silêncio.
+- Native Chatwoot and Typebot connectors, wired per session. The decision behind
+  them: rather than build our own inbox and flow builder, be the transport for
+  the people who already solved those two things well — and deliver underneath
+  them what neither has, which is a durable queue, per-conversation ordering and
+  a risk engine.
+- Chatwoot in both directions, with echo prevention by `source_id` and
+  idempotency on their message id, which makes their redelivery harmless.
+- Typebot with a per-contact flow session, expiry on silence, and an escape to a
+  human agent that does not go through the flow.
+- Credentials encrypted and never returned on read; the connection is tested
+  before saving, because a wrong credential stored silently would only show up
+  on the first message from a real customer.
+- A failure in an external tool never takes the session down: the dispatcher
+  swallows its own exception and records the error on the integration, so the
+  dashboard can explain the silence.
 
-**Adoção**
+**Adoption**
 
-- Tela de primeira execução no painel. A única forma de criar a organização
-  inicial era montar um `curl` a partir do README — a trava mais cara que um
-  projeto self-hosted pode ter, porque acontece antes de a pessoa ver qualquer
-  valor.
-- O Chatwoot passa a pedir dois campos: endereço e token. O gateway descobre as
-  contas, lista as caixas e **cria a caixa API já com o webhook apontado para
-  ele**. Caçar `accountId` e `inboxId` na URL e voltar lá para colar o webhook
-  eram os três passos que mais faziam gente desistir.
-- O Typebot aceita o link de compartilhamento no lugar de endereço e `publicId`
-  separados, e recusa o link do editor explicando onde está o certo — em vez de
-  aceitar e falhar depois, na primeira mensagem de um cliente real.
+- First-run screen in the dashboard. The only way to create the initial
+  organization was to assemble a `curl` from the README — the most expensive
+  blocker a self-hosted project can have, because it comes before the person
+  sees any value at all.
+- Chatwoot now asks for two fields: address and token. The gateway discovers the
+  accounts, lists the inboxes and **creates the API inbox with the webhook
+  already pointed back at itself**. Hunting for `accountId` and `inboxId` in the
+  URL and going back there to paste the webhook were the three steps that made
+  the most people give up.
+- Typebot accepts the share link in place of a separate address and `publicId`,
+  and rejects the editor link while explaining where the right one is — rather
+  than accepting it and failing later, on the first message from a real
+  customer.
 
-**Qualquer plataforma**
+**Any platform**
 
-- Conector HTTP genérico: o gateway posta a mensagem recebida numa URL e envia
-  de volta o que a resposta trouxer. É o escape que faz plugar uma ferramenta
-  nova não depender de alguém escrever um conector dedicado — n8n, Make, uma
-  função serverless ou o sistema da casa entram por ele sem mudança de código.
-- Diferente de um webhook comum, que avisa e esquece: aqui a resposta **é** a
-  mensagem, e entra pela mesma fila de qualquer envio, com ordem por conversa,
-  motor de risco e reentrega.
-- Aceita as formas de resposta que aparecem na prática (`reply`, `replies`,
-  `text`, array, string) e, quando nada é reconhecido, devolve o diagnóstico do
-  motivo em vez de ficar em silêncio.
-- Assinatura HMAC no mesmo esquema dos webhooks, então quem já valida um valida o
-  outro com a mesma função do SDK.
-- Botão de teste que manda um evento de exemplo e mostra status, tempo, corpo
-  cru e o que seria enviado.
+- Generic HTTP connector: the gateway posts the incoming message to a URL and
+  sends back whatever the response carries. It is the escape hatch that keeps
+  plugging in a new tool from depending on someone writing a dedicated
+  connector — n8n, Make, a serverless function or an in-house system all come in
+  through it with no code change.
+- Unlike an ordinary webhook, which notifies and forgets: here the response
+  **is** the message, and it enters through the same queue as any other send,
+  with per-conversation ordering, risk engine and redelivery.
+- Accepts the response shapes that show up in practice (`reply`, `replies`,
+  `text`, array, string) and, when nothing is recognized, returns a diagnosis of
+  why instead of going silent.
+- HMAC signature on the same scheme as the webhooks, so anyone already
+  validating one validates the other with the same SDK function.
+- Test button that sends a sample event and shows status, timing, raw body and
+  what would have been sent.
 
-**Distribuição**
+**Distribution**
 
-- Imagem publicada em `ghcr.io/leoberchielli/awah`, multi-arquitetura
-  (amd64 e arm64). O CI já construía a imagem para provar que o Dockerfile
-  compila e jogava o resultado fora — o que obrigava quem quisesse experimentar a
-  clonar o repositório e compilar antes de ver a primeira tela.
-- O `docker-compose.yml` passa a puxar a imagem em vez de construir, e roda
-  sozinho: baixar esse arquivo e subir é o caminho completo. Construir a partir do
-  código virou o override `docker-compose.dev.yml`.
-- Dados em volumes nomeados, não em pastas do repositório — quem baixou só o
-  compose não tem repositório nenhum.
-- Rótulos OCI, e `GET /health` devolvendo versão e commit da imagem: a primeira
-  pergunta de qualquer suporte, respondida sem abrir o contêiner.
-- Attestation de proveniência assinada em cada publicação, verificável com
+- Image published at `ghcr.io/leoberchielli/awah`, multi-architecture
+  (amd64 and arm64). CI already built the image to prove the Dockerfile
+  compiles and then threw the result away — which forced anyone who wanted to
+  try it to clone the repository and build before seeing the first screen.
+- `docker-compose.yml` now pulls the image instead of building it, and runs on
+  its own: download that file and bring it up, that is the whole path. Building
+  from source became the `docker-compose.dev.yml` override.
+- Data in named volumes, not in repository folders — someone who downloaded only
+  the compose file has no repository at all.
+- OCI labels, and `GET /health` returning the image version and commit: the
+  first question in any support thread, answered without opening the container.
+- Signed provenance attestation on every publish, verifiable with
   `gh attestation verify`.
 
-### Segurança
+### Security
 
-- Em `NODE_ENV=production`, a API se recusa a subir com os segredos de
-  desenvolvimento publicados neste repositório.
-- `TRUST_PROXY` passa a ser configurável e vem `false`. Antes era `true` fixo, o
-  que deixava qualquer cliente escolher o próprio IP por `X-Forwarded-For` e
-  escapar do rate limit.
-- CSP escrita à mão e ativa em todos os ambientes. Antes só valia em produção, o
-  que significava descobrir a quebra no deploy.
-- `appSecret` da Cloud API passa a ser obrigatório. Sendo opcional, existia um
-  caminho anônimo para injetar mensagens falsas na conta de qualquer cliente.
-- Teto de corpo de requisição configurável, 1 MiB por padrão.
-- Aviso no boot quando `METRICS_TOKEN` não está definido.
+- Under `NODE_ENV=production`, the API refuses to start with the development
+  secrets published in this repository.
+- `TRUST_PROXY` is now configurable and ships as `false`. It used to be
+  hardcoded `true`, which let any client choose its own IP via
+  `X-Forwarded-For` and escape the rate limit.
+- Hand-written CSP, active in every environment. It used to apply only in
+  production, which meant finding out what it broke at deploy time.
+- The Cloud API `appSecret` is now required. While it was optional, there was an
+  anonymous path for injecting fake messages into any customer's account.
+- Configurable request body cap, 1 MiB by default.
+- Boot warning when `METRICS_TOKEN` is not set.
 
-### Notas
+### Notes
 
-Nada além do pareamento foi exercitado contra um número real de ponta a ponta. O
-QR é gerado e o socket conecta; o funil de entrega, os limites do motor de risco
-sob carga e o failover com sessão conectada ainda não passaram por um aparelho de
-verdade.
+Nothing beyond pairing has been exercised end to end against a real number. The
+QR is generated and the socket connects; the delivery funnel, the risk engine
+limits under load and failover with a connected session have not been through a
+real device yet.

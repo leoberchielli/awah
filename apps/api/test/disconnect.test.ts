@@ -24,7 +24,7 @@ describe('tradução de códigos de desconexão', () => {
     const info = describeDisconnect(440)
     expect(info.shouldReconnect).toBe(false)
     expect(info.loggedOut).toBe(false)
-    expect(info.cause).toMatch(/outro lugar/i)
+    expect(info.cause).toMatch(/elsewhere/i)
   })
 
   it('trata 515 como reinício esperado, não como falha', () => {
@@ -38,9 +38,9 @@ describe('tradução de códigos de desconexão', () => {
   })
 
   it('cai no genérico com código desconhecido ou ausente', () => {
-    expect(describeDisconnect(null).cause).toMatch(/desconhecido/i)
-    expect(describeDisconnect(undefined).cause).toMatch(/desconhecido/i)
-    expect(describeDisconnect(999).cause).toMatch(/desconhecido/i)
+    expect(describeDisconnect(null).cause).toMatch(/unknown/i)
+    expect(describeDisconnect(undefined).cause).toMatch(/unknown/i)
+    expect(describeDisconnect(999).cause).toMatch(/unknown/i)
     // O genérico tenta reconectar: a alternativa é derrubar sessão boa por código novo.
     expect(describeDisconnect(999).shouldReconnect).toBe(true)
   })

@@ -24,14 +24,14 @@ const sessionSchema = z.object({
     'banned',
   ]),
   phoneNumber: z.string().nullable(),
-  ownerNodeId: z.string().nullable().describe('Nó que detém a sessão agora, pelo lease vigente.'),
+  ownerNodeId: z.string().nullable().describe('Node holding the session now, by the active lease.'),
   pairedAt: z.date().nullable(),
   lastConnectedAt: z.date().nullable(),
   lastDisconnectedAt: z.date().nullable(),
   createdAt: z.date(),
-  desiredState: z.enum(['running', 'stopped']).describe('Onde o operador quer que ela esteja.'),
-  running: z.boolean().describe('Se algum nó do cluster detém a sessão agora.'),
-  runningHere: z.boolean().describe('Se é este nó que a detém.'),
+  desiredState: z.enum(['running', 'stopped']).describe('Where the operator wants it to be.'),
+  running: z.boolean().describe('Whether any node in the cluster holds the session now.'),
+  runningHere: z.boolean().describe('Whether this node is the one holding it.'),
 })
 
 /**
@@ -42,7 +42,7 @@ const sessionSchema = z.object({
  */
 function assertInScope(auth: AuthContext, sessionId: string): void {
   if (auth.sessionScope && !auth.sessionScope.includes(sessionId)) {
-    throw notFound('Sessão não encontrada.')
+    throw notFound('Session not found.')
   }
 }
 
@@ -76,10 +76,10 @@ export async function sessionRoutes(app: FastifyInstance) {
     {
       preHandler: app.requirePermission('session:read'),
       schema: {
-        tags: ['sessões'],
-        summary: 'Matriz de capacidades das engines',
+        tags: ['sessions'],
+        summary: 'Engine capability matrix',
         description:
-          'O que cada engine suporta. Engines ainda não implementadas aparecem com available=false.',
+          'What each engine supports. Engines not yet implemented appear with available=false.',
         response: {
           200: z.object({
             engines: z.array(
@@ -135,9 +135,9 @@ export async function sessionRoutes(app: FastifyInstance) {
     {
       preHandler: app.requirePermission('session:write'),
       schema: {
-        tags: ['sessões'],
-        summary: 'Criar sessão',
-        description: 'Cria o registro. A sessão só conecta depois de START.',
+        tags: ['sessions'],
+        summary: 'Create session',
+        description: 'Creates the record. The session only connects after START.',
         body: z.object({
           name: z.string().min(2).max(80),
           engine: engineField.default('baileys'),
@@ -151,7 +151,7 @@ export async function sessionRoutes(app: FastifyInstance) {
 
       const existing = await repo.list()
       if (existing.some((s) => s.name === request.body.name)) {
-        throw conflict('Já existe uma sessão com este nome.')
+        throw conflict('A session with this name already exists.')
       }
 
       const created = await repo.create(request.body)
@@ -164,8 +164,8 @@ export async function sessionRoutes(app: FastifyInstance) {
     {
       preHandler: app.requirePermission('session:read'),
       schema: {
-        tags: ['sessões'],
-        summary: 'Listar sessões',
+        tags: ['sessions'],
+        summary: 'List sessions',
         response: { 200: z.object({ sessions: z.array(sessionSchema) }) },
       },
     },
@@ -192,8 +192,8 @@ export async function sessionRoutes(app: FastifyInstance) {
     {
       preHandler: app.requirePermission('session:read'),
       schema: {
-        tags: ['sessões'],
-        summary: 'Ler sessão',
+        tags: ['sessions'],
+        summary: 'Read session',
         params: z.object({ id: z.string().uuid() }),
         response: { 200: sessionSchema },
       },
@@ -203,7 +203,7 @@ export async function sessionRoutes(app: FastifyInstance) {
       assertInScope(auth, request.params.id)
 
       const session = await new SessionRepository(app.db, auth.orgId).findById(request.params.id)
-      if (!session) throw notFound('Sessão não encontrada.')
+      if (!session) throw notFound('Session not found.')
       return decorate(session)
     },
   )
@@ -213,9 +213,9 @@ export async function sessionRoutes(app: FastifyInstance) {
     {
       preHandler: app.requirePermission('session:write'),
       schema: {
-        tags: ['sessões'],
-        summary: 'Excluir sessão',
-        description: 'Desconecta antes de excluir. As credenciais são apagadas junto.',
+        tags: ['sessions'],
+        summary: 'Delete session',
+        description: 'Disconnects before deleting. The credentials are erased along with it.',
         params: z.object({ id: z.string().uuid() }),
         response: { 204: z.null() },
       },
@@ -226,7 +226,7 @@ export async function sessionRoutes(app: FastifyInstance) {
 
       const repo = new SessionRepository(app.db, auth.orgId)
       if (!(await repo.findById(request.params.id))) {
-        throw notFound('Sessão não encontrada.')
+        throw notFound('Session not found.')
       }
 
       // Solta o socket antes; o cascade do banco leva credenciais e eventos.
@@ -249,25 +249,25 @@ export async function sessionRoutes(app: FastifyInstance) {
     {
       preHandler: app.requirePermission('session:write'),
       schema: {
-        tags: ['sessões'],
-        summary: 'Configurar credenciais da Cloud API',
+        tags: ['sessions'],
+        summary: 'Configure Cloud API credentials',
         description:
-          'Exclusivo da engine cloud_api. Guardado cifrado, junto do auth state das demais engines — é credencial, não configuração.',
+          'Exclusive to the cloud_api engine. Stored encrypted, next to the auth state of the other engines — it is a credential, not configuration.',
         params: z.object({ id: z.string().uuid() }),
         body: z.object({
           phoneNumberId: z.string().min(5),
           accessToken: z.string().min(20),
-          verifyToken: z.string().min(8).describe('Ecoado no handshake do webhook.'),
+          verifyToken: z.string().min(8).describe('Echoed back in the webhook handshake.'),
           appSecret: z
             .string()
             .min(8)
-            .describe('App Secret da Meta. É o que assina o corpo dos eventos do webhook.'),
+            .describe('Meta App Secret. It is what signs the body of the webhook events.'),
           graphVersion: z.string().default('v21.0'),
         }),
         response: {
           200: z.object({
             sessionId: z.string(),
-            webhookUrl: z.string().describe('Cadastre esta URL no app da Meta.'),
+            webhookUrl: z.string().describe('Register this URL in the Meta app.'),
           }),
         },
       },
@@ -278,11 +278,11 @@ export async function sessionRoutes(app: FastifyInstance) {
 
       const repo = new SessionRepository(app.db, auth.orgId)
       const session = await repo.findById(request.params.id)
-      if (!session) throw notFound('Sessão não encontrada.')
+      if (!session) throw notFound('Session not found.')
 
       if (session.engine !== 'cloud_api') {
         throw badRequest(
-          `Credenciais assim são exclusivas da engine cloud_api; esta sessão usa "${session.engine}".`,
+          `Credentials like these are exclusive to the cloud_api engine; this session uses "${session.engine}".`,
         )
       }
 
@@ -314,10 +314,10 @@ export async function sessionRoutes(app: FastifyInstance) {
     {
       preHandler: app.requirePermission('session:operate'),
       schema: {
-        tags: ['sessões'],
-        summary: 'Iniciar sessão',
+        tags: ['sessions'],
+        summary: 'Start session',
         description:
-          'Abre a conexão. Sessão nova entra em pareamento — busque o QR em /qr ou peça um código em /pairing-code.',
+          'Opens the connection. A new session enters pairing — fetch the QR at /qr or request a code at /pairing-code.',
         params: z.object({ id: z.string().uuid() }),
         response: { 202: z.object({ id: z.string(), status: z.string() }) },
       },
@@ -336,9 +336,10 @@ export async function sessionRoutes(app: FastifyInstance) {
     {
       preHandler: app.requirePermission('session:operate'),
       schema: {
-        tags: ['sessões'],
-        summary: 'Parar sessão',
-        description: 'Encerra a conexão preservando as credenciais — START reconecta sem parear.',
+        tags: ['sessions'],
+        summary: 'Stop session',
+        description:
+          'Closes the connection while keeping the credentials — START reconnects without pairing.',
         params: z.object({ id: z.string().uuid() }),
         response: { 200: z.object({ id: z.string(), status: z.string() }) },
       },
@@ -357,10 +358,10 @@ export async function sessionRoutes(app: FastifyInstance) {
     {
       preHandler: app.requirePermission('session:operate'),
       schema: {
-        tags: ['sessões'],
-        summary: 'Encerrar no aparelho',
+        tags: ['sessions'],
+        summary: 'Log out on the phone',
         description:
-          'Remove o dispositivo do aparelho e apaga as credenciais. Voltar exige parear de novo.',
+          'Removes the device from the phone and erases the credentials. Coming back requires pairing again.',
         params: z.object({ id: z.string().uuid() }),
         response: { 200: z.object({ id: z.string(), status: z.string() }) },
       },
@@ -379,15 +380,15 @@ export async function sessionRoutes(app: FastifyInstance) {
     {
       preHandler: app.requirePermission('session:operate'),
       schema: {
-        tags: ['sessões'],
-        summary: 'QR de pareamento',
+        tags: ['sessions'],
+        summary: 'Pairing QR',
         description:
-          'Só existe durante o pareamento e é trocado a cada poucos segundos. Devolve 404 quando não há pareamento em curso.',
+          'Only exists during pairing and is swapped every few seconds. Returns 404 when no pairing is under way.',
         params: z.object({ id: z.string().uuid() }),
         response: {
           200: z.object({
-            qr: z.string().describe('Conteúdo cru, para renderizar como preferir.'),
-            image: z.string().describe('data: URI em PNG, pronto para <img src>.'),
+            qr: z.string().describe('Raw content, to render however you prefer.'),
+            image: z.string().describe('data: URI in PNG, ready for <img src>.'),
           }),
         },
       },
@@ -398,9 +399,7 @@ export async function sessionRoutes(app: FastifyInstance) {
 
       const qr = await app.sessions.currentQr(request.params.id)
       if (!qr) {
-        throw notFound(
-          'Nenhum QR disponível. A sessão precisa estar iniciada e aguardando pareamento.',
-        )
+        throw notFound('No QR available. The session has to be started and waiting for pairing.')
       }
 
       return { qr, image: await QRCode.toDataURL(qr) }
@@ -412,17 +411,17 @@ export async function sessionRoutes(app: FastifyInstance) {
     {
       preHandler: app.requirePermission('session:operate'),
       schema: {
-        tags: ['sessões'],
-        summary: 'Código de pareamento',
+        tags: ['sessions'],
+        summary: 'Pairing code',
         description:
-          'Alternativa ao QR: gera um código de 8 caracteres para digitar no aparelho. A sessão precisa estar iniciada e ainda não pareada.',
+          'Alternative to the QR: generates an 8-character code to type on the phone. The session has to be started and not yet paired.',
         params: z.object({ id: z.string().uuid() }),
         body: z.object({
           phoneNumber: z
             .string()
             .min(10)
             .max(20)
-            .describe('Com código do país, só dígitos. Ex.: 5511999999999'),
+            .describe('With country code, digits only. E.g.: 5511999999999'),
         }),
         response: { 200: z.object({ code: z.string() }) },
       },
@@ -432,9 +431,9 @@ export async function sessionRoutes(app: FastifyInstance) {
       assertInScope(auth, request.params.id)
 
       const session = await new SessionRepository(app.db, auth.orgId).findById(request.params.id)
-      if (!session) throw notFound('Sessão não encontrada.')
+      if (!session) throw notFound('Session not found.')
       if (session.status === 'connected') {
-        throw badRequest('Esta sessão já está pareada.')
+        throw badRequest('This session is already paired.')
       }
 
       const code = await app.sessions.requestPairingCodeAnywhere(
@@ -451,10 +450,10 @@ export async function sessionRoutes(app: FastifyInstance) {
     {
       preHandler: app.requirePermission('session:read'),
       schema: {
-        tags: ['sessões'],
-        summary: 'Timeline de conexão',
+        tags: ['sessions'],
+        summary: 'Connection timeline',
         description:
-          'Histórico de conexão e queda, com o código bruto do protocolo ao lado da causa traduzida.',
+          'History of connections and drops, with the raw protocol code next to the translated cause.',
         params: z.object({ id: z.string().uuid() }),
         querystring: z.object({ limit: z.coerce.number().int().min(1).max(500).default(100) }),
         response: {
@@ -479,7 +478,7 @@ export async function sessionRoutes(app: FastifyInstance) {
 
       const repo = new SessionRepository(app.db, auth.orgId)
       if (!(await repo.findById(request.params.id))) {
-        throw notFound('Sessão não encontrada.')
+        throw notFound('Session not found.')
       }
 
       return { events: await repo.listEvents(request.params.id, request.query.limit) }

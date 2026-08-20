@@ -84,7 +84,7 @@ export class SessionRepository extends TenantRepository {
       .values({ orgId: this.orgId, name: input.name, engine: input.engine })
       .returning(SESSION_COLUMNS)
 
-    if (!row) throw new Error('falha ao criar sessão')
+    if (!row) throw new Error('failed to create session')
     return row
   }
 

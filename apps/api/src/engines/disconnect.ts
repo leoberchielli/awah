@@ -20,69 +20,69 @@ export interface DisconnectInfo {
 }
 
 const UNKNOWN: DisconnectInfo = {
-  cause: 'Motivo desconhecido',
-  guidance: 'Verifique os logs da sessão. A reconexão automática segue tentando.',
+  cause: 'Unknown reason',
+  guidance: 'Check the session logs. Automatic reconnection keeps trying.',
   shouldReconnect: true,
   loggedOut: false,
 }
 
 const TABLE: Record<number, DisconnectInfo> = {
   401: {
-    cause: 'Sessão encerrada no aparelho',
+    cause: 'Session ended on the phone',
     guidance:
-      'O aparelho desconectou este dispositivo. É preciso parear de novo — a reconexão automática não resolve.',
+      'The phone disconnected this device. You have to pair again — automatic reconnection will not fix it.',
     shouldReconnect: false,
     loggedOut: true,
   },
   403: {
-    cause: 'Acesso negado pelo WhatsApp',
+    cause: 'Access denied by WhatsApp',
     guidance:
-      'Normalmente indica número bloqueado ou restrito. Não insista na reconexão: repetir agrava a restrição.',
+      'Usually means the number is blocked or restricted. Do not insist on reconnecting: retrying makes the restriction worse.',
     shouldReconnect: false,
     loggedOut: true,
   },
   408: {
-    cause: 'Tempo esgotado',
-    guidance: 'A conexão não respondeu a tempo. Costuma ser rede instável e resolve sozinho.',
+    cause: 'Timed out',
+    guidance:
+      'The connection did not answer in time. Usually an unstable network that clears on its own.',
     shouldReconnect: true,
     loggedOut: false,
   },
   411: {
-    cause: 'Incompatibilidade de multi-dispositivo',
-    guidance: 'O aparelho precisa estar com multi-dispositivo ativo. Pareie novamente.',
+    cause: 'Multi-device mismatch',
+    guidance: 'The phone must have multi-device enabled. Pair again.',
     shouldReconnect: false,
     loggedOut: true,
   },
   428: {
-    cause: 'Conexão fechada',
-    guidance:
-      'Queda comum de socket. A reconexão automática costuma resolver na primeira tentativa.',
+    cause: 'Connection closed',
+    guidance: 'Common socket drop. Automatic reconnection usually fixes it on the first attempt.',
     shouldReconnect: true,
     loggedOut: false,
   },
   440: {
-    cause: 'Sessão assumida em outro lugar',
+    cause: 'Session taken over elsewhere',
     guidance:
-      'A mesma credencial foi aberta em outro processo — WhatsApp Web, outra instância ou duas réplicas disputando a sessão. Reconectar em laço vira briga entre as duas pontas: confirme quem é o dono antes.',
+      'The same credentials were opened in another process — WhatsApp Web, another instance, or two replicas fighting over the session. Reconnecting in a loop turns into a tug of war between both ends: confirm who owns it first.',
     shouldReconnect: false,
     loggedOut: false,
   },
   500: {
-    cause: 'Sessão corrompida',
-    guidance: 'O auth state ficou inconsistente. Limpe as credenciais e pareie de novo.',
+    cause: 'Corrupted session',
+    guidance: 'The auth state became inconsistent. Clear the credentials and pair again.',
     shouldReconnect: false,
     loggedOut: true,
   },
   503: {
-    cause: 'Serviço indisponível',
-    guidance: 'Instabilidade do lado do WhatsApp. Reconectar com espera maior.',
+    cause: 'Service unavailable',
+    guidance: 'Instability on the WhatsApp side. Reconnect with a longer wait.',
     shouldReconnect: true,
     loggedOut: false,
   },
   515: {
-    cause: 'Reinício exigido',
+    cause: 'Restart required',
     guidance:
-      'O protocolo pede que o socket seja recriado logo após o pareamento. É esperado e a reconexão é imediata.',
+      'The protocol asks for the socket to be recreated right after pairing. This is expected and reconnection is immediate.',
     shouldReconnect: true,
     loggedOut: false,
   },

@@ -105,7 +105,7 @@ export class HttpConnector {
       if (!resposta.ok) {
         throw new HttpConnectorError(
           resposta.status,
-          `A plataforma respondeu ${resposta.status}: ${texto.slice(0, 200)}`,
+          `The platform responded ${resposta.status}: ${texto.slice(0, 200)}`,
         )
       }
 
@@ -148,7 +148,7 @@ export function extrairRespostas(
     return {
       replies: [],
       diagnostico:
-        'A resposta não é JSON. Devolva algo como {"reply":"texto"} — ou corpo vazio, se não houver resposta a enviar.',
+        'The response is not JSON. Return something like {"reply":"text"} — or an empty body, if there is no reply to send.',
     }
   }
 
@@ -157,7 +157,7 @@ export function extrairRespostas(
   if (alvo === undefined) {
     return {
       replies: [],
-      diagnostico: `Não encontrei "${caminho}" na resposta. Confira o caminho configurado.`,
+      diagnostico: `Could not find "${caminho}" in the response. Check the configured path.`,
     }
   }
 
@@ -171,7 +171,7 @@ export function extrairRespostas(
       .join(', ')
     return {
       replies: [],
-      diagnostico: `A resposta veio com ${chaves || 'nenhum campo'} — nenhum deles é reconhecido como texto. Use "reply", "replies" ou "text".`,
+      diagnostico: `The response came with ${chaves || 'no fields'} — none of them is recognized as text. Use "reply", "replies" or "text".`,
     }
   }
 

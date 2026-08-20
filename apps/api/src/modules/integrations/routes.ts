@@ -34,7 +34,7 @@ const integrationSchema = z.object({
   sessionId: z.string(),
   kind: z.enum(['chatwoot', 'typebot', 'http']),
   active: z.boolean(),
-  lastError: z.string().nullable().describe('Última falha ao falar com a ferramenta.'),
+  lastError: z.string().nullable().describe('Last failure talking to the tool.'),
   lastErrorAt: z.date().nullable(),
   createdAt: z.date(),
 })
@@ -65,15 +65,15 @@ export async function integrationRoutes(app: FastifyInstance) {
 
       if (resultado.diagnostico) {
         return {
-          detail: `A plataforma respondeu ${resultado.status} em ${resultado.durationMs} ms, mas nada virou mensagem: ${resultado.diagnostico}`,
+          detail: `The platform answered ${resultado.status} in ${resultado.durationMs} ms, but nothing became a message: ${resultado.diagnostico}`,
         }
       }
 
       return {
         detail:
           resultado.replies.length > 0
-            ? `Respondeu ${resultado.status} em ${resultado.durationMs} ms com ${resultado.replies.length} mensagem(ns).`
-            : `Respondeu ${resultado.status} em ${resultado.durationMs} ms, sem mensagem de volta — válido para quem só quer registrar o que chega.`,
+            ? `Answered ${resultado.status} in ${resultado.durationMs} ms with ${resultado.replies.length} message(s).`
+            : `Answered ${resultado.status} in ${resultado.durationMs} ms, with no message back — valid if you only want to record what arrives.`,
       }
     }
 
@@ -83,16 +83,16 @@ export async function integrationRoutes(app: FastifyInstance) {
 
       if (inbox.channelType !== 'Channel::Api') {
         throw badRequest(
-          `A caixa ${(config as ChatwootConfig).inboxId} é do tipo "${inbox.channelType}". ` +
-            'Só uma caixa do tipo API funciona aqui: as demais têm transporte próprio e ignorariam o gateway.',
+          `Inbox ${(config as ChatwootConfig).inboxId} is of type "${inbox.channelType}". ` +
+            'Only an API inbox works here: the others have their own transport and would ignore the gateway.',
         )
       }
 
-      return { detail: `Caixa "${inbox.inboxName}" pronta.` }
+      return { detail: `Inbox "${inbox.inboxName}" ready.` }
     }
 
     await new TypebotClient(config as TypebotConfig).verificar()
-    return { detail: 'Fluxo alcançado e respondendo.' }
+    return { detail: 'Flow reached and responding.' }
   }
 
   /**
@@ -137,7 +137,7 @@ export async function integrationRoutes(app: FastifyInstance) {
        */
       if (erro instanceof ChatwootError && (erro.status === 401 || erro.status === 403)) {
         throw badRequest(
-          'Este token não tem permissão para criar ou editar caixas. Use um token de administrador, ou crie a caixa API no Chatwoot e cole a URL do webhook na mão.',
+          'This token has no permission to create or edit inboxes. Use an administrator token, or create the API inbox in Chatwoot and paste the webhook URL by hand.',
         )
       }
       throw erro
@@ -151,9 +151,9 @@ export async function integrationRoutes(app: FastifyInstance) {
     {
       preHandler: app.requirePermission('session:read'),
       schema: {
-        tags: ['integrações'],
-        summary: 'Listar integrações',
-        description: 'As credenciais nunca são devolvidas — só o estado e o último erro.',
+        tags: ['integrations'],
+        summary: 'List integrations',
+        description: 'Credentials are never returned — only the state and the last error.',
         response: { 200: z.object({ integrations: z.array(integrationSchema) }) },
       },
     },
@@ -180,10 +180,10 @@ export async function integrationRoutes(app: FastifyInstance) {
       preHandler: app.requirePermission('session:write'),
       config: { rateLimit: { max: 20, timeWindow: '1 minute' } },
       schema: {
-        tags: ['integrações'],
-        summary: 'Listar contas e caixas do Chatwoot',
+        tags: ['integrations'],
+        summary: 'List Chatwoot accounts and inboxes',
         description:
-          'Descobre o que o token alcança para o painel não precisar pedir accountId e inboxId digitados.',
+          'Discovers what the token reaches so the dashboard does not have to ask for a typed accountId and inboxId.',
         body: z.object({
           baseUrl: z.string().url(),
           apiAccessToken: z.string().min(10),
@@ -192,7 +192,7 @@ export async function integrationRoutes(app: FastifyInstance) {
             .int()
             .positive()
             .optional()
-            .describe('Informe para receber também as caixas desta conta.'),
+            .describe('Provide it to also receive the inboxes of this account.'),
         }),
         response: {
           200: z.object({
@@ -226,12 +226,12 @@ export async function integrationRoutes(app: FastifyInstance) {
         accounts = await cliente.contas()
       } catch (erro) {
         if (erro instanceof ChatwootError && erro.status === 401) {
-          throw badRequest('O Chatwoot recusou este token. Confira se copiou o valor inteiro.')
+          throw badRequest('Chatwoot rejected this token. Check that you copied the whole value.')
         }
         throw badRequest(
           erro instanceof Error
-            ? `Não consegui falar com o Chatwoot: ${erro.message}`
-            : 'Não consegui falar com o Chatwoot.',
+            ? `Could not reach Chatwoot: ${erro.message}`
+            : 'Could not reach Chatwoot.',
         )
       }
 
@@ -263,8 +263,8 @@ export async function integrationRoutes(app: FastifyInstance) {
       preHandler: app.requirePermission('session:write'),
       config: { rateLimit: { max: 20, timeWindow: '1 minute' } },
       schema: {
-        tags: ['integrações'],
-        summary: 'Testar uma URL de conector',
+        tags: ['integrations'],
+        summary: 'Test a connector URL',
         body: z.object({
           url: z.string().url(),
           secret: z.string().min(16).optional(),
@@ -311,7 +311,7 @@ export async function integrationRoutes(app: FastifyInstance) {
           diagnostico:
             erro instanceof Error
               ? erro.message
-              : 'Não consegui alcançar essa URL. Confira se ela é acessível a partir do servidor do gateway.',
+              : 'Could not reach that URL. Check that it is reachable from the gateway server.',
           sentPayload: EVENTO_DE_TESTE as unknown as Record<string, unknown>,
         }
       }
@@ -323,10 +323,10 @@ export async function integrationRoutes(app: FastifyInstance) {
     {
       preHandler: app.requirePermission('session:write'),
       schema: {
-        tags: ['integrações'],
-        summary: 'Ligar uma ferramenta à sessão',
+        tags: ['integrations'],
+        summary: 'Connect a tool to the session',
         description:
-          'Testa a conexão antes de gravar. PUT porque o conjunto vale inteiro: um token novo com o id de caixa antigo é configuração quebrada, não parcial.',
+          'Tests the connection before saving. PUT because the set counts as a whole: a new token with the old inbox id is broken configuration, not partial.',
         params: z.object({ id: z.string().uuid(), kind: z.enum(['chatwoot', 'typebot', 'http']) }),
         body: z.record(z.unknown()),
         response: {
@@ -336,7 +336,7 @@ export async function integrationRoutes(app: FastifyInstance) {
             webhookUrl: z
               .string()
               .nullable()
-              .describe('Cadastre no Chatwoot, na caixa API. Nulo para o Typebot.'),
+              .describe('Register it in Chatwoot, on the API inbox. Null for Typebot.'),
           }),
         },
       },
@@ -346,7 +346,7 @@ export async function integrationRoutes(app: FastifyInstance) {
       const { id: sessionId, kind } = request.params
 
       const sessao = await new SessionRepository(app.db, auth.orgId).findById(sessionId)
-      if (!sessao) throw notFound('Sessão não encontrada.')
+      if (!sessao) throw notFound('Session not found.')
 
       const bruto = { ...request.body }
 
@@ -370,7 +370,7 @@ export async function integrationRoutes(app: FastifyInstance) {
         try {
           Object.assign(bruto, derivarDoLink(bruto.shareUrl))
         } catch (erro) {
-          throw badRequest(erro instanceof Error ? erro.message : 'Link do fluxo inválido.')
+          throw badRequest(erro instanceof Error ? erro.message : 'Invalid flow link.')
         }
         bruto.shareUrl = undefined
       }
@@ -430,8 +430,8 @@ export async function integrationRoutes(app: FastifyInstance) {
     {
       preHandler: app.requirePermission('session:write'),
       schema: {
-        tags: ['integrações'],
-        summary: 'Desligar a ferramenta',
+        tags: ['integrations'],
+        summary: 'Disconnect the tool',
         params: z.object({ id: z.string().uuid() }),
         response: { 204: z.null() },
       },
@@ -439,7 +439,7 @@ export async function integrationRoutes(app: FastifyInstance) {
     async (request, reply) => {
       const auth = requireAuth(request)
       if (!(await deleteIntegration(app.db, auth.orgId, request.params.id))) {
-        throw notFound('Integração não encontrada.')
+        throw notFound('Integration not found.')
       }
       return reply.code(204).send(null)
     },
@@ -458,8 +458,8 @@ export async function integrationRoutes(app: FastifyInstance) {
     '/webhooks/chatwoot/:integrationId/:token',
     {
       schema: {
-        tags: ['sistema'],
-        summary: 'Resposta do agente no Chatwoot',
+        tags: ['system'],
+        summary: 'Agent reply from Chatwoot',
         hide: true,
         params: z.object({ integrationId: z.string().uuid(), token: z.string().min(10) }),
       },
@@ -469,18 +469,18 @@ export async function integrationRoutes(app: FastifyInstance) {
 
       const integracao = await findIntegrationById(app.db, integrationId, encryptionKey)
       if (integracao?.row.kind !== 'chatwoot') {
-        throw notFound('Integração não encontrada.')
+        throw notFound('Integration not found.')
       }
 
       const config = integracao.config as ChatwootConfig
       if (!safeEqual(token, config.webhookToken)) {
-        throw forbidden('Token do webhook inválido.')
+        throw forbidden('Invalid webhook token.')
       }
 
       const evento = request.body as EventoChatwoot
 
       if (evento?.account?.id !== undefined && Number(evento.account.id) !== config.accountId) {
-        throw forbidden('Evento de outra conta do Chatwoot.')
+        throw forbidden('Event from another Chatwoot account.')
       }
 
       // Responde antes de processar: erro nosso não deve virar reentrega deles.
@@ -491,7 +491,7 @@ export async function integrationRoutes(app: FastifyInstance) {
         integracao.row.sessionId,
         evento,
       ).catch((erro) => {
-        app.log.error({ err: erro, integrationId }, 'falha ao processar evento do Chatwoot')
+        app.log.error({ err: erro, integrationId }, 'failed to process Chatwoot event')
       })
 
       return reply.send({ received: true })
@@ -549,7 +549,7 @@ async function processar(
   if (!vinculo) {
     app.log.warn(
       { integrationId, conversationId },
-      'resposta do Chatwoot sem conversa correspondente no gateway',
+      'Chatwoot reply with no matching conversation in the gateway',
     )
     return
   }

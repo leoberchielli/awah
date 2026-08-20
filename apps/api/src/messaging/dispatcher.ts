@@ -80,7 +80,7 @@ export class OutboxDispatcher {
     if (this.inFlight.size > 0) {
       this.deps.logger.warn(
         { emVoo: this.inFlight.size },
-        'desligando com entregas em voo; serão recuperadas pelo próximo nó',
+        'shutting down with deliveries in flight; the next node will recover them',
       )
     }
   }
@@ -101,7 +101,7 @@ export class OutboxDispatcher {
         this.ticksSinceRecovery = 0
         const recovered = await recoverStuck(this.deps.db, this.deps.stuckAfterMs)
         if (recovered > 0) {
-          this.deps.logger.warn({ recovered }, 'envios presos devolvidos à fila')
+          this.deps.logger.warn({ recovered }, 'stuck sends returned to the queue')
         }
       }
 
@@ -121,12 +121,12 @@ export class OutboxDispatcher {
         this.inFlight.add(job.id)
         void this.deliver(job)
           .catch((error) => {
-            this.deps.logger.error({ err: error, outboxId: job.id }, 'entrega estourou')
+            this.deps.logger.error({ err: error, outboxId: job.id }, 'delivery threw')
           })
           .finally(() => this.inFlight.delete(job.id))
       }
     } catch (error) {
-      this.deps.logger.error({ err: error }, 'falha no ciclo do scheduler')
+      this.deps.logger.error({ err: error }, 'scheduler cycle failed')
     } finally {
       this.claiming = false
     }
@@ -163,7 +163,7 @@ export class OutboxDispatcher {
 
     const text = typeof job.payload.text === 'string' ? job.payload.text : null
     if (!text) {
-      await markFailed(this.deps.db, job.id, 'payload sem campo text', 0)
+      await markFailed(this.deps.db, job.id, 'payload has no text field', 0)
       return
     }
 
@@ -192,7 +192,7 @@ export class OutboxDispatcher {
       this.deps.observeSend?.('held', decorrido())
       this.deps.logger.info(
         { outboxId: job.id, until: until.toISOString(), reason: decision.reason },
-        'envio segurado pelo motor de risco',
+        'send held by the risk engine',
       )
       return
     }
@@ -235,13 +235,13 @@ export class OutboxDispatcher {
       if (outcome === 'dead') {
         this.deps.logger.error(
           { outboxId: job.id, attempts: job.attempts + 1, err: error },
-          'envio esgotou as tentativas e foi para a DLQ',
+          'send exhausted its attempts and went to the DLQ',
         )
         await this.deps.onDead(job, message)
       } else {
         this.deps.logger.warn(
           { outboxId: job.id, attempt: job.attempts + 1, delay },
-          'envio falhou, reagendado',
+          'send failed, rescheduled',
         )
       }
     }

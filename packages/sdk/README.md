@@ -1,14 +1,16 @@
 # @awah/sdk
 
-Cliente TypeScript do [AWAH](https://github.com/leoberchielli/awah). Sem
-dependências, sobre `fetch` e WebCrypto — roda em Node, Deno, Bun, Cloudflare
-Workers e no navegador.
+*[Português](README.pt-BR.md)*
+
+TypeScript client for [AWAH](https://github.com/leoberchielli/awah). No
+dependencies, built on `fetch` and WebCrypto — runs on Node, Deno, Bun,
+Cloudflare Workers and in the browser.
 
 ```bash
 npm install @awah/sdk
 ```
 
-## Uso
+## Usage
 
 ```ts
 import { Awah } from '@awah/sdk'
@@ -22,13 +24,13 @@ const sessao = await awah.sessions.create({ name: 'atendimento' })
 await awah.sessions.start(sessao.id)
 
 const { image } = await awah.sessions.qr(sessao.id)
-// `image` é um data: URI, pronto para uma tag <img>.
+// `image` is a data: URI, ready for an <img> tag.
 ```
 
-> A chave de API envia mensagem em nome de **todas** as sessões da organização.
-> É credencial de servidor: não a coloque em código que roda no navegador.
+> The API key sends messages on behalf of **every** session in the organization.
+> It is a server credential: do not put it in code that runs in the browser.
 
-## Enviar
+## Sending
 
 ```ts
 const envio = await awah.messages.sendText(sessao.id, {
@@ -40,31 +42,32 @@ const envio = await awah.messages.sendText(sessao.id, {
 console.log(envio.status) // 'queued'
 ```
 
-O retorno é **202**, não 200: a mensagem foi persistida, não entregue. O estado
-real vive em `awah.outbox.get(envio.id)` e nos webhooks.
+The response is **202**, not 200: the message was persisted, not delivered. The
+real state lives in `awah.outbox.get(envio.id)` and in the webhooks.
 
-### Idempotência
+### Idempotency
 
-`clientMessageId` é a chave de idempotência. Reenviar o mesmo valor devolve o
-envio original com `duplicate: true` e não gera segunda mensagem. **Se você
-omitir, o SDK gera um** — e é exatamente isso que torna seguro o retry
-automático que ele faz: sem chave, repetir um POST depois de um timeout de rede
-mandaria a mesma mensagem duas vezes para o cliente final.
+`clientMessageId` is the idempotency key. Resending the same value returns the
+original send with `duplicate: true` and does not produce a second message. **If
+you omit it, the SDK generates one** — and that is exactly what makes its
+automatic retry safe: without a key, repeating a POST after a network timeout
+would send the same message twice to the end customer.
 
-Use um valor seu — o id do pedido, do ticket, do disparo — quando quiser que o
-retry sobreviva também a um reinício do seu processo.
+Use a value of your own — the order id, the ticket id, the campaign id — when
+you want the retry to survive a restart of your process too.
 
-## Retentativa
+## Retries
 
-O cliente repete sozinho `408`, `429`, `5xx` e falha de rede, com backoff
-exponencial e jitter, respeitando `Retry-After`. Não repete os demais `4xx`:
-o servidor rejeitou o conteúdo, e mandar de novo produz a mesma rejeição.
+The client retries `408`, `429`, `5xx` and network failures on its own, with
+exponential backoff and jitter, honoring `Retry-After`. It does not retry the
+other `4xx`: the server rejected the content, and sending it again produces the
+same rejection.
 
 ```ts
 new Awah({ baseUrl, apiKey, maxRetries: 5, timeoutMs: 60_000 })
 ```
 
-## Erros
+## Errors
 
 ```ts
 import { AwahError } from '@awah/sdk'
@@ -73,14 +76,14 @@ try {
   await awah.sessions.start(id)
 } catch (erro) {
   if (erro instanceof AwahError && erro.code === 'conflict') {
-    // a sessão já estava em execução
+    // the session was already running
   }
 }
 ```
 
-Faça branch em `erro.code`, nunca na mensagem: códigos são contrato público,
-mensagens mudam de versão para versão. `erro.isAuth`, `erro.isRateLimited` e
-`erro.isRetryable` cobrem os casos comuns.
+Branch on `erro.code`, never on the message: codes are public contract, messages
+change from version to version. `erro.isAuth`, `erro.isRateLimited` and
+`erro.isRetryable` cover the common cases.
 
 ## Webhooks
 
@@ -97,7 +100,7 @@ export async function POST(request: Request) {
 }
 ```
 
-Em Node puro, ou quando você já tem o corpo em mãos:
+In plain Node, or when you already have the body in hand:
 
 ```ts
 import { verifyWebhook } from '@awah/sdk'
@@ -110,17 +113,18 @@ const valido = await verifyWebhook({
 })
 ```
 
-**Passe o corpo cru, não o objeto reserializado.** `JSON.stringify` do objeto já
-parseado produz bytes parecidos, não idênticos — ordem de chaves e espaçamento
-podem diferir — e a verificação falharia de forma intermitente e inexplicável.
+**Pass the raw body, not the reserialized object.** `JSON.stringify` of the
+already-parsed object produces similar bytes, not identical ones — key order and
+spacing can differ — and verification would fail intermittently and
+inexplicably.
 
-A assinatura cobre `timestamp.corpo`, não só o corpo. É o que impede replay: uma
-entrega capturada não pode ser reenviada depois, e mudar o timestamp para escapar
-da janela de 5 minutos invalida a assinatura.
+The signature covers `timestamp.body`, not just the body. That is what stops
+replay: a captured delivery cannot be resent later, and changing the timestamp
+to escape the 5-minute window invalidates the signature.
 
-## Superfície
+## Surface
 
-| Recurso | Métodos |
+| Resource | Methods |
 | --- | --- |
 | `awah.sessions` | `list` `get` `create` `delete` `start` `stop` `logout` `qr` `pairingCode` `events` `setCredentials` |
 | `awah.messages` | `sendText` `list` |
@@ -130,6 +134,6 @@ da janela de 5 minutos invalida a assinatura.
 | `awah.kpi` | `sessions` `delivery` `risk` `business` |
 | `awah` | `engines` `me` `health` |
 
-## Licença
+## License
 
 MIT.

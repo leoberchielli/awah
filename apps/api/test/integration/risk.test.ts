@@ -192,7 +192,7 @@ describe.skipIf(!hasInfra)('motor de risco', () => {
 
       expect(decisao.action).toBe('held')
       expect(decisao.availableAt).not.toBeNull()
-      expect(decisao.reason).toMatch(/minuto/i)
+      expect(decisao.reason).toMatch(/per minute/i)
     })
 
     it('o override explícito passa por cima do teto', async () => {

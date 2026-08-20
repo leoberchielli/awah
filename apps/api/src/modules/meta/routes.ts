@@ -34,8 +34,8 @@ export async function metaRoutes(app: FastifyInstance) {
     '/webhooks/meta/:sessionId',
     {
       schema: {
-        tags: ['sistema'],
-        summary: 'Verificação do webhook da Meta',
+        tags: ['system'],
+        summary: 'Meta webhook verification',
         hide: true,
         params: z.object({ sessionId: z.string().uuid() }),
         querystring: z.object({
@@ -52,14 +52,14 @@ export async function metaRoutes(app: FastifyInstance) {
         encryptionKey,
       ).catch(() => null)
 
-      if (!credenciais) throw notFound('Sessão não encontrada ou sem credenciais.')
+      if (!credenciais) throw notFound('Session not found or without credentials.')
 
       const query = request.query
       if (
         query['hub.mode'] !== 'subscribe' ||
         query['hub.verify_token'] !== credenciais.verifyToken
       ) {
-        throw forbidden('Token de verificação inválido.')
+        throw forbidden('Invalid verification token.')
       }
 
       return reply.type('text/plain').send(query['hub.challenge'] ?? '')
@@ -78,8 +78,8 @@ export async function metaRoutes(app: FastifyInstance) {
     '/webhooks/meta/:sessionId',
     {
       schema: {
-        tags: ['sistema'],
-        summary: 'Eventos da Cloud API',
+        tags: ['system'],
+        summary: 'Cloud API events',
         hide: true,
         params: z.object({ sessionId: z.string().uuid() }),
       },
@@ -93,12 +93,12 @@ export async function metaRoutes(app: FastifyInstance) {
         .where(eq(schema.sessions.id, sessionId))
         .limit(1)
 
-      if (!sessao) throw notFound('Sessão não encontrada.')
+      if (!sessao) throw notFound('Session not found.')
 
       const credenciais = await loadCloudApiCredentials(app.db, sessionId, encryptionKey).catch(
         () => null,
       )
-      if (!credenciais) throw notFound('Sessão sem credenciais configuradas.')
+      if (!credenciais) throw notFound('Session without configured credentials.')
 
       /**
        * O corpo **cru**, não o reserializado.
@@ -110,18 +110,18 @@ export async function metaRoutes(app: FastifyInstance) {
        */
       const corpo = request.rawBody
       if (!corpo) {
-        throw forbidden('Corpo cru indisponível para conferir a assinatura.')
+        throw forbidden('Raw body unavailable to check the signature.')
       }
 
       if (
         !verificarAssinatura(corpo, credenciais.appSecret, request.headers['x-hub-signature-256'])
       ) {
-        throw forbidden('Assinatura do evento inválida.')
+        throw forbidden('Invalid event signature.')
       }
 
       // Responde primeiro; processa depois. Erro nosso não vira reentrega da Meta.
       void processarEvento(app, sessao.orgId, sessionId, request.body).catch((error) => {
-        app.log.error({ err: error, sessionId }, 'falha ao processar evento da Meta')
+        app.log.error({ err: error, sessionId }, 'failed to process Meta event')
       })
 
       return reply.send({ received: true })

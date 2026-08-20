@@ -33,10 +33,10 @@ export async function metricsRoutes(app: FastifyInstance) {
     '/metrics',
     {
       schema: {
-        tags: ['sistema'],
-        summary: 'Métricas em formato Prometheus',
+        tags: ['system'],
+        summary: 'Metrics in Prometheus format',
         description:
-          'Protegido por METRICS_TOKEN quando definido. Sem o token configurado, responde a qualquer requisição — aceitável em rede fechada, arriscado em qualquer outro lugar.',
+          'Protected by METRICS_TOKEN when set. Without the token configured, it answers any request — acceptable on a closed network, risky anywhere else.',
         hide: true,
       },
     },
@@ -45,7 +45,7 @@ export async function metricsRoutes(app: FastifyInstance) {
       if (esperado) {
         const header = request.headers.authorization
         const recebido = header?.startsWith('Bearer ') ? header.slice(7) : null
-        if (recebido !== esperado) throw unauthorized('Token de métricas inválido.')
+        if (recebido !== esperado) throw unauthorized('Invalid metrics token.')
       }
 
       await app.metrics.collect(app.db, app.sessions.activeSessionIds().length)
@@ -66,7 +66,7 @@ export async function metricsRoutes(app: FastifyInstance) {
       preHandler: app.requirePermission('metrics:read'),
       schema: {
         tags: ['kpi'],
-        summary: 'Saúde das sessões',
+        summary: 'Session health',
         querystring: janela,
         response: {
           200: z.object({
@@ -149,9 +149,9 @@ export async function metricsRoutes(app: FastifyInstance) {
       preHandler: app.requirePermission('metrics:read'),
       schema: {
         tags: ['kpi'],
-        summary: 'Entregabilidade',
+        summary: 'Deliverability',
         description:
-          'Funil de ACK, latências por percentil e profundidade da fila. Os totais vêm dos agregados; a fila é estado do momento.',
+          'ACK funnel, latencies by percentile, and queue depth. Totals come from the aggregates; the queue is current state.',
         querystring: janela,
         response: {
           200: z.object({
@@ -160,7 +160,7 @@ export async function metricsRoutes(app: FastifyInstance) {
               delivered: z.number(),
               read: z.number(),
               failed: z.number(),
-              deliveryRate: z.number().describe('delivered / sent, entre 0 e 1.'),
+              deliveryRate: z.number().describe('delivered / sent, between 0 and 1.'),
               readRate: z.number(),
             }),
             latencyMs: z.object({
@@ -266,7 +266,7 @@ export async function metricsRoutes(app: FastifyInstance) {
       preHandler: app.requirePermission('metrics:read'),
       schema: {
         tags: ['kpi'],
-        summary: 'Risco e anti-ban',
+        summary: 'Risk and anti-ban',
         querystring: janela,
         response: {
           200: z.object({
@@ -330,13 +330,13 @@ export async function metricsRoutes(app: FastifyInstance) {
       preHandler: app.requirePermission('metrics:read'),
       schema: {
         tags: ['kpi'],
-        summary: 'Negócio e atendimento',
+        summary: 'Business and support',
         querystring: janela,
         response: {
           200: z.object({
             volume: z.array(seriesSchema),
             activeChats: z.number(),
-            responseRate: z.number().describe('Conversas recebidas que tiveram resposta.'),
+            responseRate: z.number().describe('Inbound conversations that got a reply.'),
             firstResponseSeconds: z.object({
               p50: z.number().nullable(),
               p95: z.number().nullable(),

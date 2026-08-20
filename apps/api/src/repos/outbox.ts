@@ -71,7 +71,7 @@ export class OutboxRepository extends TenantRepository {
     if (inserted) return { row: inserted, created: true }
 
     const existing = await this.findByClientId(input.clientMessageId)
-    if (!existing) throw new Error('conflito de idempotência sem linha correspondente')
+    if (!existing) throw new Error('idempotency conflict with no matching row')
     return { row: existing, created: false }
   }
 

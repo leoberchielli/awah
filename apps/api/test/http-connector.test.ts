@@ -81,7 +81,7 @@ describe('diagnóstico de quem acabou de plugar', () => {
    */
   it('explica resposta que não é JSON', () => {
     const { diagnostico } = extrairRespostas('<html>erro</html>')
-    expect(diagnostico).toMatch(/não é JSON/i)
+    expect(diagnostico).toMatch(/not JSON/i)
     expect(diagnostico).toMatch(/reply/)
   })
 

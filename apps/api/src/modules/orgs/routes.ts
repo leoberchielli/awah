@@ -35,15 +35,15 @@ export async function orgRoutes(app: FastifyInstance) {
     {
       preHandler: app.requirePermission('org:read'),
       schema: {
-        tags: ['organização'],
-        summary: 'Ler a organização atual',
+        tags: ['organization'],
+        summary: 'Read the current organization',
         response: { 200: orgProfileSchema },
       },
     },
     async (request) => {
       const auth = requireAuth(request)
       const org = await new OrgRepository(app.db, auth.orgId).profile()
-      if (!org) throw notFound('Organização não encontrada.')
+      if (!org) throw notFound('Organization not found.')
       return org
     },
   )
@@ -53,10 +53,10 @@ export async function orgRoutes(app: FastifyInstance) {
     {
       preHandler: app.requirePermission('org:update'),
       schema: {
-        tags: ['organização'],
-        summary: 'Atualizar a organização',
+        tags: ['organization'],
+        summary: 'Update the organization',
         description:
-          'retentionDays controla por quantos dias o conteúdo de mensagem é preservado. 0 nunca persiste corpo, -1 retém para sempre.',
+          'retentionDays controls how many days message content is kept. 0 never persists the body, -1 keeps it forever.',
         body: z.object({
           name: z.string().min(2).max(120).optional(),
           retentionDays: z.number().int().min(-1).max(3650).optional(),
@@ -67,11 +67,11 @@ export async function orgRoutes(app: FastifyInstance) {
     async (request) => {
       const auth = requireAuth(request)
       if (Object.keys(request.body).length === 0) {
-        throw badRequest('Informe pelo menos um campo para atualizar.')
+        throw badRequest('Provide at least one field to update.')
       }
 
       const updated = await new OrgRepository(app.db, auth.orgId).update(request.body)
-      if (!updated) throw notFound('Organização não encontrada.')
+      if (!updated) throw notFound('Organization not found.')
       return updated
     },
   )
@@ -81,8 +81,8 @@ export async function orgRoutes(app: FastifyInstance) {
     {
       preHandler: app.requirePermission('member:read'),
       schema: {
-        tags: ['organização'],
-        summary: 'Listar membros',
+        tags: ['organization'],
+        summary: 'List members',
         response: { 200: z.object({ members: z.array(memberSchema) }) },
       },
     },
@@ -103,8 +103,8 @@ export async function orgRoutes(app: FastifyInstance) {
     {
       preHandler: app.requirePermission('member:write'),
       schema: {
-        tags: ['organização'],
-        summary: 'Adicionar membro',
+        tags: ['organization'],
+        summary: 'Add member',
         body: z.object({
           email: z.string().email().max(254),
           role: roleField.default('viewer'),
@@ -119,7 +119,7 @@ export async function orgRoutes(app: FastifyInstance) {
       const { email, role, name, password } = request.body
 
       if (role === 'owner' && !can(auth.role, 'member:set_owner')) {
-        throw forbidden('Somente um owner promove outro owner.')
+        throw forbidden('Only an owner promotes another owner.')
       }
 
       const orgs = new OrgRepository(app.db, auth.orgId)
@@ -128,7 +128,7 @@ export async function orgRoutes(app: FastifyInstance) {
       if (!user) {
         if (!name || !password) {
           throw badRequest(
-            'Este e-mail ainda não tem conta nesta instância. Informe name e password para criá-la.',
+            'This email has no account on this instance yet. Provide name and password to create one.',
           )
         }
         const created = await identity.createUser({
@@ -138,7 +138,7 @@ export async function orgRoutes(app: FastifyInstance) {
         })
         user = { id: created.id, email, name, passwordHash: '' }
       } else if (await identity.findMembership(auth.orgId, user.id)) {
-        throw conflict('Este usuário já é membro da organização.')
+        throw conflict('This user is already a member of the organization.')
       }
 
       await orgs.addMember(user.id, role)
@@ -158,8 +158,8 @@ export async function orgRoutes(app: FastifyInstance) {
     {
       preHandler: app.requirePermission('member:write'),
       schema: {
-        tags: ['organização'],
-        summary: 'Alterar o papel de um membro',
+        tags: ['organization'],
+        summary: 'Change a member role',
         params: z.object({ userId: z.string().uuid() }),
         body: z.object({ role: roleField }),
         response: { 200: z.object({ userId: z.string(), role: roleField }) },
@@ -171,20 +171,20 @@ export async function orgRoutes(app: FastifyInstance) {
       const { role } = request.body
 
       if (role === 'owner' && !can(auth.role, 'member:set_owner')) {
-        throw forbidden('Somente um owner promove outro owner.')
+        throw forbidden('Only an owner promotes another owner.')
       }
 
       const orgs = new OrgRepository(app.db, auth.orgId)
       const current = await identity.findMembership(auth.orgId, userId)
-      if (!current) throw notFound('Este usuário não é membro da organização.')
+      if (!current) throw notFound('This user is not a member of the organization.')
 
       // Rebaixar o último owner deixaria a org sem ninguém capaz de administrá-la.
       if (current === 'owner' && role !== 'owner' && (await orgs.ownerCount()) <= 1) {
-        throw conflict('A organização precisa manter pelo menos um owner.')
+        throw conflict('The organization must keep at least one owner.')
       }
 
       const changed = await orgs.setRole(userId, role)
-      if (!changed) throw notFound('Este usuário não é membro da organização.')
+      if (!changed) throw notFound('This user is not a member of the organization.')
 
       return { userId, role }
     },
@@ -195,8 +195,8 @@ export async function orgRoutes(app: FastifyInstance) {
     {
       preHandler: app.requirePermission('member:write'),
       schema: {
-        tags: ['organização'],
-        summary: 'Remover membro',
+        tags: ['organization'],
+        summary: 'Remove member',
         params: z.object({ userId: z.string().uuid() }),
         response: { 204: z.null() },
       },
@@ -207,10 +207,10 @@ export async function orgRoutes(app: FastifyInstance) {
       const orgs = new OrgRepository(app.db, auth.orgId)
 
       const current = await identity.findMembership(auth.orgId, userId)
-      if (!current) throw notFound('Este usuário não é membro da organização.')
+      if (!current) throw notFound('This user is not a member of the organization.')
 
       if (current === 'owner' && (await orgs.ownerCount()) <= 1) {
-        throw conflict('A organização precisa manter pelo menos um owner.')
+        throw conflict('The organization must keep at least one owner.')
       }
 
       await orgs.removeMember(userId)

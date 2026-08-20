@@ -60,9 +60,9 @@ export async function usePostgresAuthState(deps: AuthStateDeps): Promise<Postgre
       creds = open<AuthenticationCreds>(existing.creds)
     } catch (error) {
       throw new Error(
-        `Não consegui decifrar o auth state da sessão ${sessionId}. ` +
-          'A ENCRYPTION_KEY atual não é a que gravou estas credenciais. ' +
-          'Restaure a chave anterior, ou faça logout da sessão para parear de novo.',
+        `Could not decrypt the auth state for session ${sessionId}. ` +
+          'The current ENCRYPTION_KEY is not the one that wrote these credentials. ' +
+          'Restore the previous key, or log the session out to pair again.',
         { cause: error },
       )
     }

@@ -77,7 +77,7 @@ export class IntegrationDispatcher {
     } catch (erro) {
       this.deps.logger.error(
         { err: erro, sessionId: mensagem.sessionId },
-        'falha ao carregar integrações',
+        'failed to load integrations',
       )
       return
     }
@@ -96,11 +96,11 @@ export class IntegrationDispatcher {
           await clearIntegrationError(this.deps.db, integracao.row.id)
         }
       } catch (erro) {
-        const texto = erro instanceof Error ? erro.message : 'falha desconhecida'
+        const texto = erro instanceof Error ? erro.message : 'unknown failure'
 
         this.deps.logger.error(
           { err: erro, integrationId: integracao.row.id, kind: integracao.row.kind },
-          'integração falhou ao processar mensagem recebida',
+          'integration failed to process incoming message',
         )
 
         await recordIntegrationError(this.deps.db, integracao.row.id, texto).catch(() => undefined)

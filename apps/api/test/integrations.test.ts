@@ -35,7 +35,7 @@ describe('configuração', () => {
 
   /** O escape para o humano vem ligado; desligar tem que ser escolha. */
   it('traz a palavra de escape por padrão', () => {
-    expect(TYPEBOT.humanHandoffKeyword).toBe('atendente')
+    expect(TYPEBOT.humanHandoffKeyword).toBe('agent')
     expect(TYPEBOT.sessionTtlMinutes).toBeGreaterThan(0)
   })
 })
@@ -295,12 +295,12 @@ describe('link de compartilhamento do Typebot', () => {
    */
   it('recusa a URL do editor, explicando onde está a certa', () => {
     expect(() => derivarDoLink('https://app.typebot.io/typebots/abc123/edit')).toThrow(
-      /link de compartilhamento/i,
+      /editor link/i,
     )
   })
 
   it('recusa endereço sem fluxo', () => {
-    expect(() => derivarDoLink('https://typebot.io')).toThrow(/id do fluxo/i)
+    expect(() => derivarDoLink('https://typebot.io')).toThrow(/flow id/i)
   })
 
   it('recusa o que não é URL', () => {

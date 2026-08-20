@@ -82,7 +82,7 @@ export class BaileysAdapter implements EngineAdapter {
 
     this.socket.ev.on('creds.update', () => {
       void saveCreds().catch((error) => {
-        this.deps.logger.error({ err: error }, 'falha ao salvar credenciais')
+        this.deps.logger.error({ err: error }, 'failed to save credentials')
       })
       this.deps.onEvent({ type: 'credentials' })
     })
@@ -164,7 +164,7 @@ export class BaileysAdapter implements EngineAdapter {
       this.deps.onEvent({
         type: 'closed',
         rawCode,
-        cause: this.intentionalClose ? 'Desligada por comando' : info.cause,
+        cause: this.intentionalClose ? 'Shut down by command' : info.cause,
         shouldReconnect: !this.intentionalClose && info.shouldReconnect,
         loggedOut: info.loggedOut,
       })
@@ -188,18 +188,18 @@ export class BaileysAdapter implements EngineAdapter {
       }
     } catch (error) {
       // Desligar não pode falhar: a sessão sai do ar de qualquer maneira.
-      this.deps.logger.warn({ err: error }, 'erro ao encerrar socket, seguindo')
+      this.deps.logger.warn({ err: error }, 'error closing socket, continuing')
     }
   }
 
   async requestPairingCode(phoneNumber: string): Promise<string> {
     if (!this.socket) {
-      throw badRequest('A sessão precisa estar iniciada para pedir um código de pareamento.')
+      throw badRequest('The session must be started before requesting a pairing code.')
     }
 
     const digits = phoneNumber.replace(/\D/g, '')
     if (digits.length < 10) {
-      throw badRequest('Informe o número com código do país, apenas dígitos. Ex.: 5511999999999')
+      throw badRequest('Give the number with country code, digits only. Example: 5511999999999')
     }
 
     return this.socket.requestPairingCode(digits)
@@ -221,21 +221,21 @@ export class BaileysAdapter implements EngineAdapter {
       await this.socket.sendPresenceUpdate(state, chatId)
     } catch (error) {
       // Presença é cosmética: falhar aqui não pode impedir a mensagem de sair.
-      this.deps.logger.debug({ err: error, chatId }, 'falha ao atualizar presença')
+      this.deps.logger.debug({ err: error, chatId }, 'failed to update presence')
     }
   }
 
   async sendText(chatId: string, text: string): Promise<SendResult> {
     if (!this.isReady()) {
-      throw badRequest('A sessão não está pareada. Conclua o pareamento antes de enviar.')
+      throw badRequest('The session is not paired. Finish pairing before sending.')
     }
     if (!this.socket) {
-      throw badRequest('A sessão não está conectada.')
+      throw badRequest('The session is not connected.')
     }
 
     const sent = await this.socket.sendMessage(chatId, { text })
     if (!sent?.key?.id) {
-      throw new Error('a engine não devolveu id da mensagem')
+      throw new Error('the engine did not return a message id')
     }
 
     return { engineMessageId: sent.key.id, timestamp: new Date() }

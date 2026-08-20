@@ -141,7 +141,7 @@ export class SessionManager {
 
     for (const result of results) {
       if (result.status === 'rejected') {
-        this.deps.logger.error({ err: result.reason, sessionId }, 'observador de status falhou')
+        this.deps.logger.error({ err: result.reason, sessionId }, 'status observer failed')
       }
     }
   }
@@ -166,7 +166,7 @@ export class SessionManager {
    */
   async start(orgId: string, sessionId: string): Promise<void> {
     if (this.running.has(sessionId)) {
-      throw conflict('Esta sessão já está em execução.')
+      throw conflict('This session is already running.')
     }
 
     await this.repo(orgId).setDesiredState(sessionId, 'running')
@@ -184,7 +184,7 @@ export class SessionManager {
       await this.launch(orgId, sessionId)
       return true
     } catch (error) {
-      this.deps.logger.warn({ err: error, sessionId }, 'não consegui assumir a sessão órfã')
+      this.deps.logger.warn({ err: error, sessionId }, 'could not adopt orphan session')
       return false
     }
   }
@@ -192,11 +192,11 @@ export class SessionManager {
   private async launch(orgId: string, sessionId: string): Promise<void> {
     const repo = this.repo(orgId)
     const session = await repo.findById(sessionId)
-    if (!session) throw notFound('Sessão não encontrada.')
+    if (!session) throw notFound('Session not found.')
 
     if (session.engine !== 'baileys' && session.engine !== 'cloud_api') {
       throw badRequest(
-        `A engine "${session.engine}" ainda não foi implementada. Disponíveis nesta versão: baileys, cloud_api.`,
+        `Engine "${session.engine}" is not implemented yet. Available in this version: baileys, cloud_api.`,
       )
     }
 
@@ -211,13 +211,13 @@ export class SessionManager {
     if (!(await this.deps.lease.acquire(sessionId))) {
       const dono = await this.deps.lease.owner(sessionId)
       throw conflict(
-        `Esta sessão está em execução no nó ${dono ?? 'desconhecido'}. Comandos são roteados automaticamente; não é preciso iniciá-la de novo.`,
+        `This session is running on node ${dono ?? 'unknown'}. Commands are routed automatically; there is no need to start it again.`,
       )
     }
 
     const onEvent = (event: EngineEvent) => {
       void this.handleEvent(orgId, sessionId, event).catch((error) => {
-        this.deps.logger.error({ err: error, sessionId }, 'falha ao tratar evento de engine')
+        this.deps.logger.error({ err: error, sessionId }, 'failed to handle engine event')
       })
     }
 
@@ -237,7 +237,7 @@ export class SessionManager {
       if (!credentials) {
         await this.deps.lease.release(sessionId)
         throw badRequest(
-          'Configure as credenciais da Cloud API em PUT /v1/sessions/:id/credentials antes de iniciar.',
+          'Configure the Cloud API credentials at PUT /v1/sessions/:id/credentials before starting.',
         )
       }
 
@@ -301,7 +301,7 @@ export class SessionManager {
     await repo.recordEvent({
       sessionId,
       type: 'lease_acquired',
-      cause: `Posse assumida pelo nó ${this.deps.nodeId}`,
+      cause: `Ownership acquired by node ${this.deps.nodeId}`,
       nodeId: this.deps.nodeId,
     })
     await repo.recordEvent({
@@ -318,7 +318,7 @@ export class SessionManager {
       await repo.recordEvent({
         sessionId,
         type: 'error',
-        cause: error instanceof Error ? error.message : 'falha ao conectar',
+        cause: error instanceof Error ? error.message : 'failed to connect',
         nodeId: this.deps.nodeId,
       })
       throw error
@@ -335,11 +335,11 @@ export class SessionManager {
     try {
       if (await this.deps.lease.renew(sessionId)) return
     } catch (error) {
-      this.deps.logger.error({ err: error, sessionId }, 'falha ao renovar posse')
+      this.deps.logger.error({ err: error, sessionId }, 'failed to renew ownership')
       return
     }
 
-    this.deps.logger.warn({ sessionId }, 'posse perdida, soltando a sessão')
+    this.deps.logger.warn({ sessionId }, 'ownership lost, releasing session')
 
     const entry = this.running.get(sessionId)
     if (entry) entry.stopping = true
@@ -351,7 +351,7 @@ export class SessionManager {
     await repo.recordEvent({
       sessionId,
       type: 'lease_lost',
-      cause: 'Posse expirou e foi assumida por outro nó',
+      cause: 'Ownership expired and was taken over by another node',
       nodeId: this.deps.nodeId,
     })
   }
@@ -390,7 +390,7 @@ export class SessionManager {
       }
 
       default:
-        throw new Error(`comando desconhecido: ${command}`)
+        throw new Error(`unknown command: ${command}`)
     }
   }
 
@@ -423,7 +423,7 @@ export class SessionManager {
       await repo.recordEvent({
         sessionId,
         type: 'logged_out',
-        cause: 'Logout solicitado',
+        cause: 'Logout requested',
         nodeId: this.deps.nodeId,
       })
     } else {
@@ -434,7 +434,7 @@ export class SessionManager {
       await repo.recordEvent({
         sessionId,
         type: 'disconnected',
-        cause: 'Desligada por comando',
+        cause: 'Stopped by command',
         nodeId: this.deps.nodeId,
       })
     }
@@ -473,7 +473,7 @@ export class SessionManager {
     })
 
     if (!resposta.ok) {
-      throw conflict(`Falha ao encaminhar o comando ao nó ${dono}: ${resposta.error}`)
+      throw conflict(`Failed to forward the command to node ${dono}: ${resposta.error}`)
     }
   }
 
@@ -489,7 +489,7 @@ export class SessionManager {
 
     const dono = await this.deps.lease.owner(sessionId)
     if (!dono || dono === this.deps.nodeId) {
-      throw badRequest('Inicie a sessão antes de pedir um código de pareamento.')
+      throw badRequest('Start the session before requesting a pairing code.')
     }
 
     const resposta = await this.deps.commands.send({
@@ -500,12 +500,12 @@ export class SessionManager {
     })
 
     if (!resposta.ok) {
-      throw conflict(`Falha ao encaminhar o comando ao nó ${dono}: ${resposta.error}`)
+      throw conflict(`Failed to forward the command to node ${dono}: ${resposta.error}`)
     }
 
     const code = (resposta.result as { code?: unknown } | undefined)?.code
     if (typeof code !== 'string') {
-      throw conflict('O nó dono devolveu uma resposta inesperada.')
+      throw conflict('The owner node returned an unexpected response.')
     }
     return code
   }
@@ -534,14 +534,14 @@ export class SessionManager {
   async requestPairingCode(orgId: string, sessionId: string, phoneNumber: string): Promise<string> {
     const entry = this.running.get(sessionId)
     if (!entry) {
-      throw badRequest('Inicie a sessão antes de pedir um código de pareamento.')
+      throw badRequest('Start the session before requesting a pairing code.')
     }
 
     const code = await entry.adapter.requestPairingCode(phoneNumber)
     await this.repo(orgId).recordEvent({
       sessionId,
       type: 'pairing_requested',
-      cause: 'Código de pareamento solicitado',
+      cause: 'Pairing code requested',
       nodeId: this.deps.nodeId,
     })
 
@@ -564,7 +564,7 @@ export class SessionManager {
           await repo.recordEvent({
             sessionId,
             type: 'pairing_requested',
-            cause: 'QR gerado',
+            cause: 'QR generated',
             nodeId: this.deps.nodeId,
           })
         }
@@ -601,13 +601,13 @@ export class SessionManager {
         await repo.recordEvent({
           sessionId,
           type: session?.pairedAt ? 'connected' : 'paired',
-          cause: session?.pairedAt ? 'Conectada' : 'Pareada',
+          cause: session?.pairedAt ? 'Connected' : 'Paired',
           nodeId: this.deps.nodeId,
         })
 
         await this.notifyStatus(orgId, sessionId, {
           status: 'connected',
-          cause: session?.pairedAt ? 'Conectada' : 'Pareada',
+          cause: session?.pairedAt ? 'Connected' : 'Paired',
         })
         return
       }
@@ -625,7 +625,7 @@ export class SessionManager {
             if (result.status === 'rejected') {
               this.deps.logger.error(
                 { err: result.reason, sessionId, event: event.type },
-                'observador de mensagem falhou',
+                'message observer failed',
               )
             }
           }
@@ -688,14 +688,14 @@ export class SessionManager {
     if (entry.attempts > this.maxAttempts) {
       this.deps.logger.warn(
         { sessionId, attempts: entry.attempts },
-        'limite de reconexões atingido, desistindo',
+        'reconnect limit reached, giving up',
       )
       this.running.delete(sessionId)
       void this.repo(orgId)
         .recordEvent({
           sessionId,
           type: 'error',
-          cause: `Desisti de reconectar após ${this.maxAttempts} tentativas`,
+          cause: `Gave up reconnecting after ${this.maxAttempts} attempts`,
           nodeId: this.deps.nodeId,
         })
         .catch(() => {})
@@ -703,13 +703,13 @@ export class SessionManager {
     }
 
     const delay = isRestart ? RESTART_DELAY_MS : reconnectDelayMs(entry.attempts)
-    this.deps.logger.info({ sessionId, delay, attempt: entry.attempts }, 'reconectando')
+    this.deps.logger.info({ sessionId, delay, attempt: entry.attempts }, 'reconnecting')
 
     entry.timer = setTimeout(() => {
       if (entry.stopping) return
 
       void entry.adapter.connect().catch((error) => {
-        this.deps.logger.error({ err: error, sessionId }, 'falha ao reconectar')
+        this.deps.logger.error({ err: error, sessionId }, 'failed to reconnect')
         // Socket que nem abre não emite 'close': reagenda a partir daqui.
         this.scheduleReconnect(orgId, sessionId, entry, null)
       })

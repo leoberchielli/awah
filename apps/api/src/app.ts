@@ -112,7 +112,7 @@ export async function buildApp(env: Env): Promise<FastifyInstance> {
     lazyConnect: false,
   })
   redis.on('error', (error) => {
-    app.log.error({ err: error }, 'erro no Redis')
+    app.log.error({ err: error }, 'Redis error')
   })
 
   app.decorate('env', env)
@@ -169,7 +169,7 @@ export async function buildApp(env: Env): Promise<FastifyInstance> {
     openapi: {
       info: {
         title: 'AWAH',
-        description: 'Gateway de WhatsApp com fila durável, motor de risco e sessões em cluster.',
+        description: 'WhatsApp gateway with a durable queue, risk engine and clustered sessions.',
         version: '0.1.0',
       },
       servers: [{ url: env.PUBLIC_URL ?? `http://localhost:${env.PORT}` }],
@@ -178,7 +178,7 @@ export async function buildApp(env: Env): Promise<FastifyInstance> {
           apiKey: {
             type: 'http',
             scheme: 'bearer',
-            description: 'Chave de API no formato `awah_<prefixo>_<segredo>`.',
+            description: 'API key in the format `awah_<prefix>_<secret>`.',
           },
         },
       },
@@ -214,7 +214,7 @@ export async function buildApp(env: Env): Promise<FastifyInstance> {
       return reply.code(400).send({
         error: {
           code: 'validation_failed',
-          message: 'A requisição não passou na validação.',
+          message: 'The request failed validation.',
           details: error.validation.map((issue) => ({
             path: issue.instancePath,
             message: issue.message,
@@ -229,7 +229,7 @@ export async function buildApp(env: Env): Promise<FastifyInstance> {
       return reply.code(429).send({
         error: {
           code: 'too_many_requests',
-          message: 'Requisições demais. Tente de novo em instantes.',
+          message: 'Too many requests. Try again shortly.',
         },
       })
     }
@@ -242,16 +242,16 @@ export async function buildApp(env: Env): Promise<FastifyInstance> {
      * servidor — e afoga o que é.
      */
     if (statusCode && statusCode >= 400 && statusCode < 500) {
-      request.log.warn({ err: error }, 'requisição recusada')
+      request.log.warn({ err: error }, 'request rejected')
       return reply.code(statusCode).send({
-        error: { code: 'bad_request', message: 'Requisição inválida.' },
+        error: { code: 'bad_request', message: 'Invalid request.' },
       })
     }
 
     // Erro não previsto: registra o detalhe, devolve o genérico.
-    request.log.error({ err: error }, 'erro não tratado')
+    request.log.error({ err: error }, 'unhandled error')
     return reply.code(500).send({
-      error: { code: 'internal_error', message: 'Erro interno.' },
+      error: { code: 'internal_error', message: 'Internal error.' },
     })
   })
 
@@ -280,7 +280,10 @@ export async function buildApp(env: Env): Promise<FastifyInstance> {
     }
 
     return reply.code(404).send({
-      error: { code: 'not_found', message: `Rota não existe: ${request.method} ${request.url}` },
+      error: {
+        code: 'not_found',
+        message: `Route does not exist: ${request.method} ${request.url}`,
+      },
     })
   })
 

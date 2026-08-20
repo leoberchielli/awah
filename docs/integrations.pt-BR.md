@@ -1,5 +1,7 @@
 # Chatwoot e Typebot
 
+*[English](integrations.md)*
+
 O AWAH não tem caixa de entrada nem construtor de fluxo, e isso é uma decisão,
 não uma lacuna. O Chatwoot já resolve atendimento humano muito bem; o Typebot já
 resolve fluxo muito bem. O que falta aos dois é o que o gateway tem:

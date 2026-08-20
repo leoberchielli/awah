@@ -24,7 +24,7 @@ export const sessionsPlugin = fp(
      */
     const subscriber = app.redis.duplicate() as Redis
     subscriber.on('error', (error) => {
-      app.log.error({ err: error }, 'erro na conexão de assinatura do Redis')
+      app.log.error({ err: error }, 'error on the Redis subscriber connection')
     })
 
     const commands = new CommandBus({

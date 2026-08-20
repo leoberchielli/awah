@@ -49,7 +49,7 @@ describe('capacidades da engine oficial', () => {
     const { adapter } = montar(vi.fn())
 
     expect(adapter.currentQr()).toBeNull()
-    await expect(adapter.requestPairingCode()).rejects.toThrow(/pareamento/i)
+    await expect(adapter.requestPairingCode()).rejects.toThrow(/pairing/i)
   })
 
   /** Presença não existe na Cloud API; ignorar é melhor que falhar um envio. */
@@ -85,7 +85,7 @@ describe('conexão', () => {
     )
     const { adapter, eventos } = montar(fetchImpl as unknown as typeof fetch)
 
-    await expect(adapter.connect()).rejects.toThrow(/recusou as credenciais/i)
+    await expect(adapter.connect()).rejects.toThrow(/rejected the credentials/i)
     expect(adapter.isReady()).toBe(false)
 
     const fechamento = eventos.find((e) => e.type === 'closed')
@@ -105,7 +105,7 @@ describe('conexão', () => {
 describe('envio', () => {
   it('recusa envio antes de conectar', async () => {
     const { adapter } = montar(vi.fn())
-    await expect(adapter.sendText('5511999999999', 'oi')).rejects.toThrow(/não está conectada/i)
+    await expect(adapter.sendText('5511999999999', 'oi')).rejects.toThrow(/not connected/i)
   })
 
   it('envia e devolve o id da Meta', async () => {
@@ -151,7 +151,7 @@ describe('envio', () => {
     const { adapter } = montar(fetchImpl as unknown as typeof fetch)
     await adapter.connect()
 
-    await expect(adapter.sendText('5511988887777', 'oi')).rejects.toThrow(/janela de 24 h/i)
+    await expect(adapter.sendText('5511988887777', 'oi')).rejects.toThrow(/24 h window/i)
   })
 
   it('propaga a mensagem de erro da Meta', async () => {

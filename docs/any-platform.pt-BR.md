@@ -1,5 +1,7 @@
 # Plugar qualquer plataforma
 
+*[English](any-platform.md)*
+
 Chatwoot e Typebot têm conector dedicado porque são os dois casos mais comuns.
 Para todo o resto existe o **conector HTTP**: o gateway posta cada mensagem
 recebida numa URL sua e envia de volta o que a resposta trouxer.

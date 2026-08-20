@@ -15,10 +15,10 @@ export async function riskRoutes(app: FastifyInstance) {
     {
       preHandler: app.requirePermission('metrics:read'),
       schema: {
-        tags: ['risco'],
-        summary: 'Score e orçamento da sessão',
+        tags: ['risk'],
+        summary: 'Session score and budget',
         description:
-          'Score 0–100 com a contribuição de cada sinal, consumo das janelas e limites em vigor depois do warmup.',
+          'Score 0–100 with the contribution of each signal, window consumption, and the limits in effect after warm-up.',
         params: z.object({ id: z.string().uuid() }),
         response: {
           200: z.object({
@@ -46,7 +46,7 @@ export async function riskRoutes(app: FastifyInstance) {
                 perDay: z.number(),
                 newContactsPerDay: z.number(),
               })
-              .describe('Já reduzidos pela curva de warmup.'),
+              .describe('Already reduced by the warm-up curve.'),
             baseLimits: z.object({
               perMinute: z.number(),
               perHour: z.number(),
@@ -55,9 +55,9 @@ export async function riskRoutes(app: FastifyInstance) {
             }),
             warmup: z.object({
               ageInDays: z.number(),
-              factor: z.number().describe('Fração dos limites liberada pela idade da sessão.'),
+              factor: z.number().describe('Fraction of the limits released by the session age.'),
             }),
-            throttleFactor: z.number().describe('1 = ritmo normal; abaixo disso, freio ativo.'),
+            throttleFactor: z.number().describe('1 = normal pace; below that, the brake is on.'),
           }),
         },
       },
@@ -65,14 +65,14 @@ export async function riskRoutes(app: FastifyInstance) {
     async (request) => {
       const auth = requireAuth(request)
       if (auth.sessionScope && !auth.sessionScope.includes(request.params.id)) {
-        throw notFound('Sessão não encontrada.')
+        throw notFound('Session not found.')
       }
 
       const session = await new SessionRepository(app.db, auth.orgId).findById(request.params.id)
-      if (!session) throw notFound('Sessão não encontrada.')
+      if (!session) throw notFound('Session not found.')
 
       const snapshot = await app.risk.snapshot(request.params.id)
-      if (!snapshot) throw notFound('Sessão não encontrada.')
+      if (!snapshot) throw notFound('Session not found.')
 
       return {
         score: snapshot.score,
@@ -93,10 +93,10 @@ export async function riskRoutes(app: FastifyInstance) {
     {
       preHandler: app.requirePermission('session:write'),
       schema: {
-        tags: ['risco'],
-        summary: 'Ajustar limites da sessão',
+        tags: ['risk'],
+        summary: 'Adjust session limits',
         description:
-          'Define os tetos antes do warmup. A curva de aquecimento continua valendo por cima destes valores — uma sessão nova não envia o teto no primeiro dia, por mais alto que ele seja.',
+          'Sets the ceilings before warm-up. The warm-up curve still applies on top of these values — a new session does not send at the ceiling on day one, however high it is.',
         params: z.object({ id: z.string().uuid() }),
         body: z.object({
           perMinute: z.number().int().min(1).max(600).optional(),
@@ -119,7 +119,7 @@ export async function riskRoutes(app: FastifyInstance) {
       const repo = new SessionRepository(app.db, auth.orgId)
 
       const session = await repo.findById(request.params.id)
-      if (!session) throw notFound('Sessão não encontrada.')
+      if (!session) throw notFound('Session not found.')
 
       const atuais = await app.risk.snapshot(request.params.id)
       const limites = {
@@ -137,10 +137,10 @@ export async function riskRoutes(app: FastifyInstance) {
     {
       preHandler: app.requirePermission('metrics:read'),
       schema: {
-        tags: ['risco'],
-        summary: 'Histórico de decisões',
+        tags: ['risk'],
+        summary: 'Decision history',
         description:
-          'Cada avaliação do motor, com o retrato do orçamento no instante da decisão. Responde por que um envio específico atrasou.',
+          'Every risk engine evaluation, with a snapshot of the budget at the moment of the decision. Answers why a specific send was delayed.',
         querystring: z.object({
           sessionId: z.string().uuid().optional(),
           action: z.enum(['allowed', 'delayed', 'held', 'throttled', 'blocked']).optional(),

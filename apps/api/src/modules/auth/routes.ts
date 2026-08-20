@@ -9,10 +9,7 @@ import { slugify } from '../../lib/slug'
 import { IdentityRepository, normalizeEmail } from '../../repos/identity'
 
 const emailField = z.string().email().max(254)
-const passwordField = z
-  .string()
-  .min(12, 'use pelo menos 12 caracteres')
-  .max(200, 'senha longa demais')
+const passwordField = z.string().min(12, 'use at least 12 characters').max(200, 'password too long')
 
 export async function authRoutes(app: FastifyInstance) {
   const route = app.withTypeProvider<ZodTypeProvider>()
@@ -44,14 +41,12 @@ export async function authRoutes(app: FastifyInstance) {
     {
       config: { rateLimit: { max: 30, timeWindow: '1 minute' } },
       schema: {
-        tags: ['autenticação'],
-        summary: 'A instância já foi inicializada?',
+        tags: ['authentication'],
+        summary: 'Has the instance been initialized?',
         response: {
           200: z.object({
-            needsSetup: z.boolean().describe('true enquanto não existir nenhuma organização.'),
-            openRegistration: z
-              .boolean()
-              .describe('false quando ALLOW_OPEN_REGISTRATION está desligado.'),
+            needsSetup: z.boolean().describe('true while no organization exists.'),
+            openRegistration: z.boolean().describe('false when ALLOW_OPEN_REGISTRATION is off.'),
           }),
         },
       },
@@ -75,10 +70,10 @@ export async function authRoutes(app: FastifyInstance) {
     {
       config: { rateLimit: { max: 5, timeWindow: '15 minutes' } },
       schema: {
-        tags: ['autenticação'],
-        summary: 'Criar a primeira organização',
+        tags: ['authentication'],
+        summary: 'Create the first organization',
         description:
-          'Disponível apenas enquanto a instância não tiver nenhuma organização. Cria a org, o usuário e a membership de owner.',
+          'Available only while the instance has no organization. Creates the org, the user, and the owner membership.',
         body: z.object({
           organizationName: z.string().min(2).max(120),
           name: z.string().min(2).max(120),
@@ -95,18 +90,18 @@ export async function authRoutes(app: FastifyInstance) {
     },
     async (request, reply) => {
       if (!app.env.ALLOW_OPEN_REGISTRATION) {
-        throw forbidden('Registro aberto está desligado nesta instância.')
+        throw forbidden('Open registration is off on this instance.')
       }
 
       if ((await identity.organizationCount()) > 0) {
-        throw forbidden('Esta instância já foi inicializada. Peça um convite a um administrador.')
+        throw forbidden('This instance is already initialized. Ask an administrator for an invite.')
       }
 
       const { organizationName, name, email, password } = request.body
       const slug = slugify(organizationName)
 
       if (await identity.findUserByEmail(email)) {
-        throw conflict('Já existe um usuário com este e-mail.')
+        throw conflict('A user with this email already exists.')
       }
 
       const created = await identity.createOrgWithOwner({
@@ -139,8 +134,8 @@ export async function authRoutes(app: FastifyInstance) {
     {
       config: { rateLimit: { max: 10, timeWindow: '5 minutes' } },
       schema: {
-        tags: ['autenticação'],
-        summary: 'Entrar',
+        tags: ['authentication'],
+        summary: 'Sign in',
         body: z.object({ email: emailField, password: z.string().min(1).max(200) }),
         response: {
           200: z.object({
@@ -165,7 +160,7 @@ export async function authRoutes(app: FastifyInstance) {
       const ok = await verifyPassword(digest, password)
 
       if (!user || !ok) {
-        throw unauthorized('E-mail ou senha incorretos.')
+        throw unauthorized('Incorrect email or password.')
       }
 
       const token = randomToken()
@@ -197,8 +192,8 @@ export async function authRoutes(app: FastifyInstance) {
     '/v1/auth/logout',
     {
       schema: {
-        tags: ['autenticação'],
-        summary: 'Sair',
+        tags: ['authentication'],
+        summary: 'Sign out',
         response: { 204: z.null() },
       },
     },
@@ -220,8 +215,8 @@ export async function authRoutes(app: FastifyInstance) {
     {
       preHandler: app.authenticate,
       schema: {
-        tags: ['autenticação'],
-        summary: 'Contexto da credencial atual',
+        tags: ['authentication'],
+        summary: 'Current credential context',
         response: {
           200: z.object({
             kind: z.enum(['user', 'api_key']),

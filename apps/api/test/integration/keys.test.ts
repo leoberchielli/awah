@@ -96,7 +96,7 @@ describe.skipIf(!hasInfra)('criação de chave de API', () => {
     })
 
     expect(resposta.statusCode).toBe(400)
-    expect(resposta.json().error.message).toContain('Omita')
+    expect(resposta.json().error.message).toContain('Omit')
   })
 
   /**

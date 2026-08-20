@@ -1,21 +1,23 @@
-# Contribuindo
+# Contributing
 
-O projeto está em construção ativa rumo ao v1.0. As decisões de arquitetura ainda
-estão maleáveis, e é justamente por isso que **issue com relato de caso de uso
-real vale mais que PR** nesta fase.
+*[Português](CONTRIBUTING.pt-BR.md)*
 
-## O que ajuda mais agora
+The project is under active construction toward v1.0. Architecture decisions are
+still malleable, and that is exactly why **an issue reporting a real use case is
+worth more than a PR** at this stage.
 
-- **Como você usa um gateway de WhatsApp hoje**, e o que quebra. Especialmente
-  se você já perdeu um número: quantos disparos, em quanto tempo, com que
-  intervalo. Esse é o dado que falta para calibrar o motor de risco.
-- **Códigos de desconexão que você viu e o AWAH não traduz.** A tabela em
-  `apps/api/src/engines/disconnect.ts` foi montada de observação, não de
-  especificação — ela tem buracos.
-- **Bug com passo a passo.** Log com `LOG_LEVEL=debug` e, se for pareamento,
-  `ENGINE_LOG_LEVEL=debug`.
+## What helps most right now
 
-## Subir o ambiente
+- **How you use a WhatsApp gateway today**, and what breaks. Especially if you
+  have already lost a number: how many sends, over how long, at what interval.
+  That is the data missing to calibrate the risk engine.
+- **Disconnect codes you have seen that AWAH does not translate.** The table in
+  `apps/api/src/engines/disconnect.ts` was built from observation, not from a
+  spec — it has holes.
+- **A bug with steps to reproduce.** Logs with `LOG_LEVEL=debug` and, if it is
+  pairing, `ENGINE_LOG_LEVEL=debug`.
+
+## Getting the environment up
 
 ```bash
 pnpm install
@@ -25,7 +27,7 @@ pnpm install
 docker compose up -d postgres redis
 ```
 
-Para rodar a pilha inteira a partir do seu código, e não da imagem publicada:
+To run the whole stack from your code instead of the published image:
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
@@ -35,7 +37,7 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
 cp .env.example .env
 ```
 
-Gere os dois segredos e coloque no `.env`:
+Generate the two secrets and put them in `.env`:
 
 ```bash
 openssl rand -base64 32
@@ -49,65 +51,68 @@ openssl rand -base64 48
 pnpm db:migrate && pnpm dev
 ```
 
-O painel em desenvolvimento roda separado, com proxy para a API:
+In development the dashboard runs separately, proxying to the API:
 
 ```bash
 pnpm dev:web
 ```
 
-## Antes de abrir o PR
+## Before opening the PR
 
 ```bash
 pnpm lint && pnpm typecheck && pnpm test && pnpm build
 ```
 
-Os testes de integração precisam de Postgres e Redis no ar. Sem eles, os
-arquivos de integração se pulam sozinhos e o resto roda — o que é útil localmente
-e insuficiente para um PR.
+The integration tests need Postgres and Redis up. Without them, the integration
+files skip themselves and the rest runs — which is useful locally and not enough
+for a PR.
 
-## Padrões do código
+## Code standards
 
-**Nomes e comentários em português.** É a língua do projeto. Nomes de campo da
-API e de tabela ficam em inglês, porque são contrato público e o público não é
-só brasileiro.
+**Names and comments in English.** It is the project's code language, for
+identifiers and comments alike. API field names and table names were always
+English, because they are a public contract and that contract is read far beyond
+Brazil — now the rest of the code matches. Interface strings are a separate
+matter: [docs/translating.md](docs/translating.md) covers translating them.
 
-**Comentário explica por quê, não o quê.** O código já diz o que faz. O que se
-perde com o tempo é o motivo: qual bug isso evita, qual alternativa foi descartada
-e por quê. Comentário que parafraseia a linha seguinte é ruído.
+**A comment explains why, not what.** The code already says what it does. What
+gets lost over time is the reason: which bug this avoids, which alternative was
+rejected and why. A comment that paraphrases the next line is noise.
 
 ```ts
-// Ruim: incrementa a tentativa
+// Bad: increments the attempt
 attempts++
 
-// Bom: sessão em pareamento tem socket aberto mas nenhuma identidade, e o envio
-// falha com um erro cru do Baileys. Consumir tentativa aqui gastaria as cinco
-// antes de o usuário terminar de escanear o QR.
+// Good: a session in pairing has an open socket but no identity, and the send
+// fails with a raw Baileys error. Burning an attempt here would spend all five
+// before the user finishes scanning the QR code.
 if (!adapter.isReady()) return release(id)
 ```
 
-**Migration junto da mudança de schema.** O CI roda `pnpm db:generate` e falha se
-o diff não estiver limpo.
+**Migration together with the schema change.** CI runs `pnpm db:generate` and
+fails if the diff is not clean.
 
-**Teste que prova o comportamento, não a implementação.** O melhor teste deste
-repositório é o que descreve o bug que ele impede de voltar. Vários deles têm um
-comentário dizendo exatamente qual é.
+**A test that proves the behavior, not the implementation.** The best test in
+this repository is the one that describes the bug it keeps from coming back.
+Several of them carry a comment saying exactly which bug that is.
 
-**Nada de dependência nova sem motivo forte.** Leveza é uma das quatro apostas do
-projeto. O SDK tem zero dependências e o painel tem quatro — cada uma delas foi
-uma decisão, não um `npm install` distraído.
+**No new dependency without a strong reason.** Staying light is one of the
+project's four bets. The SDK has zero dependencies and the dashboard has four —
+each one was a decision, not a distracted `npm install`.
 
-## Escopo
+## Scope
 
-O que **não** entra:
+What does **not** get in:
 
-- Automação de spam, disparo em massa sem opt-in, ou qualquer coisa cujo caso de
-  uso principal seja mandar mensagem para quem não pediu. O motor de risco existe
-  para o contrário disso.
-- Bypass de detecção do WhatsApp além do que já existe (jitter, warmup, presença).
-  A linha é "parecer humano porque o uso é humano", não "esconder que não é".
-- Engine nova sem estar atrás do `EngineAdapter`. O contrato é o que permite
-  trocar de engine sem reescrever integração.
+- Spam automation, bulk sending without opt-in, or anything whose main use case
+  is messaging people who did not ask. The risk engine exists for the opposite
+  of that.
+- Bypassing WhatsApp detection beyond what is already there (jitter, warm-up,
+  presence). The line is "look human because the usage is human", not "hide that
+  it is not".
+- A new engine that is not behind `EngineAdapter`. The contract is what lets you
+  swap engines without rewriting the integration.
 
-## Licença
+## License
 
-Contribuições entram sob MIT, a mesma do projeto.
+Contributions are licensed under MIT, the same as the project.

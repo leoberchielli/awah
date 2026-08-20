@@ -17,17 +17,16 @@ export class AppError extends Error {
 export const badRequest = (message: string, details?: unknown) =>
   new AppError(400, 'bad_request', message, details)
 
-export const unauthorized = (message = 'Credenciais ausentes ou inválidas.') =>
+export const unauthorized = (message = 'Missing or invalid credentials.') =>
   new AppError(401, 'unauthorized', message)
 
-export const forbidden = (message = 'Sua permissão não alcança esta operação.') =>
+export const forbidden = (message = 'Your permission does not cover this operation.') =>
   new AppError(403, 'forbidden', message)
 
-export const notFound = (message = 'Recurso não encontrado.') =>
-  new AppError(404, 'not_found', message)
+export const notFound = (message = 'Resource not found.') => new AppError(404, 'not_found', message)
 
 export const conflict = (message: string, details?: unknown) =>
   new AppError(409, 'conflict', message, details)
 
-export const tooManyRequests = (message = 'Requisições demais. Tente de novo em instantes.') =>
+export const tooManyRequests = (message = 'Too many requests. Try again shortly.') =>
   new AppError(429, 'too_many_requests', message)

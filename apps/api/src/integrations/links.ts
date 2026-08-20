@@ -101,7 +101,7 @@ export async function upsertLink(
     })
     .returning(COLUMNS)
 
-  if (!linha) throw new Error('falha ao gravar o vínculo de conversa')
+  if (!linha) throw new Error('failed to write the conversation link')
   return linha
 }
 

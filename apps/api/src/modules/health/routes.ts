@@ -23,14 +23,14 @@ export async function healthRoutes(app: FastifyInstance) {
     '/health',
     {
       schema: {
-        tags: ['sistema'],
+        tags: ['system'],
         summary: 'Liveness',
-        description: 'Responde enquanto o processo estiver vivo. Não consulta dependências.',
+        description: 'Answers while the process is alive. Does not query dependencies.',
         response: {
           200: z.object({
             status: z.literal('ok'),
-            version: z.string().describe('Versão da imagem. "dev" quando rodando do código-fonte.'),
-            revision: z.string().describe('Commit que gerou a imagem.'),
+            version: z.string().describe('Image version. "dev" when running from source.'),
+            revision: z.string().describe('Commit the image was built from.'),
             nodeId: z.string(),
             uptimeSeconds: z.number(),
           }),
@@ -54,9 +54,9 @@ export async function healthRoutes(app: FastifyInstance) {
     '/health/ready',
     {
       schema: {
-        tags: ['sistema'],
+        tags: ['system'],
         summary: 'Readiness',
-        description: 'Verifica Postgres e Redis. Devolve 503 se alguma dependência falhar.',
+        description: 'Checks Postgres and Redis. Returns 503 if any dependency fails.',
         response: {
           200: z.object({
             status: z.literal('ready'),

@@ -137,8 +137,8 @@ export class RiskEngine {
         typingMs: 0,
         availableAt: null,
         reason: input.bypass
-          ? 'Override explícito do cliente (x-awah-bypass-risk)'
-          : 'Motor de risco desligado nesta instância',
+          ? 'Explicit client override (x-awah-bypass-risk)'
+          : 'Risk engine off on this instance',
         score: 0,
         usage,
         limits,
@@ -186,8 +186,8 @@ export class RiskEngine {
       availableAt: null,
       reason:
         factor < 1
-          ? `Score ${score.value}/100 — ritmo reduzido a ${Math.round(factor * 100)}%`
-          : `Score ${score.value}/100 — ritmo normal`,
+          ? `Score ${score.value}/100 — pace reduced to ${Math.round(factor * 100)}%`
+          : `Score ${score.value}/100 — normal pace`,
       score: score.value,
       usage,
       limits,
@@ -235,12 +235,12 @@ export class RiskEngine {
 function describeExceeded(window: keyof BudgetUsage, limits: SessionLimits): string {
   switch (window) {
     case 'minute':
-      return `Teto de ${limits.perMinute} mensagens por minuto atingido`
+      return `Cap of ${limits.perMinute} messages per minute reached`
     case 'hour':
-      return `Teto de ${limits.perHour} mensagens por hora atingido`
+      return `Cap of ${limits.perHour} messages per hour reached`
     case 'day':
-      return `Teto de ${limits.perDay} mensagens por dia atingido`
+      return `Cap of ${limits.perDay} messages per day reached`
     case 'newContactsToday':
-      return `Teto de ${limits.newContactsPerDay} contatos novos por dia atingido`
+      return `Cap of ${limits.newContactsPerDay} new contacts per day reached`
   }
 }

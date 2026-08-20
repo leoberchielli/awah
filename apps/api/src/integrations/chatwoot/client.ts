@@ -86,7 +86,7 @@ export class ChatwootClient {
           texto.slice(0, 200)
         throw new ChatwootError(
           resposta.status,
-          `Chatwoot respondeu ${resposta.status}: ${detalhe}`,
+          `Chatwoot responded ${resposta.status}: ${detalhe}`,
         )
       }
 
@@ -146,7 +146,7 @@ export class ChatwootClient {
       }),
     })
 
-    if (!caixa?.id) throw new ChatwootError(500, 'Chatwoot não devolveu id da caixa criada')
+    if (!caixa?.id) throw new ChatwootError(500, 'Chatwoot did not return the created inbox id')
     return { id: caixa.id, name: caixa.name ?? nome }
   }
 
@@ -204,7 +204,7 @@ export class ChatwootClient {
     }
 
     const depois = await this.buscarContato(input.identifier)
-    if (!depois) throw new ChatwootError(500, 'contato criado mas não localizado no Chatwoot')
+    if (!depois) throw new ChatwootError(500, 'contact created but not found in Chatwoot')
     return depois
   }
 
@@ -251,7 +251,7 @@ export class ChatwootClient {
       }),
     })
 
-    if (!conversa?.id) throw new ChatwootError(500, 'Chatwoot não devolveu id da conversa')
+    if (!conversa?.id) throw new ChatwootError(500, 'Chatwoot did not return a conversation id')
     return String(conversa.id)
   }
 

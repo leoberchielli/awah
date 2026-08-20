@@ -306,6 +306,9 @@ export const en = {
   'typebot.escapeWord': 'Escape word',
   'typebot.escapeWordHint':
     'Whoever types this leaves the flow and moves to a human. Leave it empty only if there is another path to a person.',
+  'typebot.handoffReply': 'Reply when someone escapes',
+  'typebot.handoffReplyHint':
+    'Sent the moment a customer asks for a person. Write it in the language your customers speak — this one leaves the gateway before any human sees the conversation.',
   'typebot.submit': 'Test and connect',
   'typebot.submitting': 'Testing the flow…',
 

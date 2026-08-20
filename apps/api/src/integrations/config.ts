@@ -14,12 +14,12 @@ export const chatwootConfigSchema = z.object({
   baseUrl: z
     .string()
     .url()
-    .describe('Endereço da instância. https://app.chatwoot.com na versão hospedada.')
+    .describe('Address of the instance. https://app.chatwoot.com on the hosted version.')
     .transform((valor) => valor.replace(/\/+$/, '')),
   accountId: z.coerce.number().int().positive(),
   /** Precisa ser uma caixa do tipo API — as demais têm transporte próprio. */
   inboxId: z.coerce.number().int().positive(),
-  apiAccessToken: z.string().min(10).describe('Token de acesso do perfil ou do agent bot.'),
+  apiAccessToken: z.string().min(10).describe('Access token of the profile or of the agent bot.'),
   /**
    * Segredo que o Chatwoot apresenta ao chamar de volta.
    *
@@ -30,14 +30,14 @@ export const chatwootConfigSchema = z.object({
    */
   webhookToken: z.string().min(24),
   /** Nome que aparece no contato quando o WhatsApp não informa o do perfil. */
-  fallbackName: z.string().min(1).default('Contato do WhatsApp'),
+  fallbackName: z.string().min(1).default('WhatsApp contact'),
 })
 
 export const typebotConfigSchema = z.object({
   baseUrl: z
     .string()
     .url()
-    .describe('https://typebot.io na versão hospedada, ou o seu domínio.')
+    .describe('https://typebot.io on the hosted version, or your own domain.')
     .transform((valor) => valor.replace(/\/+$/, '')),
   /** O `publicId` do fluxo, o mesmo que aparece na URL de compartilhamento. */
   typebotId: z.string().min(1),
@@ -54,9 +54,9 @@ export const typebotConfigSchema = z.object({
    * O que o cliente digita para escapar do robô. Vazio desliga o escape — só
    * faça isso se houver outro caminho até um humano.
    */
-  humanHandoffKeyword: z.string().default('atendente'),
+  humanHandoffKeyword: z.string().default('agent'),
   /** Resposta ao escape, antes de o fluxo se calar para aquele contato. */
-  humanHandoffReply: z.string().default('Certo! Vou chamar alguém da equipe.'),
+  humanHandoffReply: z.string().default('Got it — I am bringing in someone from the team.'),
 })
 
 /**
@@ -67,7 +67,7 @@ export const typebotConfigSchema = z.object({
  * JSON serve: n8n, Make, uma função serverless, o sistema da casa.
  */
 export const httpConfigSchema = z.object({
-  url: z.string().url().describe('Para onde o gateway posta cada mensagem recebida.'),
+  url: z.string().url().describe('Where the gateway posts each incoming message.'),
   /**
    * Assina o corpo em HMAC-SHA256, no mesmo esquema dos webhooks — quem já
    * valida webhook do AWAH valida isto com a mesma função. Opcional porque em
@@ -85,7 +85,7 @@ export const httpConfigSchema = z.object({
   /** Caminho por ponto até a resposta, quando ela vem aninhada. */
   replyPath: z.string().optional(),
   /** Rótulo do painel, para distinguir quando houver mais de um. */
-  label: z.string().min(1).default('Plataforma externa'),
+  label: z.string().min(1).default('External platform'),
 })
 
 export type ChatwootConfig = z.infer<typeof chatwootConfigSchema>
@@ -136,7 +136,7 @@ export function parseConfig(kind: IntegrationKind, valor: unknown): AnyIntegrati
   const resultado = SCHEMAS[kind].safeParse(valor)
 
   if (!resultado.success) {
-    throw badRequest(`Configuração inválida para ${kind}.`, {
+    throw badRequest(`Invalid configuration for ${kind}.`, {
       issues: resultado.error.issues.map((i) => ({ path: i.path.join('.'), message: i.message })),
     })
   }
@@ -188,7 +188,7 @@ export async function saveIntegration(
     })
     .returning(COLUMNS)
 
-  if (!linha) throw new Error('falha ao gravar a integração')
+  if (!linha) throw new Error('failed to write the integration')
   return linha
 }
 
@@ -223,7 +223,7 @@ export async function loadActiveIntegrations(
         .update(schema.integrations)
         .set({
           lastError:
-            'Configuração ilegível: a ENCRYPTION_KEY atual não é a que gravou estas credenciais. Reconfigure a integração.',
+            'Unreadable configuration: the current ENCRYPTION_KEY is not the one that wrote these credentials. Reconfigure the integration.',
           lastErrorAt: new Date(),
         })
         .where(eq(schema.integrations.id, row.id))

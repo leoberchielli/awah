@@ -1,79 +1,85 @@
 # AWAH
 
-Gateway de WhatsApp com fila durável, motor de risco e sessões em cluster.
+*[Português](README.pt-BR.md)*
 
-A maioria dos gateways resolve *"como envio uma mensagem"*. O AWAH existe para a
-segunda pergunta: **"como envio dez mil sem perder nenhuma e sem perder o
-número"**.
+WhatsApp gateway with a durable queue, a risk engine and clustered sessions.
+
+Most gateways answer *"how do I send a message"*. AWAH exists for the second
+question: **"how do I send ten thousand without losing any of them, and without
+losing the number"**.
 
 ---
 
 > [!WARNING]
-> **Leia antes de usar.** Engines não oficiais (Baileys, whatsapp-web.js,
-> whatsmeow) funcionam por engenharia reversa do protocolo e **violam os termos
-> de uso do WhatsApp**. Existe risco real e permanente de bloqueio da conta.
+> **Read this before using it.** Unofficial engines (Baileys, whatsapp-web.js,
+> whatsmeow) work by reverse-engineering the protocol and **violate WhatsApp's
+> terms of service**. There is a real and permanent risk of the account being
+> banned.
 >
-> - Use um número dedicado. Nunca o seu pessoal nem o número crítico da empresa.
-> - O motor de risco reduz a probabilidade de bloqueio. Ele **não garante nada**.
-> - Para carga comercial séria, use a engine `cloud_api` — oficial da Meta, sem
->   risco de banimento, cobrada por conversa.
+> - Use a dedicated number. Never your personal one, never the company's
+>   critical number.
+> - The risk engine lowers the odds of a ban. It **guarantees nothing**.
+> - For serious commercial load, use the `cloud_api` engine — Meta's official
+>   one, no ban risk, billed per conversation.
 >
-> Este projeto não é afiliado, associado nem endossado pelo WhatsApp ou pela Meta.
+> This project is not affiliated with, associated with, or endorsed by WhatsApp
+> or Meta.
 
 ---
 
-## Estado
+## Status
 
-**Ondas 0 a 12 concluídas.** A sessão conecta e pareia, o envio passa por uma fila
-durável com ordem garantida por conversa, o motor de risco regula o ritmo para
-proteger o número, os eventos saem por webhooks assinados, o gateway roda em
-várias réplicas com failover automático, a operação é mensurável por um painel
-servido pela própria API, e a engine oficial da Meta roda atrás do mesmo
-contrato do Baileys. A onda 8 fechou o conjunto com o SDK, a documentação e o
-endurecimento da configuração. **O que falta para o v1.0 não é código: é uso
-real.**
+**Waves 0 through 12 are done.** The session connects and pairs, sending goes
+through a durable queue with ordering guaranteed per conversation, the risk
+engine paces sending to protect the number, events go out over signed webhooks,
+the gateway runs across several replicas with automatic failover, the operation
+is measurable from a dashboard served by the API itself, and Meta's official
+engine runs behind the same contract as Baileys. Wave 8 closed the set with the
+SDK, the documentation and configuration hardening. **What is missing for v1.0
+is not code: it is real use.**
 
-| Onda | Entrega | Estado |
+| Wave | Delivered | Status |
 | --- | --- | --- |
-| 0 | Schema, migrations, autenticação, RBAC, CI, Docker | ✅ |
-| 1 | Adapter Baileys, ciclo de vida da sessão, auth state no Postgres | ✅ |
+| 0 | Schema, migrations, authentication, RBAC, CI, Docker | ✅ |
+| 1 | Baileys adapter, session lifecycle, auth state in Postgres | ✅ |
 | 2 | Outbox, scheduler, webhooks, retry, DLQ | ✅ |
-| 3 | Motor de risco: orçamentos, warmup, throttle adaptativo | ✅ |
-| 4 | Cluster: leases, roteamento de comando, failover | ✅ |
-| 5 | Telemetria, agregados horários, `/metrics`, tracing | ✅ |
-| 6 | Dashboard React: operação, negócio e sessões | ✅ |
-| 7 | Adapter Cloud API atrás do mesmo contrato | ✅ |
-| 8 | Documentação, SDK TypeScript, hardening | ✅ |
-| 9 | Conectores nativos de Chatwoot e Typebot | ✅ |
-| 10 | Adoção sem curl: setup no painel e assistentes de conexão | ✅ |
-| 11 | Conector HTTP: plugar qualquer plataforma sem conector novo | ✅ |
-| 12 | Imagem publicada, multi-arquitetura, com proveniência | ✅ |
+| 3 | Risk engine: budgets, warm-up, adaptive throttle | ✅ |
+| 4 | Cluster: leases, command routing, failover | ✅ |
+| 5 | Telemetry, hourly aggregates, `/metrics`, tracing | ✅ |
+| 6 | React dashboard: operations, business and sessions | ✅ |
+| 7 | Cloud API adapter behind the same contract | ✅ |
+| 8 | Documentation, TypeScript SDK, hardening | ✅ |
+| 9 | Native Chatwoot and Typebot connectors | ✅ |
+| 10 | Adoption without curl: dashboard setup and connection wizards | ✅ |
+| 11 | HTTP connector: plug in any platform without a new connector | ✅ |
+| 12 | Published image, multi-architecture, with provenance | ✅ |
 
-> Nada além do pareamento foi exercitado contra um número real de ponta a ponta:
-> o QR é gerado e o socket conecta, mas o funil de entrega, os limites do motor
-> de risco em carga e o failover com sessão conectada ainda não passaram por um
-> aparelho de verdade. Os números do painel vêm dos agregados; a mecânica é
-> coberta por 366 testes, e ainda assim é teste, não produção.
+> Nothing beyond pairing has been exercised end to end against a real number:
+> the QR is generated and the socket connects, but the delivery funnel, the risk
+> engine's limits under load and failover with a connected session have never
+> been through an actual handset. The dashboard's numbers come from the
+> aggregates; the mechanics are covered by 366 tests, and a test is still a
+> test, not production.
 
-## Documentação
+## Documentation
 
-| Documento | Sobre |
+| Document | About |
 | --- | --- |
-| [docs/comecando.md](docs/comecando.md) | Do zero a uma conversa no Chatwoot, sem curl nenhum |
-| Este README | O que o projeto faz e como usar cada parte |
-| [docs/integracoes.md](docs/integracoes.md) | Ligar Chatwoot e Typebot, e o que o gateway acrescenta a eles |
-| [docs/qualquer-plataforma.md](docs/qualquer-plataforma.md) | O conector HTTP: n8n, Make, serverless, sistema próprio |
-| [docs/producao.md](docs/producao.md) | Subir e não se arrepender: TLS, backup, réplicas, monitoramento |
-| [docs/solucao-de-problemas.md](docs/solucao-de-problemas.md) | Os sintomas que aparecem de verdade e o que cada um costuma ser |
-| [packages/sdk](packages/sdk/README.md) | Cliente TypeScript, sem dependências |
-| [SECURITY.md](SECURITY.md) | Modelo de ameaça e como reportar vulnerabilidade |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | Como ajudar, e o que ajuda mais agora |
+| [docs/getting-started.md](docs/getting-started.md) | From zero to a conversation in Chatwoot, with no curl at all |
+| This README | What the project does and how to use each part |
+| [docs/integrations.md](docs/integrations.md) | Wiring up Chatwoot and Typebot, and what the gateway adds to them |
+| [docs/any-platform.md](docs/any-platform.md) | The HTTP connector: n8n, Make, serverless, your own system |
+| [docs/production.md](docs/production.md) | Ship it and don't regret it: TLS, backup, replicas, monitoring |
+| [docs/troubleshooting.md](docs/troubleshooting.md) | The symptoms that actually show up, and what each one usually is |
+| [packages/sdk](packages/sdk/README.md) | TypeScript client, no dependencies |
+| [SECURITY.md](SECURITY.md) | Threat model and how to report a vulnerability |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | How to help, and what helps most right now |
 
-Com a instância no ar, `/docs` traz a referência interativa de todas as rotas.
+With the instance up, `/docs` carries the interactive reference for every route.
 
-## Subir
+## Bringing it up
 
-Sem clonar nada:
+Without cloning anything:
 
 ```bash
 curl -O https://raw.githubusercontent.com/leoberchielli/awah/main/docker-compose.yml
@@ -83,27 +89,28 @@ curl -O https://raw.githubusercontent.com/leoberchielli/awah/main/docker-compose
 docker compose up -d
 ```
 
-A imagem vem pronta do registro — multi-arquitetura, amd64 e arm64, então roda
-igual num VPS barato, num Mac com Apple Silicon ou num Raspberry Pi.
+The image comes ready from the registry — multi-architecture, amd64 and arm64,
+so it runs the same on a cheap VPS, on an Apple Silicon Mac or on a Raspberry
+Pi.
 
-Isso levanta Postgres, Redis, aplica as migrations e sobe a API em
-`http://localhost:2900`. Abra no navegador: a primeira vez mostra a tela de
-setup, onde você cria a organização e o seu usuário. Ela fecha sozinha depois
-disso, e novos usuários passam a entrar por convite.
+That brings up Postgres and Redis, applies the migrations and starts the API on
+`http://localhost:2900`. Open it in the browser: the first time it shows the
+setup screen, where you create the organization and your user. It closes itself
+after that, and new users come in by invitation from then on.
 
-Daí em diante são três passos, todos no painel: parear o número na aba
-**Sessões**, ligar a ferramenta na aba **Integrações**, e acompanhar em
-**Operação**. O passo a passo completo está em
-[docs/comecando.md](docs/comecando.md); a documentação interativa da API, em
-`/docs`.
+From there it is three steps, all in the dashboard: pair the number in the
+**Sessions** tab, connect the tool in the **Integrations** tab, and follow it in
+**Operations**. The full walkthrough is in
+[docs/getting-started.md](docs/getting-started.md); the interactive API
+documentation, at `/docs`.
 
-## Desenvolvimento
+## Development
 
 ```bash
 pnpm install
 ```
 
-Suba só as dependências e rode a API no host, com recarga automática:
+Bring up only the dependencies and run the API on the host, with hot reload:
 
 ```bash
 docker compose up -d postgres redis
@@ -113,7 +120,7 @@ docker compose up -d postgres redis
 cp .env.example .env
 ```
 
-Gere os dois segredos e coloque no `.env`:
+Generate the two secrets and put them in `.env`:
 
 ```bash
 openssl rand -base64 32
@@ -123,42 +130,42 @@ openssl rand -base64 32
 openssl rand -base64 48
 ```
 
-Aplique as migrations e suba:
+Apply the migrations and start:
 
 ```bash
 pnpm db:migrate && pnpm dev
 ```
 
-### Rodar a partir do código
+### Running from source
 
-O `docker-compose.yml` puxa a imagem publicada, que é o caminho de quem só quer
-experimentar. Para construir a sua, junte o override:
+`docker-compose.yml` pulls the published image, which is the path for anyone who
+just wants to try it out. To build your own, add the override:
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
 ```
 
-Ou ponha `COMPOSE_FILE=docker-compose.yml:docker-compose.dev.yml` no seu `.env`
-e volte a usar `docker compose up -d` normalmente.
+Or put `COMPOSE_FILE=docker-compose.yml:docker-compose.dev.yml` in your `.env`
+and go back to plain `docker compose up -d`.
 
-### Comandos
+### Commands
 
-| Comando | O que faz |
+| Command | What it does |
 | --- | --- |
-| `pnpm dev` | API com recarga automática |
-| `pnpm dev:web` | Dashboard em `:2891`, com proxy para a API |
-| `pnpm test` | Testes unitários |
-| `pnpm typecheck` | Checagem de tipos |
-| `pnpm lint` | Lint e formatação (Biome) |
-| `pnpm db:generate` | Gera migration a partir do schema |
-| `pnpm db:migrate` | Aplica migrations pendentes |
-| `pnpm db:studio` | Abre o Drizzle Studio |
-| `pnpm build` | Compila API, painel e SDK |
+| `pnpm dev` | API with hot reload |
+| `pnpm dev:web` | Dashboard on `:2891`, proxying to the API |
+| `pnpm test` | Unit tests |
+| `pnpm typecheck` | Type checking |
+| `pnpm lint` | Lint and formatting (Biome) |
+| `pnpm db:generate` | Generates a migration from the schema |
+| `pnpm db:migrate` | Applies pending migrations |
+| `pnpm db:studio` | Opens Drizzle Studio |
+| `pnpm build` | Builds API, dashboard and SDK |
 
-## Conectar um número
+## Connecting a number
 
-Crie a sessão, inicie e pareie. O QR é trocado a cada poucos segundos, então
-busque-o depois do START:
+Create the session, start it and pair. The QR rotates every few seconds, so
+fetch it after the START:
 
 ```bash
 curl -X POST http://localhost:2900/v1/sessions -H "Authorization: Bearer $AWAH_KEY" -H 'content-type: application/json' -d '{"name":"atendimento"}'
@@ -172,123 +179,125 @@ curl -X POST http://localhost:2900/v1/sessions/$ID/start -H "Authorization: Bear
 curl http://localhost:2900/v1/sessions/$ID/qr -H "Authorization: Bearer $AWAH_KEY"
 ```
 
-A resposta traz o QR em texto cru e como PNG em `data:` URI, pronto para uma tag
-`<img>`. Quem preferir código a QR usa `POST /v1/sessions/$ID/pairing-code` com
-o número em dígitos.
+The response carries the QR as raw text and as a PNG in a `data:` URI, ready for
+an `<img>` tag. If you would rather have a code than a QR, use
+`POST /v1/sessions/$ID/pairing-code` with the number in digits.
 
-| Rota | O que faz |
+| Route | What it does |
 | --- | --- |
-| `POST /v1/sessions` | Cria o registro da sessão |
-| `POST /v1/sessions/:id/start` | Abre a conexão |
-| `POST /v1/sessions/:id/stop` | Desconecta preservando credenciais |
-| `POST /v1/sessions/:id/logout` | Remove o dispositivo do aparelho e apaga credenciais |
-| `GET /v1/sessions/:id/qr` | QR do pareamento em curso |
-| `POST /v1/sessions/:id/pairing-code` | Código de 8 dígitos, alternativa ao QR |
-| `GET /v1/sessions/:id/events` | Timeline de conexão e queda, com causa traduzida |
-| `GET /v1/engines` | Matriz de capacidades por engine |
+| `POST /v1/sessions` | Creates the session record |
+| `POST /v1/sessions/:id/start` | Opens the connection |
+| `POST /v1/sessions/:id/stop` | Disconnects, preserving credentials |
+| `POST /v1/sessions/:id/logout` | Removes the device from the handset and wipes credentials |
+| `GET /v1/sessions/:id/qr` | QR for the pairing in progress |
+| `POST /v1/sessions/:id/pairing-code` | 8-digit code, an alternative to the QR |
+| `GET /v1/sessions/:id/events` | Connection and drop timeline, with a plain-language cause |
+| `GET /v1/engines` | Capability matrix per engine |
 
-### Quando uma sessão cai
+### When a session drops
 
-`GET /v1/sessions/:id/events` devolve o código bruto do protocolo ao lado da
-causa em português. A diferença importa: `428` é queda de socket que volta
-sozinha, `440` significa que a credencial foi aberta em outro lugar e insistir
-piora, e `401` quer dizer que o aparelho desconectou o dispositivo e só um novo
-pareamento resolve. O gateway reconecta sozinho apenas nos casos em que
-reconectar ajuda — com backoff exponencial e jitter, para que dez sessões que
-caem juntas não voltem todas no mesmo milissegundo.
+`GET /v1/sessions/:id/events` returns the raw protocol code next to the cause in
+plain language. The difference matters: `428` is a socket drop that recovers on
+its own, `440` means the credential was opened somewhere else and insisting
+makes it worse, and `401` means the handset unlinked the device and only a new
+pairing fixes it. The gateway reconnects on its own only in the cases where
+reconnecting helps — with exponential backoff and jitter, so that ten sessions
+dropping together do not all come back in the same millisecond.
 
-Sessão que não pareia: suba `ENGINE_LOG_LEVEL=debug` e reinicie.
+A session that will not pair: set `ENGINE_LOG_LEVEL=debug` and restart.
 
-## Enviar mensagem
+## Sending a message
 
 ```bash
 curl -X POST http://localhost:2900/v1/sessions/$ID/messages -H "Authorization: Bearer $AWAH_KEY" -H 'content-type: application/json' -d '{"chatId":"5511987654321","text":"olá","clientMessageId":"pedido-4821"}'
 ```
 
-Responde **202, não 200** — e a diferença é a tese do projeto. A mensagem foi
-persistida, não entregue. Prometer entrega numa resposta síncrona seria mentira:
-o WhatsApp pode estar fora do ar, a sessão pode ter caído, e a partir da onda 3 o
-motor de risco pode segurar o envio de propósito. O estado real vive em
-`GET /v1/outbox/:id` e nos webhooks.
+It answers **202, not 200** — and the difference is the project's thesis. The
+message was persisted, not delivered. Promising delivery in a synchronous
+response would be a lie: WhatsApp may be down, the session may have dropped, and
+since wave 3 the risk engine may hold the send on purpose. The real state lives
+in `GET /v1/outbox/:id` and in the webhooks.
 
-**`clientMessageId` é sua chave de idempotência.** Reenviar o mesmo valor
-devolve o envio original com `duplicate: true` e não gera segunda mensagem — o
-retry do seu lado, depois de um timeout de rede, é seguro por construção. Se
-omitir, o AWAH gera um.
+**`clientMessageId` is your idempotency key.** Sending the same value again
+returns the original send with `duplicate: true` and produces no second message
+— a retry on your side, after a network timeout, is safe by construction. If you
+omit it, AWAH generates one.
 
-O `chatId` aceita o número com código do país ou o JID completo.
+`chatId` accepts the number with country code, or the full JID.
 
-### O que a fila garante
+### What the queue guarantees
 
-- **Ordem por conversa.** Dentro de um chat, sai na ordem em que entrou, e nunca
-  há dois envios simultâneos para o mesmo destinatário. Chats diferentes seguem
-  em paralelo.
-- **Nada se perde.** A linha existe no banco antes de qualquer I/O de rede. Se o
-  processo morrer no meio, a mensagem sai depois.
-- **Indisponibilidade não é falha.** Sessão caída ou ainda em pareamento devolve
-  o envio à fila sem consumir tentativa. Só erro real de entrega conta.
-- **Nada é descartado.** Esgotadas as tentativas, a mensagem vai para a DLQ e
-  continua consultável em `GET /v1/outbox?status=dead`, com replay por
+- **Ordering per conversation.** Within a chat, messages leave in the order they
+  came in, and there are never two simultaneous sends to the same recipient.
+  Different chats run in parallel.
+- **Nothing is lost.** The row exists in the database before any network I/O. If
+  the process dies midway, the message goes out later.
+- **Unavailability is not failure.** A session that dropped, or is still
+  pairing, returns the send to the queue without consuming an attempt. Only a
+  real delivery error counts.
+- **Nothing is discarded.** Once the attempts run out, the message goes to the
+  DLQ and stays queryable at `GET /v1/outbox?status=dead`, with replay via
   `POST /v1/outbox/:id/retry`.
 
-## Motor de risco
+## Risk engine
 
-É a razão de existir do projeto. Todo envio passa por ele entre a reserva na
-fila e a chamada da engine.
+It is the reason the project exists. Every send passes through it, between the
+reservation in the queue and the engine call.
 
-**Ele nunca descarta uma mensagem.** Quando o orçamento acabou, o envio volta
-para a fila com a hora em que a janela abre — e essa hora é real, calculada a
-partir do envio mais antigo ainda dentro da janela. Quando o comportamento se
-parece com disparo em massa, o ritmo cai. Recusar não é uma das opções.
+**It never discards a message.** When the budget is spent, the send goes back to
+the queue carrying the time the window opens — and that time is real, computed
+from the oldest send still inside the window. When the behavior starts to look
+like a mass blast, the pace drops. Refusing is not one of the options.
 
-### Orçamento
+### Budget
 
-Janelas deslizantes por sessão — minuto, hora, dia — e um teto separado de
-**contatos novos por dia**, que é o sinal de spam mais forte que o WhatsApp lê.
-Janela deslizante e não balde de hora cheia: um balde deixaria mandar o teto às
-13h59 e o teto de novo às 14h00.
+Sliding windows per session — minute, hour, day — plus a separate cap on **new
+contacts per day**, which is the strongest spam signal WhatsApp reads. A sliding
+window and not a fixed-hour bucket: a bucket would let you send the whole cap at
+13:59 and the whole cap again at 14:00.
 
-### Aquecimento de chip
+### Number warm-up
 
-Um número recém-pareado começa com **5% do teto** e chega a 100% em trinta dias,
-por rampa interpolada. Os limites que você configura são o alvo, não o valor de
-hoje:
+A freshly paired number starts at **5% of the cap** and reaches 100% over thirty
+days, on an interpolated ramp. The limits you configure are the target, not
+today's value:
 
 ```bash
 curl -X PUT http://localhost:2900/v1/sessions/$ID/risk/limits -H "Authorization: Bearer $AWAH_KEY" -H 'content-type: application/json' -d '{"perMinute":30,"perDay":5000}'
 ```
 
-Configurar 5000 por dia numa sessão pareada hoje resulta em 250 efetivas. É
-proposital.
+Setting 5000 per day on a session paired today gives you 250 in practice. That
+is deliberate.
 
 ### Score 0–100
 
-Quatro sinais, cada um com peso e explicação própria:
+Four signals, each with its own weight and its own reason:
 
-| Sinal | Peso | Por quê |
+| Signal | Weight | Why |
 | --- | --- | --- |
-| Conversa unilateral | 35 | Gente conversa nos dois sentidos; robô só fala |
-| Contatos novos | 25 | Falar com muitos desconhecidos é o que gera denúncia |
-| Falha de entrega | 25 | Indica lista comprada ou desatualizada |
-| Velocidade | 15 | Reage antes de o teto ser batido |
+| One-sided conversation | 35 | People talk in both directions; a bot only talks |
+| New contacts | 25 | Talking to a lot of strangers is what gets you reported |
+| Delivery failure | 25 | Points to a bought or stale list |
+| Speed | 15 | Reacts before the cap is hit |
 
-Acima de 40 o ritmo começa a cair; acima de 90 vai a 10% da vazão. Nunca chega a
-zero — parar sozinho seria indistinguível de um bug.
+Above 40 the pace starts to drop; above 90 it goes to 10% of throughput. It
+never reaches zero — stopping on its own would be indistinguishable from a bug.
 
 ```bash
 curl http://localhost:2900/v1/sessions/$ID/risk -H "Authorization: Bearer $AWAH_KEY"
 ```
 
-A resposta traz o score com a contribuição de cada fator, o consumo das janelas
-e os limites em vigor. `GET /v1/risk/events` guarda cada decisão com o retrato
-do orçamento no instante — responde por que um envio específico atrasou, meses
-depois.
+The response carries the score with each factor's contribution, the consumption
+of the windows and the limits in force. `GET /v1/risk/events` keeps every
+decision with a snapshot of the budget at that instant — it answers why one
+specific send was late, months later.
 
-### Comportamento humano
+### Human behavior
 
-Intervalo log-normal entre envios (a maioria perto da mediana, com pausas longas
-ocasionais) e presença de digitação proporcional ao texto antes de cada mensagem.
-Intervalo uniforme produz um padrão regular, que é justamente o que se evita.
+A log-normal interval between sends (most of them near the median, with the
+occasional long pause) and a typing presence proportional to the text before
+each message. A uniform interval produces a regular pattern, which is exactly
+what is being avoided.
 
 ### Override
 
@@ -296,10 +305,11 @@ Intervalo uniforme produz um padrão regular, que é justamente o que se evita.
 curl -X POST .../messages -H 'x-awah-bypass-risk: true' ...
 ```
 
-Fura a fila sob responsabilidade de quem chamou. Fica registrado em
-`risk_events` como qualquer outra decisão.
+Cuts the line, on the caller's own responsibility. It is recorded in
+`risk_events` like any other decision.
 
-`RISK_ENGINE_ENABLED=false` desliga tudo. Só use com número descartável.
+`RISK_ENGINE_ENABLED=false` turns everything off. Only use it with a disposable
+number.
 
 ## SDK
 
@@ -319,16 +329,18 @@ await awah.messages.sendText(sessionId, {
 })
 ```
 
-Sem dependências, sobre `fetch` e WebCrypto — roda em Node, Deno, Bun, Cloudflare
-Workers e no navegador. Repete sozinho `408`, `429`, `5xx` e falha de rede, e não
-repete os demais `4xx`, porque mandar de novo produz a mesma rejeição.
+No dependencies, built on `fetch` and WebCrypto — it runs on Node, Deno, Bun,
+Cloudflare Workers and in the browser. It retries `408`, `429`, `5xx` and
+network failures on its own, and does not retry the other `4xx`, because sending
+again produces the same rejection.
 
-**Ele gera o `clientMessageId` quando você não passa um**, e é isso que torna o
-retry automático seguro: sem chave de idempotência, repetir um POST depois de um
-timeout de rede mandaria a mesma mensagem duas vezes ao cliente final.
+**It generates the `clientMessageId` when you do not pass one**, and that is
+what makes the automatic retry safe: without an idempotency key, repeating a
+POST after a network timeout would send the same message twice to the end
+customer.
 
-Traz também a verificação de assinatura de webhook, que é o pedaço que mais dá
-errado quando se implementa na mão. Detalhes em
+It also carries webhook signature verification, which is the piece that most
+often goes wrong when implemented by hand. Details in
 [packages/sdk](packages/sdk/README.md).
 
 ## Webhooks
@@ -337,81 +349,84 @@ errado quando se implementa na mão. Detalhes em
 curl -X POST http://localhost:2900/v1/webhooks -H "Authorization: Bearer $AWAH_KEY" -H 'content-type: application/json' -d '{"url":"https://seu-sistema/hook","events":["*"]}'
 ```
 
-Eventos: `message.received`, `message.sent`, `message.status`, `message.failed`,
-`session.status`. O segredo aparece **uma única vez** na resposta de criação.
+Events: `message.received`, `message.sent`, `message.status`, `message.failed`,
+`session.status`. The secret appears **exactly once**, in the creation response.
 
-Cada entrega leva `x-awah-signature` (`sha256=…`) e `x-awah-timestamp`. A
-assinatura cobre `timestamp.corpo`, não só o corpo — assim uma entrega capturada
-não pode ser reenviada depois: mudar o timestamp para escapar da janela invalida
-a assinatura.
+Every delivery carries `x-awah-signature` (`sha256=…`) and `x-awah-timestamp`.
+The signature covers `timestamp.corpo`, not just the body — so a captured
+delivery cannot be replayed later: changing the timestamp to escape the window
+invalidates the signature.
 
 ```js
 const esperado = 'sha256=' + createHmac('sha256', segredo).update(`${timestamp}.${corpo}`).digest('hex')
 ```
 
-Entregas têm backoff exponencial e fila morta própria, consultável em
-`GET /v1/webhooks/deliveries?status=dead` e reprocessável em
-`POST /v1/webhooks/deliveries/replay`. Resposta 4xx que não seja 408 ou 429 vai
-direto para a fila morta — repetir não conserta payload rejeitado.
+Deliveries have exponential backoff and a dead-letter queue of their own,
+queryable at `GET /v1/webhooks/deliveries?status=dead` and reprocessable at
+`POST /v1/webhooks/deliveries/replay`. A 4xx response that is not 408 or 429
+goes straight to the dead-letter queue — retrying does not fix a rejected
+payload.
 
-## Painel
+## Dashboard
 
-O dashboard é servido pela própria API, na mesma origem. Não é detalhe de
-empacotamento: é o que permite que a credencial do painel seja um cookie
-`httpOnly` em vez de um token guardado no `localStorage`. Em origens separadas o
-navegador exigiria `SameSite=None`, e o cookie passaria a viajar em requisição de
-terceiro — exatamente o que ele deveria impedir.
+The dashboard is served by the API itself, on the same origin. This is not a
+packaging detail: it is what lets the dashboard credential be an `httpOnly`
+cookie instead of a token kept in `localStorage`. On separate origins the
+browser would require `SameSite=None`, and the cookie would start traveling on
+third-party requests — exactly what it is supposed to prevent.
 
-Entre em `http://localhost:2900` com o usuário criado no `register`. Chave de
-API não entra aqui, e é proposital: uma chave colada no navegador fica ao alcance
-de qualquer extensão instalada.
+Sign in at `http://localhost:2900` with the user created at `register`. An API
+key does not get you in here, and that is deliberate: a key pasted into the
+browser is within reach of every installed extension.
 
-| Aba | O que responde |
+| Tab | What it answers |
 | --- | --- |
-| **Operação** | Está tudo no ar? A mensagem está saindo? O risco está segurando algo? |
-| **Negócio** | Quanto se conversa, quanto se responde e em quanto tempo |
-| **Sessões** | Parear, iniciar, parar, e ver risco e histórico de queda de cada número |
+| **Operations** | Is everything up? Are messages going out? Is risk holding anything back? |
+| **Business** | How much conversation there is, how much gets answered, and how fast |
+| **Sessions** | Pair, start, stop, and see the risk and drop history of each number |
 
-A janela de tempo e o filtro de sessão moram na **URL**. Um operador que vê algo
-estranho manda o link para o colega e o colega abre exatamente a mesma tela, em
-vez de "clica em 7 dias, depois filtra por...".
+The time window and the session filter live in the **URL**. An operator who sees
+something odd sends the link to a colleague and the colleague opens exactly the
+same screen, instead of "click 7 days, then filter by...".
 
-O painel destaca uma divergência específica: sessão com `desired_state=running`
-que não está rodando. É o estado que custa dinheiro em silêncio — a fila
-continua aceitando mensagens e nada sai.
+The dashboard highlights one specific divergence: a session with
+`desired_state=running` that is not running. That is the state that costs money
+in silence — the queue keeps accepting messages and nothing goes out.
 
-### Sobre a leitura visual
+### On visual legibility
 
-Estado é forma **e** cor: cada pílula tem um ponto além do tom, porque daltonismo
-é comum e um painel que só fala por cor exclui parte de quem o opera. Todo número
-está em fonte monoespaçada com dígito tabular — coluna que não dança quando o
-valor muda. Tema claro, escuro e "o do sistema", que é o padrão.
+State is shape **and** color: every pill carries a dot on top of its hue,
+because color blindness is common and a dashboard that speaks only in color
+shuts out part of the people operating it. Every number is in a monospaced font
+with tabular digits — a column that does not dance when the value changes. Light
+theme, dark theme, and "the system one", which is the default.
 
-### Ver o painel com dados
+### Seeing the dashboard with data
 
-Instância nova mostra painel vazio, o que é correto e pouco informativo. Para
-conferir os gráficos antes de ter tráfego real:
+A fresh instance shows an empty dashboard, which is correct and not very
+informative. To check the charts before you have real traffic:
 
 ```bash
 docker compose exec -T postgres psql -U awah -d awah -f /dev/stdin < apps/api/scripts/seed-demo-metrics.sql
 ```
 
-São **dados sintéticos**, gravados só em `metrics_hourly`. O mesmo arquivo traz o
-`DELETE` que os remove.
+This is **synthetic data**, written only into `metrics_hourly`. The same file
+carries the `DELETE` that removes it.
 
-### Servir de outro lugar
+### Serving it from somewhere else
 
-A API procura o build em `public`, `apps/api/public`, `../web/dist` e
-`apps/web/dist`, nessa ordem, e sobe sem painel se não achar nenhum — a API é
-útil sozinha. `DASHBOARD_DIR` aponta um diretório explícito e ganha de todos.
+The API looks for the build in `public`, `apps/api/public`, `../web/dist` and
+`apps/web/dist`, in that order, and starts without a dashboard if it finds none
+— the API is useful on its own. `DASHBOARD_DIR` points at an explicit directory
+and beats all of them.
 
-## Engine oficial da Meta
+## Meta's official engine
 
-O ponto do adapter `cloud_api` não é a Cloud API em si — é ela caber no mesmo
-`EngineAdapter` do Baileys. Com as duas atrás do mesmo contrato, quem integra
-escreve o código uma vez e migra do não oficial para o oficial trocando uma
-linha: começa barato e sujeito a bloqueio, termina caro e blindado, sem
-reescrever nada.
+The point of the `cloud_api` adapter is not the Cloud API itself — it is that it
+fits into the same `EngineAdapter` as Baileys. With both behind the same
+contract, whoever integrates writes the code once and moves from the unofficial
+to the official one by changing a single line: start cheap and exposed to bans,
+end up expensive and shielded, without rewriting anything.
 
 ```bash
 curl -X POST http://localhost:2900/v1/sessions -H "Authorization: Bearer $AWAH_KEY" -H 'content-type: application/json' -d '{"name":"oficial","engine":"cloud_api"}'
@@ -421,123 +436,130 @@ curl -X POST http://localhost:2900/v1/sessions -H "Authorization: Bearer $AWAH_K
 curl -X PUT http://localhost:2900/v1/sessions/$ID/credentials -H "Authorization: Bearer $AWAH_KEY" -H 'content-type: application/json' -d '{"phoneNumberId":"1098...","accessToken":"EAAG...","verifyToken":"um-segredo-seu","appSecret":"o-app-secret-da-meta"}'
 ```
 
-A resposta devolve a URL para cadastrar no app da Meta. As credenciais são
-cifradas na mesma tabela do auth state do Baileys, e não em `sessions.config`: o
-token permite enviar mensagem em nome da empresa e ler as conversas dela — é
-credencial, não configuração. Nenhuma leitura da API devolve o token.
+The response returns the URL to register in the Meta app. The credentials are
+encrypted in the same table as the Baileys auth state, and not in
+`sessions.config`: the token allows sending messages on the company's behalf and
+reading its conversations — it is a credential, not configuration. No API read
+ever returns the token.
 
-**Não há pareamento nem socket.** "Conectar" é confirmar que o token alcança o
-número, e falhar aí é o ponto: sem essa verificação, uma credencial errada só
-apareceria na primeira mensagem, já dentro da fila e contando como falha de
-entrega. As mensagens chegam por webhook, no endpoint `/webhooks/meta/:id`.
+**There is no pairing and no socket.** "Connecting" means confirming that the
+token reaches the number, and failing right there is the point: without that
+check, a wrong credential would only surface on the first message, already
+inside the queue and counting as a delivery failure. Messages arrive by webhook,
+at the `/webhooks/meta/:id` endpoint.
 
-### O que muda ao trocar de engine
+### What changes when you switch engines
 
-`GET /v1/engines` publica a matriz. O resumo:
+`GET /v1/engines` publishes the matrix. The summary:
 
 | | `baileys` | `cloud_api` |
 | --- | --- | --- |
-| Pareamento por QR | sim | não — é token |
-| Grupos | sim | não |
-| Presença de digitação | sim | não existe na API |
-| Conversa livre | sempre | só dentro da janela de 24 h |
-| Risco de bloqueio | real | nenhum |
-| Custo | zero | por conversa, cobrado pela Meta |
+| QR pairing | yes | no — it is a token |
+| Groups | yes | no |
+| Typing presence | yes | does not exist in the API |
+| Free-form conversation | always | only inside the 24 h window |
+| Ban risk | real | none |
+| Cost | zero | per conversation, billed by Meta |
 
-Fora da janela de 24 h a Cloud API só aceita template aprovado. O erro `131047`
-da Meta é traduzido para essa frase em vez de vazar o código — sem tradução,
-quem integra vê um número e conclui que a credencial quebrou.
+Outside the 24 h window the Cloud API only accepts an approved template. Meta's
+`131047` error is translated into that sentence instead of leaking the code —
+without the translation, whoever integrates sees a number and concludes the
+credential broke.
 
-### Segurança do webhook
+### Webhook security
 
-O callback da Meta é o **único endpoint público** do sistema: quem chama é a
-infraestrutura deles, sem chave de API. Toda a defesa está na assinatura, e por
-isso o `appSecret` é obrigatório — sem ele haveria um caminho anônimo para
-injetar mensagens falsas na conta de qualquer cliente. A conferência é HMAC sobre
-os **bytes crus** do corpo, não sobre o JSON reserializado: reserializar produz
-bytes parecidos, não idênticos, e o HMAC falharia de forma intermitente e
-inexplicável.
+Meta's callback is the system's **only public endpoint**: the caller is their
+infrastructure, with no API key. The whole defense is in the signature, which is
+why `appSecret` is mandatory — without it there would be an anonymous path for
+injecting fake messages into any customer's account. The check is an HMAC over
+the **raw bytes** of the body, not over re-serialized JSON: re-serializing
+produces similar bytes, not identical ones, and the HMAC would fail
+intermittently and inexplicably.
 
-## Integrações
+## Integrations
 
-O AWAH não tem caixa de entrada nem construtor de fluxo, e isso é decisão, não
-lacuna. O Chatwoot já resolve atendimento humano; o Typebot já resolve fluxo;
-qualquer outra plataforma entra pelo conector HTTP. O que falta a todas elas é
-justamente o que o gateway tem:
+AWAH has no inbox and no flow builder, and that is a decision, not a gap.
+Chatwoot already solves human support; Typebot already solves flows; any other
+platform comes in through the HTTP connector. What all of them lack is precisely
+what the gateway has:
 
-| | Ligado direto na Meta | Com o AWAH embaixo |
+| | Wired straight to Meta | With AWAH underneath |
 | --- | --- | --- |
-| Ordem por conversa | sem garantia | FIFO por chat, chats em paralelo |
-| Mensagem perdida | dispara e esquece | fila durável, retry, DLQ com replay |
-| Ritmo de envio | o que a ferramenta mandar | orçamento, warmup e freio adaptativo |
-| Reentrega duplicada | manda de novo | idempotência por chave |
-| Estado de entrega | "enviei" | funil sent → delivered → read |
+| Ordering per conversation | no guarantee | FIFO per chat, chats in parallel |
+| Lost message | fire and forget | durable queue, retry, DLQ with replay |
+| Send pace | whatever the tool decides | budget, warm-up and adaptive brake |
+| Duplicate redelivery | sends it again | idempotency by key |
+| Delivery state | "I sent it" | sent → delivered → read funnel |
 
-Ligar leva dois campos: o endereço do Chatwoot e um token de acesso. O gateway
-descobre o resto — a conta, as caixas que existem — e **cria a caixa API já com o
-webhook apontado para ele**. Descobrir o `accountId` na URL, descobrir o
-`inboxId` na URL e voltar lá para colar o webhook eram os três passos que mais
-faziam gente desistir; nenhum deles existe mais.
+Connecting takes two fields: the Chatwoot address and an access token. The
+gateway discovers the rest — the account, the inboxes that exist — and **creates
+the API inbox with the webhook already pointed at itself**. Digging the
+`accountId` out of the URL, digging the `inboxId` out of the URL and going back
+there to paste the webhook were the three steps that made most people give up;
+none of them exist anymore.
 
-A conexão é testada antes de gravar: credencial errada guardada em silêncio só
-apareceria na primeira mensagem de um cliente real.
+The connection is tested before it is saved: a wrong credential stored in
+silence would only surface on a real customer's first message.
 
-O Typebot pede só o **link de compartilhamento** do fluxo — endereço e id saem
-dele.
+Typebot asks only for the flow's **share link** — the address and the id come
+out of it.
 
 ```bash
 curl -X PUT http://localhost:2900/v1/sessions/$ID/integrations/typebot -H "Authorization: Bearer $AWAH_KEY" -H 'content-type: application/json' -d '{"shareUrl":"https://typebot.io/meu-fluxo"}'
 ```
 
-### Qualquer outra plataforma
+### Any other platform
 
-Os dois conectores acima existem porque são os casos mais comuns. Para o resto há
-o **conector HTTP**: o gateway posta cada mensagem recebida na sua URL e envia de
-volta o que a resposta trouxer.
+The two connectors above exist because they are the most common cases. For the
+rest there is the **HTTP connector**: the gateway posts every received message
+to your URL and sends back whatever the response carries.
 
 ```bash
 curl -X PUT http://localhost:2900/v1/sessions/$ID/integrations/http -H "Authorization: Bearer $AWAH_KEY" -H 'content-type: application/json' -d '{"url":"https://n8n.exemplo.com/webhook/atendimento","secret":"um-segredo-bem-longo"}'
 ```
 
-Responda `{"reply":"texto"}` e a mensagem sai. Responda vazio e nada sai — válido
-para quem só quer registrar. Com isso, n8n, Make, uma função serverless ou o
-sistema da casa viram o robô sem ninguém escrever conector novo aqui dentro.
+Answer `{"reply":"texto"}` and the message goes out. Answer empty and nothing
+goes out — valid for anyone who only wants to log. With that, n8n, Make, a
+serverless function or the in-house system become the bot, without anyone
+writing a new connector in here.
 
-**Isso não é o mesmo que um webhook.** Webhook avisa e esquece: a resposta dele é
-ignorada. O conector faz pergunta e resposta, e o que volta entra pela mesma fila
-de qualquer envio — com ordem por conversa, motor de risco e reentrega. Um fluxo
-do n8n ligado direto na Meta não tem nada disso.
+**This is not the same as a webhook.** A webhook notifies and forgets: its
+response is ignored. The connector asks and gets an answer, and what comes back
+enters through the same queue as any other send — with ordering per
+conversation, risk engine and redelivery. An n8n flow wired straight to Meta has
+none of that.
 
-O painel tem um botão **Testar** que manda um evento de exemplo e mostra status,
-tempo, o corpo cru e — quando a resposta não vira mensagem — o motivo. Receitas
-para cada plataforma em
-[docs/qualquer-plataforma.md](docs/qualquer-plataforma.md).
+The dashboard has a **Test** button that sends a sample event and shows the
+status, the timing, the raw body and — when the response does not turn into a
+message — the reason. Recipes for each platform in
+[docs/any-platform.md](docs/any-platform.md).
 
-Os dois convivem na mesma sessão, que é o arranjo mais útil: o Typebot atende
-primeiro, e quando o cliente digita **atendente** o fluxo se cala e o agente
-assume uma conversa que já tem todo o histórico.
+The two coexist in the same session, which is the most useful arrangement:
+Typebot answers first, and when the customer types **atendente** the flow goes
+quiet and the agent takes over a conversation that already has the whole
+history.
 
-Detalhes, incluindo o que não é reenviado e por quê, em
-[docs/integracoes.md](docs/integracoes.md).
+Details, including what is not redelivered and why, in
+[docs/integrations.md](docs/integrations.md).
 
-## Métricas
+## Metrics
 
-Quatro famílias, uma rota cada. Todas leem dos agregados horários, nunca das
-tabelas cruas — é o que mantém o painel rápido conforme a base cresce.
+Four families, one route each. All of them read from the hourly aggregates,
+never from the raw tables — that is what keeps the dashboard fast as the
+database grows.
 
-| Rota | Responde |
+| Route | Answers |
 | --- | --- |
-| `GET /v1/kpi/sessions` | Uptime, quedas com causa traduzida, MTBF por sessão |
-| `GET /v1/kpi/delivery` | Funil sent→delivered→read, latência p50/p95/p99, fila, DLQ |
-| `GET /v1/kpi/risk` | Decisões do motor, contatos novos, série do score |
-| `GET /v1/kpi/business` | Volume por hora, conversas ativas, tempo de 1ª resposta, top contatos |
+| `GET /v1/kpi/sessions` | Uptime, drops with a plain-language cause, MTBF per session |
+| `GET /v1/kpi/delivery` | sent→delivered→read funnel, p50/p95/p99 latency, queue, DLQ |
+| `GET /v1/kpi/risk` | Engine decisions, new contacts, score series |
+| `GET /v1/kpi/business` | Volume per hour, active conversations, time to first response, top contacts |
 
-Aceitam `?hours=` (padrão 24, até 720) e `?sessionId=`.
+They accept `?hours=` (default 24, up to 720) and `?sessionId=`.
 
-**Latência por percentil, não por média.** A distribuição tem cauda longa: a
-maioria das mensagens chega em segundos e algumas levam minutos porque o
-destinatário estava sem rede. A média some com esse comportamento; o p95 o
-mostra.
+**Latency by percentile, not by average.** The distribution has a long tail:
+most messages arrive in seconds and some take minutes because the recipient had
+no network. The average makes that behavior disappear; the p95 shows it.
 
 ### Prometheus
 
@@ -545,166 +567,168 @@ mostra.
 curl http://localhost:2900/metrics -H "Authorization: Bearer $METRICS_TOKEN"
 ```
 
-Séries de negócio (`awah_messages_sent_total`, `awah_outbox_depth`,
-`awah_risk_decisions_total`, `awah_send_duration_seconds`) e de processo (heap,
-GC, atraso do event loop). Toda série carrega o rótulo `node`, para distinguir
-réplicas no mesmo scrape.
+Business series (`awah_messages_sent_total`, `awah_outbox_depth`,
+`awah_risk_decisions_total`, `awah_send_duration_seconds`) and process series
+(heap, GC, event loop lag). Every series carries the `node` label, to tell
+replicas apart within the same scrape.
 
-Defina `METRICS_TOKEN`: sem ele, a URL entrega volume de mensagens, número de
-sessões e saúde da operação a quem alcançar a porta.
+Set `METRICS_TOKEN`: without it, the URL hands message volume, session count and
+the health of the operation to anyone who can reach the port.
 
 ### Tracing
 
-O código é instrumentado com **apenas a API** do OpenTelemetry — poucos
-quilobytes, e sem SDK registrado todas as chamadas viram no-op. Embutir o SDK
-completo cobraria dezenas de megabytes de todo mundo, inclusive de quem nunca
-vai olhar um trace. Quem quiser, pluga no boot:
+The code is instrumented with **the OpenTelemetry API only** — a few kilobytes,
+and with no SDK registered every call becomes a no-op. Bundling the full SDK
+would charge everyone tens of megabytes, including people who will never look at
+a trace. Anyone who wants it plugs it in at boot:
 
 ```bash
 node --require ./otel.js apps/api/dist/index.js
 ```
 
-## A imagem
+## The image
 
-`ghcr.io/leoberchielli/awah` — multi-arquitetura (amd64 e arm64), publicada
-pelo CI a cada push.
+`ghcr.io/leoberchielli/awah` — multi-architecture (amd64 and arm64), published
+by CI on every push.
 
-| Tag | O que é |
+| Tag | What it is |
 | --- | --- |
-| `latest` | Última versão marcada com tag. É a que você quer. |
-| `edge` | Ponta da branch principal. Pode quebrar. |
-| `1.2.3`, `1.2`, `1` | Versão exata e as faixas dela |
-| `sha-abc1234` | Commit específico, para fixar sem ambiguidade |
+| `latest` | The latest tagged release. This is the one you want. |
+| `edge` | Tip of the main branch. It can break. |
+| `1.2.3`, `1.2`, `1` | The exact version and its ranges |
+| `sha-abc1234` | A specific commit, to pin without ambiguity |
 
-Cada publicação carrega uma **attestation de proveniência** assinada, verificável
-com o `gh`:
+Every publish carries a signed **provenance attestation**, verifiable with `gh`:
 
 ```bash
 gh attestation verify oci://ghcr.io/leoberchielli/awah:latest --owner leoberchielli
 ```
 
-Não é cerimônia: quem roda um gateway de WhatsApp tem as credenciais dos próprios
-clientes dentro dele, e conferir de onde veio o binário antes de subir é o mínimo.
+This is not ceremony: whoever runs a WhatsApp gateway has their own customers'
+credentials inside it, and checking where the binary came from before bringing
+it up is the bare minimum.
 
-`GET /health` devolve a versão e o commit da imagem — a primeira pergunta de
-qualquer suporte, respondida sem abrir o contêiner.
+`GET /health` returns the image's version and commit — the first question in any
+support conversation, answered without opening the container.
 
 ## Cluster
 
-Suba quantas réplicas quiser apontando para o mesmo Postgres e Redis. Não há nó
-primário, coordenador nem eleição — todos rodam o mesmo código.
+Bring up as many replicas as you want, all pointing at the same Postgres and
+Redis. There is no primary node, no coordinator and no election — they all run
+the same code.
 
 ```bash
 docker compose --profile cluster up -d
 ```
 
-**Posse por lease.** Cada sessão pertence a um nó de cada vez, por uma chave no
-Redis com TTL de 15 s renovada a cada 5 s. Isso não é otimização: duas réplicas
-com o mesmo auth state abrem dois sockets para o mesmo número, e o WhatsApp
-derruba os dois alternadamente com 440 — o sintoma mais confuso do protocolo.
+**Ownership by lease.** Each session belongs to one node at a time, through a
+Redis key with a 15 s TTL renewed every 5 s. This is not an optimization: two
+replicas with the same auth state open two sockets to the same number, and
+WhatsApp drops both of them alternately with 440 — the most confusing symptom in
+the protocol.
 
-**Failover automático.** Se o nó dono morre, ninguém renova, o lease expira e
-outra réplica assume. Medido em teste com `SIGKILL`: **~20 segundos** até a
-sessão voltar ao ar, sem intervenção.
+**Automatic failover.** If the owning node dies, nobody renews, the lease
+expires and another replica takes over. Measured in a test with `SIGKILL`:
+**~20 seconds** until the session is back up, with no intervention.
 
-O que torna isso possível é a decisão da onda 1 — o auth state do Baileys vive
-no Postgres, cifrado. Enquanto as credenciais estão no disco de um nó, nenhuma
-outra réplica consegue assumir coisa alguma.
+What makes this possible is the wave 1 decision — the Baileys auth state lives
+in Postgres, encrypted. While the credentials sit on one node's disk, no other
+replica can take over anything.
 
-**Intenção separada do estado.** `desired_state` guarda onde o operador quer a
-sessão; `status` guarda onde ela está. O failover só ressuscita o que está
-`running` — uma sessão que você parou fica parada.
+**Intent separated from state.** `desired_state` holds where the operator wants
+the session; `status` holds where it actually is. Failover only revives what is
+`running` — a session you stopped stays stopped.
 
-**Comandos roteados.** Parar, deslogar e pedir código de pareamento exigem o
-socket vivo. Chegando na réplica errada, o comando viaja até o dono por pub/sub
-e volta com o resultado. Sem isso, essas operações funcionariam ou não conforme
-o balanceador escolhesse o nó.
+**Routed commands.** Stopping, logging out and asking for a pairing code all
+require a live socket. Arriving at the wrong replica, the command travels to the
+owner over pub/sub and comes back with the result. Without this, those
+operations would work or not depending on which node the load balancer picked.
 
-**QR compartilhado.** Publicado no Redis pelo dono, lido por qualquer réplica.
+**Shared QR.** Published to Redis by the owner, read by any replica.
 
-| Variável | Padrão | O que faz |
+| Variable | Default | What it does |
 | --- | --- | --- |
-| `NODE_ID` | hostname | Identidade da réplica no cluster |
-| `LEASE_TTL_MS` | 15000 | Vida da posse sem renovação |
-| `LEASE_RENEW_MS` | 5000 | Intervalo de renovação |
-| `FAILOVER_SCAN_MS` | 10000 | Varredura de sessões órfãs |
-| `COMMAND_TIMEOUT_MS` | 10000 | Espera por resposta de outro nó |
+| `NODE_ID` | hostname | The replica's identity in the cluster |
+| `LEASE_TTL_MS` | 15000 | How long ownership survives without renewal |
+| `LEASE_RENEW_MS` | 5000 | Renewal interval |
+| `FAILOVER_SCAN_MS` | 10000 | Sweep for orphaned sessions |
+| `COMMAND_TIMEOUT_MS` | 10000 | Wait for a response from another node |
 
-## Arquitetura
+## Architecture
 
 ```
 apps/api
-  auth/           credenciais, RBAC, guarda de permissão
-  cluster/        lease, roteamento de comando, failover
-  dashboard/      estáticos do painel e fallback de rota de cliente
-  engines/        contrato EngineAdapter + Baileys e Cloud API
-  integrations/   conectores de Chatwoot, Typebot e HTTP genérico
-  sessions/       ciclo de vida, reconexão, posse por nó
-  messaging/      outbox, scheduler, persistência, retenção
-  risk/           orçamento, warmup, score, jitter
-  telemetry/      agregados horários, Prometheus, tracing
-  webhooks/       assinatura, entrega, fila morta
-  workers/        processos de fundo
-  repos/          acesso a dados com escopo de tenant
-  modules/        rotas HTTP
-apps/web          dashboard React, buildado para dentro da imagem da API
-packages/db       Drizzle: schema, migrations, cliente
-packages/sdk      cliente TypeScript publicado, sem dependências
+  auth/           credentials, RBAC, permission guard
+  cluster/        lease, command routing, failover
+  dashboard/      dashboard static files and client-route fallback
+  engines/        EngineAdapter contract + Baileys and Cloud API
+  integrations/   Chatwoot, Typebot and generic HTTP connectors
+  sessions/       lifecycle, reconnection, per-node ownership
+  messaging/      outbox, scheduler, persistence, retention
+  risk/           budget, warm-up, score, jitter
+  telemetry/      hourly aggregates, Prometheus, tracing
+  webhooks/       signing, delivery, dead-letter queue
+  workers/        background processes
+  repos/          data access scoped by tenant
+  modules/        HTTP routes
+apps/web          React dashboard, built into the API image
+packages/db       Drizzle: schema, migrations, client
+packages/sdk      published TypeScript client, no dependencies
 ```
 
-### Credenciais de sessão
+### Session credentials
 
-O auth state do Baileys vive no Postgres, cifrado em AES-256-GCM, e não em
-arquivo. É o que torna o failover possível: enquanto as credenciais estão no
-disco de um nó, nenhuma outra réplica consegue assumir a sessão. As signal keys
-ficam numa tabela própria, uma linha por chave — guardá-las num blob único faria
-cada mensagem recebida reescrever megabytes.
+The Baileys auth state lives in Postgres, encrypted with AES-256-GCM, not in a
+file. That is what makes failover possible: while the credentials sit on one
+node's disk, no other replica can take the session over. The signal keys go in a
+table of their own, one row per key — keeping them in a single blob would make
+every received message rewrite megabytes.
 
-Postgres e Redis são obrigatórios — não há modo SQLite. É uma decisão
-deliberada: um caminho só, sem paridade entre modos para manter, e cluster
-funcionando desde o primeiro dia.
+Postgres and Redis are mandatory — there is no SQLite mode. This is deliberate:
+one path only, no parity between modes to maintain, and a cluster that works
+from day one.
 
-### Autenticação
+### Authentication
 
-Duas credenciais, com poderes diferentes de propósito:
+Two credentials, with deliberately different powers:
 
-- **Sessão de usuário** — cookie httpOnly assinado, para o dashboard. Senha em
-  argon2id, sessão revogável no banco.
-- **Chave de API** — `Authorization: Bearer awah_<prefixo>_<segredo>`, para
-  integração. O segredo é guardado só como hash.
+- **User session** — a signed httpOnly cookie, for the dashboard. Password in
+  argon2id, session revocable in the database.
+- **API key** — `Authorization: Bearer awah_<prefixo>_<segredo>`, for
+  integration. The secret is stored only as a hash.
 
-Chaves de API **nunca** administram identidade: não criam outras chaves, não
-promovem membros, não alteram a organização. Uma chave vaza para logs, para o
-histórico de shell e para sistemas de terceiros — quando isso acontecer, o
-estrago deve ser "mandaram mensagem no meu nome", não tomada de conta.
+API keys **never** administer identity: they do not create other keys, do not
+promote members, do not change the organization. A key leaks into logs, into
+shell history and into third-party systems — when that happens, the damage
+should be "someone sent messages in my name", not account takeover.
 
-### Papéis
+### Roles
 
-| Papel | Alcance |
+| Role | Reach |
 | --- | --- |
-| `viewer` | Leitura de sessões, mensagens e métricas |
-| `operator` | O que o viewer faz, mais enviar mensagens e operar sessões |
-| `admin` | O que o operator faz, mais gerenciar sessões, chaves, webhooks e membros |
-| `owner` | Tudo, incluindo promover outro owner e excluir a organização |
+| `viewer` | Reading sessions, messages and metrics |
+| `operator` | What viewer does, plus sending messages and operating sessions |
+| `admin` | What operator does, plus managing sessions, keys, webhooks and members |
+| `owner` | Everything, including promoting another owner and deleting the organization |
 
-A organização sempre mantém pelo menos um owner — a API recusa rebaixar ou
-remover o último.
+The organization always keeps at least one owner — the API refuses to demote or
+remove the last one.
 
-### Retenção
+### Retention
 
-`retentionDays` na organização controla por quanto tempo o corpo das mensagens é
-preservado. Padrão 30 dias; `0` nunca persiste conteúdo, `-1` retém para sempre.
-Expirado o prazo, a linha degrada para metadados e os KPIs de volume e latência
-continuam funcionando.
+`retentionDays` on the organization controls how long message bodies are kept.
+Default 30 days; `0` never persists content, `-1` keeps it forever. Once the
+deadline passes, the row degrades to metadata and the volume and latency KPIs
+keep working.
 
-## Contribuindo
+## Contributing
 
-O projeto está em construção ativa rumo ao v1.0 e ainda não tem release. Issues
-com relato de caso de uso real são especialmente bem-vindas nesta fase — as
-decisões de arquitetura ainda estão maleáveis. Veja
-[CONTRIBUTING.md](CONTRIBUTING.md) para o que ajuda mais agora, e
-[SECURITY.md](SECURITY.md) antes de expor uma instância.
+The project is under active construction toward v1.0 and has no release yet.
+Issues that report a real use case are especially welcome at this stage — the
+architecture decisions are still malleable. See
+[CONTRIBUTING.md](CONTRIBUTING.md) for what helps most right now, and
+[SECURITY.md](SECURITY.md) before exposing an instance.
 
-## Licença
+## License
 
-MIT. Veja [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).

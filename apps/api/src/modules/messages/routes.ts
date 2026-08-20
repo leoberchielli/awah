@@ -36,7 +36,7 @@ function normalizeChatId(input: string): string {
   const digits = trimmed.replace(/\D/g, '')
   if (digits.length < 8) {
     throw badRequest(
-      'chatId inválido. Use o número com código do país (5511999999999) ou o JID completo.',
+      'Invalid chatId. Use the number with country code (5511999999999) or the full JID.',
     )
   }
   return `${digits}@s.whatsapp.net`
@@ -59,20 +59,20 @@ export async function messageRoutes(app: FastifyInstance) {
     {
       preHandler: app.requirePermission('message:send'),
       schema: {
-        tags: ['mensagens'],
-        summary: 'Enfileirar envio de texto',
+        tags: ['messages'],
+        summary: 'Queue a text send',
         description:
-          'Persiste no outbox e devolve imediatamente. A entrega é feita pelo scheduler, respeitando a ordem por conversa.',
+          'Persists to the outbox and returns immediately. Delivery is handled by the scheduler, preserving per-conversation order.',
         params: z.object({ id: z.string().uuid() }),
         body: z.object({
-          chatId: z.string().min(8).describe('Número com código do país ou JID completo.'),
+          chatId: z.string().min(8).describe('Number with country code or full JID.'),
           text: z.string().min(1).max(65536),
           clientMessageId: z
             .string()
             .min(8)
             .max(128)
             .optional()
-            .describe('Chave de idempotência. Reenviar o mesmo valor não duplica o envio.'),
+            .describe('Idempotency key. Resending the same value does not duplicate the send.'),
         }),
         response: {
           202: z.object({
@@ -81,7 +81,9 @@ export async function messageRoutes(app: FastifyInstance) {
             status: z.string(),
             duplicate: z
               .boolean()
-              .describe('true quando o clientMessageId já existia e nada foi enfileirado de novo.'),
+              .describe(
+                'true when the clientMessageId already existed and nothing was queued again.',
+              ),
           }),
         },
       },
@@ -91,11 +93,11 @@ export async function messageRoutes(app: FastifyInstance) {
       const sessionId = request.params.id
 
       if (auth.sessionScope && !auth.sessionScope.includes(sessionId)) {
-        throw notFound('Sessão não encontrada.')
+        throw notFound('Session not found.')
       }
 
       const session = await new SessionRepository(app.db, auth.orgId).findById(sessionId)
-      if (!session) throw notFound('Sessão não encontrada.')
+      if (!session) throw notFound('Session not found.')
 
       /**
        * Override do motor de risco. Fica no payload, não numa coluna, porque é
@@ -129,9 +131,9 @@ export async function messageRoutes(app: FastifyInstance) {
     {
       preHandler: app.requirePermission('message:read'),
       schema: {
-        tags: ['mensagens'],
-        summary: 'Fila de envio',
-        description: 'Inclui a DLQ — filtre por status=dead para ver o que esgotou as tentativas.',
+        tags: ['messages'],
+        summary: 'Send queue',
+        description: 'Includes the DLQ — filter by status=dead to see what exhausted its attempts.',
         querystring: z.object({
           sessionId: z.string().uuid().optional(),
           status: z.enum(['queued', 'held', 'sending', 'sent', 'failed', 'dead']).optional(),
@@ -152,8 +154,8 @@ export async function messageRoutes(app: FastifyInstance) {
     {
       preHandler: app.requirePermission('message:read'),
       schema: {
-        tags: ['mensagens'],
-        summary: 'Estado de um envio',
+        tags: ['messages'],
+        summary: 'Send state',
         params: z.object({ id: z.string().uuid() }),
         response: { 200: outboxSchema },
       },
@@ -161,7 +163,7 @@ export async function messageRoutes(app: FastifyInstance) {
     async (request) => {
       const auth = requireAuth(request)
       const row = await new OutboxRepository(app.db, auth.orgId).findById(request.params.id)
-      if (!row) throw notFound('Envio não encontrado.')
+      if (!row) throw notFound('Send not found.')
       return row
     },
   )
@@ -171,9 +173,10 @@ export async function messageRoutes(app: FastifyInstance) {
     {
       preHandler: app.requirePermission('message:send'),
       schema: {
-        tags: ['mensagens'],
-        summary: 'Reprocessar envio morto',
-        description: 'Devolve à fila um envio que esgotou as tentativas, zerando o contador.',
+        tags: ['messages'],
+        summary: 'Reprocess a dead send',
+        description:
+          'Returns a send that exhausted its attempts to the queue, resetting the counter.',
         params: z.object({ id: z.string().uuid() }),
         response: { 202: z.object({ outboxId: z.string(), status: z.string() }) },
       },
@@ -182,7 +185,7 @@ export async function messageRoutes(app: FastifyInstance) {
       const auth = requireAuth(request)
       const revived = await new OutboxRepository(app.db, auth.orgId).retry(request.params.id)
       if (!revived) {
-        throw notFound('Envio não encontrado na fila morta.')
+        throw notFound('Send not found in the dead queue.')
       }
       return reply.code(202).send({ outboxId: request.params.id, status: 'queued' })
     },
@@ -193,10 +196,10 @@ export async function messageRoutes(app: FastifyInstance) {
     {
       preHandler: app.requirePermission('message:read'),
       schema: {
-        tags: ['mensagens'],
-        summary: 'Histórico de mensagens',
+        tags: ['messages'],
+        summary: 'Message history',
         description:
-          'O corpo vem nulo depois que a retenção da organização expira; os metadados permanecem.',
+          'The body comes back null after the organization retention expires; the metadata remains.',
         querystring: z.object({
           sessionId: z.string().uuid().optional(),
           chatId: z.string().optional(),

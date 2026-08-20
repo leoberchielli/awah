@@ -284,6 +284,9 @@ export const de: Catalog = {
   'typebot.escapeWord': 'Ausstiegswort',
   'typebot.escapeWordHint':
     'Wer das tippt, verlässt den Ablauf und kommt zu einem Menschen. Lassen Sie es nur leer, wenn es einen anderen Weg zu einer Person gibt.',
+  'typebot.handoffReply': 'Antwort beim Verlassen des Ablaufs',
+  'typebot.handoffReplyHint':
+    'Wird in dem Moment gesendet, in dem eine Kundin oder ein Kunde nach einer Person fragt. Schreiben Sie sie in der Sprache Ihrer Kundschaft — sie verlässt das Gateway, bevor ein Mensch die Unterhaltung gesehen hat.',
   'typebot.submit': 'Testen und verbinden',
   'typebot.submitting': 'Ablauf wird getestet…',
 

@@ -108,12 +108,12 @@ export class CloudApiAdapter implements EngineAdapter {
       this.deps.onEvent({
         type: 'closed',
         rawCode: status,
-        cause: `Credenciais recusadas pela Meta: ${detalhe}`,
+        cause: `Credentials rejected by Meta: ${detalhe}`,
         shouldReconnect: false,
         // Token inválido exige reconfiguração, como um logout exigiria pareamento.
         loggedOut: status === 401 || status === 403,
       })
-      throw badRequest(`A Meta recusou as credenciais: ${detalhe}`)
+      throw badRequest(`Meta rejected the credentials: ${detalhe}`)
     }
 
     this.ready = true
@@ -138,7 +138,7 @@ export class CloudApiAdapter implements EngineAdapter {
 
   async requestPairingCode(): Promise<string> {
     throw badRequest(
-      'A engine oficial não usa pareamento. Configure phoneNumberId e accessToken em PUT /v1/sessions/:id/credentials.',
+      'The official engine does not use pairing. Set phoneNumberId and accessToken in PUT /v1/sessions/:id/credentials.',
     )
   }
 
@@ -148,7 +148,7 @@ export class CloudApiAdapter implements EngineAdapter {
 
   async sendText(chatId: string, text: string): Promise<SendResult> {
     if (!this.ready) {
-      throw badRequest('A sessão não está conectada. Verifique as credenciais da Cloud API.')
+      throw badRequest('The session is not connected. Check the Cloud API credentials.')
     }
 
     // A Meta espera só dígitos, sem o sufixo de JID do protocolo não-oficial.
@@ -175,14 +175,14 @@ export class CloudApiAdapter implements EngineAdapter {
        */
       if (erro?.code === 131047) {
         throw new Error(
-          'Janela de 24 h encerrada: fora dela a Cloud API só aceita template aprovado pela Meta.',
+          'The 24 h window has closed: outside it the Cloud API only accepts a template approved by Meta.',
         )
       }
-      throw new Error(erro?.message ?? `A Meta recusou o envio (HTTP ${status}).`)
+      throw new Error(erro?.message ?? `Meta rejected the send (HTTP ${status}).`)
     }
 
     const id = (body as { messages?: Array<{ id?: string }> })?.messages?.[0]?.id
-    if (!id) throw new Error('A Meta não devolveu id da mensagem.')
+    if (!id) throw new Error('Meta did not return a message id.')
 
     return { engineMessageId: id, timestamp: new Date() }
   }

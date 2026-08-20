@@ -283,6 +283,9 @@ export const fr: Catalog = {
   'typebot.escapeWord': 'Mot de sortie',
   'typebot.escapeWordHint':
     "Qui tape ceci quitte le flux et passe à un humain. Ne le laissez vide que s'il existe un autre chemin vers une personne.",
+  'typebot.handoffReply': 'Réponse à la sortie du flux',
+  'typebot.handoffReplyHint':
+    "Envoyée à l'instant où le client demande une personne. Écrivez-la dans la langue de vos clients — elle part de la passerelle avant qu'un humain ait vu la conversation.",
   'typebot.submit': 'Tester et connecter',
   'typebot.submitting': 'Test du flux…',
 

@@ -48,7 +48,7 @@ export const workersPlugin = fp(
 
     if (!app.env.RISK_ENGINE_ENABLED) {
       app.log.warn(
-        'MOTOR DE RISCO DESLIGADO — o gateway vai disparar na velocidade máxima da fila. Use apenas com número descartável.',
+        'RISK ENGINE OFF — the gateway will blast messages at the full speed of the queue. Use only with a disposable number.',
       )
     }
 
@@ -265,9 +265,9 @@ export const workersPlugin = fp(
     const sweep = setInterval(() => {
       void purgeExpiredContent(app.db)
         .then((purged) => {
-          if (purged > 0) app.log.info({ purged }, 'conteúdo expirado apagado')
+          if (purged > 0) app.log.info({ purged }, 'expired content deleted')
         })
-        .catch((error) => app.log.error({ err: error }, 'falha no expurgo de retenção'))
+        .catch((error) => app.log.error({ err: error }, 'retention purge failed'))
     }, app.env.RETENTION_SWEEP_MS)
     sweep.unref()
 

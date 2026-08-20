@@ -28,7 +28,7 @@ const base64Key = (bytes: number) =>
     } catch {
       return false
     }
-  }, `precisa ser ${bytes} bytes codificados em base64 (openssl rand -base64 ${bytes})`)
+  }, `must be ${bytes} bytes encoded in base64 (openssl rand -base64 ${bytes})`)
 
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -47,7 +47,7 @@ const envSchema = z.object({
   REDIS_URL: z.string().min(1),
 
   ENCRYPTION_KEY: base64Key(32),
-  COOKIE_SECRET: z.string().min(32, 'use pelo menos 32 caracteres'),
+  COOKIE_SECRET: z.string().min(32, 'use at least 32 characters'),
 
   /**
    * Endereço público da instância, com esquema. Usado para montar a URL que a
@@ -188,9 +188,9 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
 
   if (!parsed.success) {
     const problems = parsed.error.issues
-      .map((issue) => `  ${issue.path.join('.') || '(raiz)'}: ${issue.message}`)
+      .map((issue) => `  ${issue.path.join('.') || '(root)'}: ${issue.message}`)
       .join('\n')
-    throw new Error(`Configuração de ambiente inválida:\n${problems}`)
+    throw new Error(`Invalid environment configuration:\n${problems}`)
   }
 
   const env = {
@@ -211,8 +211,8 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
     if (fracos.length > 0) {
       throw new Error(
         [
-          `Estes segredos são os de desenvolvimento, publicados neste repositório: ${fracos.join(', ')}.`,
-          'Gere os seus antes de expor a instância:',
+          `These are the development secrets, published in this repository: ${fracos.join(', ')}.`,
+          'Generate your own before exposing the instance:',
           '  ENCRYPTION_KEY: openssl rand -base64 32',
           '  COOKIE_SECRET:  openssl rand -base64 48',
         ].join('\n'),

@@ -257,7 +257,7 @@ describe.skipIf(!hasInfra)('cluster', () => {
       })
 
       expect(resposta.ok).toBe(false)
-      expect(resposta.error).toMatch(/não respondeu/i)
+      expect(resposta.error).toMatch(/did not respond/i)
     })
 
     it('para de atender depois de soltar a sessão', async () => {

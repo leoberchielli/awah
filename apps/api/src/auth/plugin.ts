@@ -54,7 +54,7 @@ async function authFromApiKey(app: FastifyInstance, token: string): Promise<Auth
 
   // Fora do caminho crítico: falha aqui não invalida a requisição.
   void touchApiKey(app.db, record.id).catch((error) => {
-    app.log.warn({ err: error, apiKeyId: record.id }, 'falha ao registrar uso da chave')
+    app.log.warn({ err: error, apiKeyId: record.id }, 'failed to record API key usage')
   })
 
   return {
@@ -78,7 +78,7 @@ async function authFromSession(
 
   const memberships = await identity.listMemberships(found.userId)
   if (memberships.length === 0) {
-    throw forbidden('Sua conta não pertence a nenhuma organização.')
+    throw forbidden('Your account does not belong to any organization.')
   }
 
   const requested = request.headers[ORG_HEADER]
@@ -88,11 +88,11 @@ async function authFromSession(
   if (wanted) {
     membership = memberships.find((m) => m.orgId === wanted || m.orgSlug === wanted) ?? undefined
     if (!membership) {
-      throw forbidden('Você não pertence à organização informada.')
+      throw forbidden('You do not belong to the organization you named.')
     }
   } else if (memberships.length > 1) {
     throw badRequest(
-      `Você pertence a mais de uma organização. Informe qual no header ${ORG_HEADER}.`,
+      `You belong to more than one organization. Name which one in the ${ORG_HEADER} header.`,
       { organizations: memberships.map((m) => ({ id: m.orgId, slug: m.orgSlug })) },
     )
   }
@@ -100,7 +100,7 @@ async function authFromSession(
   if (!membership) return null
 
   void identity.touchSession(found.sessionId).catch((error) => {
-    app.log.warn({ err: error }, 'falha ao atualizar last_seen da sessão')
+    app.log.warn({ err: error }, 'failed to update session last_seen')
   })
 
   return {
@@ -156,8 +156,8 @@ export const authPlugin = fp(
         if (!allowed) {
           throw forbidden(
             context.kind === 'api_key'
-              ? 'Chaves de API não executam esta operação — use uma sessão de usuário.'
-              : `Seu papel (${context.role}) não alcança esta operação.`,
+              ? 'API keys do not run this operation — use a user session.'
+              : `Your role (${context.role}) does not cover this operation.`,
           )
         }
       }

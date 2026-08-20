@@ -1,5 +1,7 @@
 # Primeiros passos
 
+*[English](getting-started.md)*
+
 Do zero a uma conversa no Chatwoot. São cinco passos e nenhum `curl`.
 
 > Use um número **dedicado** para o WhatsApp. Nunca o seu pessoal, nunca o número
@@ -89,11 +91,11 @@ const awah = new Awah({ baseUrl: 'http://localhost:2900', apiKey: process.env.AW
 await awah.messages.sendText(sessionId, { chatId: '5511987654321', text: 'olá' })
 ```
 
-Detalhes em [packages/sdk](../packages/sdk/README.md).
+Detalhes em [packages/sdk](../packages/sdk/README.pt-BR.md).
 
 ### Quero expor isso na internet
 
-Leia [producao.md](producao.md) antes. Resumo do que não pode faltar: gerar seus
+Leia [producao.md](production.pt-BR.md) antes. Resumo do que não pode faltar: gerar seus
 próprios segredos (a API se recusa a subir em produção com os deste
 repositório), definir `METRICS_TOKEN`, configurar `TRUST_PROXY` conforme a sua
 topologia, e não publicar as portas do Postgres e do Redis.
@@ -123,6 +125,6 @@ pnpm db:migrate && pnpm dev
 
 ## Quando algo não funciona
 
-[solucao-de-problemas.md](solucao-de-problemas.md) cobre os sintomas que
+[solucao-de-problemas.md](troubleshooting.pt-BR.md) cobre os sintomas que
 aparecem de verdade: sessão que não pareia, mensagem presa na fila, webhook que
 não chega, assinatura que não bate.

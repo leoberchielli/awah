@@ -281,6 +281,9 @@ export const id: Catalog = {
   'typebot.escapeWord': 'Kata keluar',
   'typebot.escapeWordHint':
     'Siapa pun yang mengetik ini keluar dari alur dan beralih ke manusia. Kosongkan hanya jika ada jalur lain menuju petugas.',
+  'typebot.handoffReply': 'Balasan saat keluar dari alur',
+  'typebot.handoffReplyHint':
+    'Dikirim pada saat pelanggan meminta orang. Tulis dalam bahasa yang dipakai pelanggan Anda — pesan ini keluar dari gateway sebelum ada manusia yang melihat percakapannya.',
   'typebot.submit': 'Uji dan hubungkan',
   'typebot.submitting': 'Menguji alur…',
 

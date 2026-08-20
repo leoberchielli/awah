@@ -1,5 +1,7 @@
 # Solução de problemas
 
+*[English](troubleshooting.md)*
+
 Os sintomas que aparecem de verdade, e o que cada um costuma ser.
 
 ## A sessão não pareia
@@ -156,4 +158,4 @@ está errado. Os enganos comuns: `ENCRYPTION_KEY` que não tem 32 bytes em base6
 ordem — inverter afoga o log da aplicação no ruído do Baileys.
 
 Se der em bug, abra uma issue com o trecho de log, a versão e o passo a passo. Se
-for de segurança, não abra issue: veja [SECURITY.md](../SECURITY.md).
+for de segurança, não abra issue: veja [SECURITY.md](../SECURITY.pt-BR.md).

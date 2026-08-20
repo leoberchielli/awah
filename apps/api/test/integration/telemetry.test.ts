@@ -91,7 +91,7 @@ describe.skipIf(!hasInfra)('telemetria', () => {
       sessionId,
       type: 'disconnected',
       rawCode: 428,
-      cause: 'Conexão fechada',
+      cause: 'Connection closed',
       createdAt: umaHoraAtras,
     })
 
@@ -219,7 +219,7 @@ describe.skipIf(!hasInfra)('telemetria', () => {
         .json()
         .sessions.find((s: { sessionId: string }) => s.sessionId === sessionId)
       expect(sessao.disconnects).toBe(1)
-      expect(sessao.lastCause).toBe('Conexão fechada')
+      expect(sessao.lastCause).toBe('Connection closed')
       expect(sessao.mtbfMinutes).toBeGreaterThan(0)
     })
 

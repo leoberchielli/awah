@@ -29,9 +29,9 @@ export async function apiKeyRoutes(app: FastifyInstance) {
     {
       preHandler: app.requirePermission('apikey:read'),
       schema: {
-        tags: ['chaves de API'],
-        summary: 'Listar chaves',
-        description: 'O segredo nunca é devolvido — só o prefixo público.',
+        tags: ['api keys'],
+        summary: 'List keys',
+        description: 'The secret is never returned — only the public prefix.',
         response: { 200: z.object({ keys: z.array(keySchema) }) },
       },
     },
@@ -47,10 +47,10 @@ export async function apiKeyRoutes(app: FastifyInstance) {
     {
       preHandler: app.requirePermission('apikey:write'),
       schema: {
-        tags: ['chaves de API'],
-        summary: 'Criar chave',
+        tags: ['api keys'],
+        summary: 'Create key',
         description:
-          'O token completo aparece uma única vez nesta resposta. Guarde-o: o servidor só retém o hash.',
+          'The full token appears only once in this response. Save it: the server keeps only the hash.',
         body: z.object({
           name: z.string().min(2).max(120),
           role: z.enum(ROLES).default('operator'),
@@ -58,14 +58,14 @@ export async function apiKeyRoutes(app: FastifyInstance) {
             .array(z.string().uuid())
             .nullish()
             .describe(
-              'Restringe a chave a estas sessões. Omita para a chave valer em toda a organização — o UUID que este formulário sugere é só um exemplo de formato, não um id real.',
+              'Restricts the key to these sessions. Omit it for the key to cover the whole organization — the UUID this form suggests is only a format example, not a real id.',
             ),
           expiresInDays: z.number().int().positive().max(3650).nullish(),
         }),
         response: {
           201: z.object({
             key: keySchema,
-            token: z.string().describe('Mostrado apenas nesta resposta.'),
+            token: z.string().describe('Shown only in this response.'),
           }),
         },
       },
@@ -79,7 +79,7 @@ export async function apiKeyRoutes(app: FastifyInstance) {
        * contrário um admin fabricaria uma chave de owner e escalaria sozinho.
        */
       if (!roleAtLeast(auth.role, role)) {
-        throw forbidden(`Você não pode emitir uma chave com papel acima do seu (${auth.role}).`)
+        throw forbidden(`You cannot issue a key with a role above your own (${auth.role}).`)
       }
 
       /**
@@ -98,7 +98,7 @@ export async function apiKeyRoutes(app: FastifyInstance) {
       if (sessionScope) {
         if (sessionScope.length === 0) {
           throw badRequest(
-            'Escopo vazio não alcança nenhuma sessão. Omita `sessionScope` para a chave valer em toda a organização.',
+            'Empty scope reaches no session. Omit `sessionScope` for the key to cover the whole organization.',
           )
         }
 
@@ -108,7 +108,7 @@ export async function apiKeyRoutes(app: FastifyInstance) {
 
         if (ausentes.length > 0) {
           throw badRequest(
-            `Escopo aponta para sessão que não existe nesta organização: ${ausentes.join(', ')}.`,
+            `Scope points to a session that does not exist in this organization: ${ausentes.join(', ')}.`,
           )
         }
       }
@@ -135,9 +135,9 @@ export async function apiKeyRoutes(app: FastifyInstance) {
     {
       preHandler: app.requirePermission('apikey:write'),
       schema: {
-        tags: ['chaves de API'],
-        summary: 'Revogar chave',
-        description: 'A revogação vale imediatamente — a próxima requisição com ela recebe 401.',
+        tags: ['api keys'],
+        summary: 'Revoke key',
+        description: 'Revocation takes effect immediately — the next request using it gets 401.',
         params: z.object({ id: z.string().uuid() }),
         response: { 204: z.null() },
       },
@@ -145,7 +145,7 @@ export async function apiKeyRoutes(app: FastifyInstance) {
     async (request, reply) => {
       const auth = requireAuth(request)
       const revoked = await new ApiKeyRepository(app.db, auth.orgId).revoke(request.params.id)
-      if (!revoked) throw notFound('Chave não encontrada ou já revogada.')
+      if (!revoked) throw notFound('Key not found or already revoked.')
       return reply.code(204).send(null)
     },
   )

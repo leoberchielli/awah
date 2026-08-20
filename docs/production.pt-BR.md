@@ -1,5 +1,7 @@
 # Levar para produção
 
+*[English](production.md)*
+
 O README ensina a subir. Este documento é sobre subir e não se arrepender.
 
 ## Antes de abrir a porta

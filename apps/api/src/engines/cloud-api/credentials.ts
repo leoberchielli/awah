@@ -13,8 +13,8 @@ import { badRequest } from '../../lib/errors'
  * tem acesso de leitura ao banco.
  */
 export const cloudApiCredentialsSchema = z.object({
-  phoneNumberId: z.string().min(5).describe('ID do número no WhatsApp Business.'),
-  accessToken: z.string().min(20).describe('Token permanente do app da Meta.'),
+  phoneNumberId: z.string().min(5).describe('Phone number ID in WhatsApp Business.'),
+  accessToken: z.string().min(20).describe('Permanent token of the Meta app.'),
   /** Segredo que a Meta ecoa no handshake de verificação do webhook. */
   verifyToken: z.string().min(8),
   /**
@@ -66,7 +66,7 @@ export async function loadCloudApiCredentials(
     return cloudApiCredentialsSchema.parse(JSON.parse(decrypt(row.creds, encryptionKey)))
   } catch {
     throw badRequest(
-      'As credenciais da Cloud API estão ausentes ou corrompidas. Reconfigure-as em PUT /v1/sessions/:id/credentials.',
+      'The Cloud API credentials are missing or corrupted. Set them again in PUT /v1/sessions/:id/credentials.',
     )
   }
 }

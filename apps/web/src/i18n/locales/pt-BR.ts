@@ -279,6 +279,9 @@ export const ptBR: Catalog = {
   'typebot.escapeWord': 'Palavra de escape',
   'typebot.escapeWordHint':
     'Quem digitar isso sai do fluxo e passa para atendimento humano. Deixe vazio só se houver outro caminho até uma pessoa.',
+  'typebot.handoffReply': 'Resposta ao sair do fluxo',
+  'typebot.handoffReplyHint':
+    'Enviada no instante em que o cliente pede uma pessoa. Escreva no idioma que os seus clientes falam — ela sai do gateway antes de qualquer humano ver a conversa.',
   'typebot.submit': 'Testar e conectar',
   'typebot.submitting': 'Testando o fluxo…',
 

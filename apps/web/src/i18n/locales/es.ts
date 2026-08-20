@@ -282,6 +282,9 @@ export const es: Catalog = {
   'typebot.escapeWord': 'Palabra de escape',
   'typebot.escapeWordHint':
     'Quien escriba esto sale del flujo y pasa a atención humana. Déjalo vacío solo si hay otro camino hasta una persona.',
+  'typebot.handoffReply': 'Respuesta al salir del flujo',
+  'typebot.handoffReplyHint':
+    'Se envía en el momento en que el cliente pide una persona. Escríbela en el idioma que hablan tus clientes: sale de la pasarela antes de que ningún humano vea la conversación.',
   'typebot.submit': 'Probar y conectar',
   'typebot.submitting': 'Probando el flujo…',
 

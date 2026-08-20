@@ -84,7 +84,7 @@ describe.skipIf(!hasInfra)('rotas de sessão', () => {
     })
 
     expect(started.statusCode).toBe(400)
-    expect(started.json().error.message).toMatch(/credenciais/i)
+    expect(started.json().error.message).toMatch(/credentials/i)
   })
 
   it('recusa engine ainda não implementada', async () => {
@@ -103,7 +103,7 @@ describe.skipIf(!hasInfra)('rotas de sessão', () => {
     })
 
     expect(started.statusCode).toBe(400)
-    expect(started.json().error.message).toMatch(/não foi implementada/)
+    expect(started.json().error.message).toMatch(/not implemented/)
   })
 
   describe('credenciais da Cloud API', () => {

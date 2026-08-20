@@ -95,7 +95,7 @@ export class CommandBus {
     try {
       await this.deps.subscriber.unsubscribe(channel)
     } catch (error) {
-      this.deps.logger.warn({ err: error, sessionId }, 'falha ao desassinar canal de comando')
+      this.deps.logger.warn({ err: error, sessionId }, 'failed to unsubscribe from command channel')
     }
   }
 
@@ -158,7 +158,7 @@ export class CommandBus {
       const timer = setTimeout(() => {
         finish({
           ok: false,
-          error: `O nó que detém a sessão não respondeu em ${this.timeoutMs}ms.`,
+          error: `The node holding the session did not respond within ${this.timeoutMs}ms.`,
         })
       }, this.timeoutMs)
 
@@ -166,7 +166,7 @@ export class CommandBus {
         try {
           finish(JSON.parse(message) as CommandResult)
         } catch {
-          finish({ ok: false, error: 'resposta ilegível do nó dono' })
+          finish({ ok: false, error: 'unreadable response from the owner node' })
         }
       })
 
