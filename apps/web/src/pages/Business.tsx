@@ -89,11 +89,15 @@ export function Business() {
               <AreaSeries
                 series={business.data.volume}
                 styles={[
-                  { key: 'messages.inbound', label: t('business.inbound'), color: 'var(--ok)' },
+                  {
+                    key: 'messages.inbound',
+                    label: t('business.inbound'),
+                    color: 'var(--data-2)',
+                  },
                   {
                     key: 'messages.outbound',
                     label: t('business.outbound'),
-                    color: 'var(--accent)',
+                    color: 'var(--data-1)',
                   },
                 ]}
                 height={240}

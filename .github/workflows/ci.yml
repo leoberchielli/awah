@@ -74,6 +74,13 @@ jobs:
       - name: Translation catalogs
         run: pnpm i18n:check
 
+      # The panel reads its colours against a translucent, moving background,
+      # so raising one halo to make the thing less lifeless is a two-line
+      # change that can push body text under the legibility threshold. Nothing
+      # else in this pipeline would notice.
+      - name: Colour contrast
+        run: pnpm contrast:check
+
       - name: Apply migrations
         run: pnpm db:migrate
 

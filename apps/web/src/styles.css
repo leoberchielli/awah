@@ -1,9 +1,9 @@
 @import "tailwindcss";
 
 /*
- * Só os subconjuntos latinos. O pacote completo traz cirílico, grego e
- * vietnamita — trinta e poucos arquivos que ninguém aqui vai baixar, mas que
- * entram na imagem do servidor e no cache do CDN de quem hospedar.
+ * Latin subsets only. The full package ships Cyrillic, Greek and Vietnamese —
+ * thirty-odd files nobody here will download, but which end up in the server
+ * image and in the CDN cache of whoever hosts this.
  */
 @import "@fontsource/ibm-plex-sans/latin-400.css";
 @import "@fontsource/ibm-plex-sans/latin-500.css";
@@ -13,54 +13,78 @@
 @import "@fontsource/ibm-plex-mono/latin-500.css";
 
 /*
- * Instrumento sob vidro.
+ * An instrument under glass.
  *
- * O painel é lido por quem está com um incidente na mão, então a regra que
- * ordena todo o resto é: o efeito nunca pode custar legibilidade do dado. O
- * vidro fica no cromo e nos cartões — superfícies grandes e poucas. Linha de
- * lista, pílula e célula de tabela continuam opacas, porque `backdrop-filter`
- * em centenas de elementos é o que transforma "moderno" em "travado".
+ * The panel is read by someone with an incident in their hands, so the rule
+ * that orders everything else is: the effect must never cost legibility of the
+ * data. The glass stays on the chrome and the cards — large surfaces, few of
+ * them. List rows, pills and table cells stay opaque, because `backdrop-filter`
+ * on hundreds of elements is what turns "modern" into "sluggish".
  *
- * Para o vidro parecer vidro precisa haver algo atrás dele. Daí a camada
- * ambiente: dois halos de cor que se movem devagar e dão ao desfoque o que
- * refratar. Sem ela, translucidez sobre cor chapada é só opacidade mal
- * resolvida.
+ * For glass to look like glass there has to be something behind it. Hence the
+ * ambient layer: slow-drifting fields of colour that give the blur something to
+ * refract. Without it, translucency over a flat fill is just badly resolved
+ * opacity — and that is exactly what the first version was, because the fields
+ * were set so faint they never showed up over a near-white ground.
  *
- * Cor: um acento (íris) e um segundo tom (turquesa) só no ambiente, nunca em
- * dado. As três semânticas seguem intocadas — verde é conectada, âmbar é
- * segurada, vermelho é falha —, porque elas carregam significado e não estilo.
+ * Colour is split in two, and the split is the whole discipline here:
+ *
+ *   The semantics — green, amber, red — mean connected, held, failed. They are
+ *   never spent on decoration, because an operator who has learned that red
+ *   means trouble must never see red for any other reason.
+ *
+ *   The data ramp — iris, teal, violet, amber — carries series and stages. It
+ *   exists so a healthy dashboard is not monochrome. Before it, `--ok` was
+ *   doing four jobs at once: connected, delivered, read, inbound. That made
+ *   green mean everything, which is the same as meaning nothing.
  */
 :root {
-  --ground: #f4f5fa;
+  --ground: #eef0f8;
   --surface: #ffffff;
-  --surface-2: #eff0f6;
-  --line: #dedfe9;
-  --line-strong: #c6c8d6;
+  --surface-2: #e9ebf4;
+  --line: #dadce8;
+  --line-strong: #c0c3d4;
   --ink: #15171d;
-  --muted: #61656f;
+  --muted: #5d6270;
   --accent: #5959d2;
-  --accent-soft: #e9e9fb;
+  --accent-soft: #e6e6fa;
+
+  /* Status. These three carry meaning and are never used for style. */
   --ok: #0f8f47;
   --warn: #a86a03;
   --crit: #c62c30;
   --hold: #6f747f;
-  /* Tinta sobre preenchimento sólido. Branco só sobrevive no claro:
-     no escuro os sólidos são claros, e o par se inverte. */
+
+  /*
+   * Series and stages. Ordered, so a funnel drawn with them reads as a
+   * progression rather than as four unrelated colours.
+   */
+  --data-1: #5959d2;
+  --data-2: #0d8697;
+  --data-3: #8244b8;
+  --data-4: #b96a0b;
+
+  /* Ink on a solid fill. White only survives in light: in dark the solids are
+     light, and the pair inverts. */
   --on-fill: #ffffff;
 
-  /* Vidro: tinta opaca o bastante para o texto sobreviver ao que passa atrás. */
-  --glass: 255 255 255 / 0.76;
-  --glass-strong: 255 255 255 / 0.88;
+  /* Glass: ink opaque enough for the text to survive what passes behind it. */
+  --glass: 255 255 255 / 0.74;
+  --glass-strong: 255 255 255 / 0.87;
   --glass-edge: 255 255 255 / 0.9;
   --glass-line: 21 23 29 / 0.08;
   --blur: 20px;
 
-  /* Halos do fundo. Em claro ficam discretos; o dado é que precisa saltar. */
-  --halo-1: 89 89 210 / 0.16;
-  --halo-2: 16 155 165 / 0.13;
+  /*
+   * The ambient fields. Three hues rather than two, because two blues read as
+   * one wash; the third is warm on purpose, so the field has somewhere to go.
+   */
+  --halo-1: 89 89 210 / 0.3;
+  --halo-2: 13 150 170 / 0.26;
+  --halo-3: 214 96 132 / 0.17;
 
-  --shadow: 0 1px 2px rgb(21 23 29 / 0.04), 0 8px 24px -8px rgb(21 23 29 / 0.12);
-  --shadow-lift: 0 2px 4px rgb(21 23 29 / 0.05), 0 16px 40px -12px rgb(21 23 29 / 0.2);
+  --shadow: 0 1px 2px rgb(21 23 29 / 0.04), 0 8px 24px -8px rgb(21 23 29 / 0.14);
+  --shadow-lift: 0 2px 4px rgb(21 23 29 / 0.05), 0 16px 40px -12px rgb(21 23 29 / 0.22);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -74,10 +98,17 @@
     --muted: #949aa6;
     --accent: #8b8bf0;
     --accent-soft: #1e1f38;
+
     --ok: #35c07a;
     --warn: #e0a12a;
     --crit: #ef6a6d;
     --hold: #898f98;
+
+    --data-1: #8b8bf0;
+    --data-2: #2fc0d2;
+    --data-3: #b782e6;
+    --data-4: #e9a53e;
+
     --on-fill: #0a0b10;
 
     --glass: 22 25 33 / 0.66;
@@ -85,8 +116,9 @@
     --glass-edge: 255 255 255 / 0.12;
     --glass-line: 255 255 255 / 0.08;
 
-    --halo-1: 116 116 255 / 0.2;
-    --halo-2: 24 190 200 / 0.14;
+    --halo-1: 116 116 255 / 0.32;
+    --halo-2: 24 190 210 / 0.24;
+    --halo-3: 236 106 146 / 0.18;
 
     --shadow: 0 1px 2px rgb(0 0 0 / 0.5), 0 8px 28px -8px rgb(0 0 0 / 0.55);
     --shadow-lift: 0 2px 6px rgb(0 0 0 / 0.5), 0 20px 48px -12px rgb(0 0 0 / 0.65);
@@ -103,10 +135,17 @@
   --muted: #949aa6;
   --accent: #8b8bf0;
   --accent-soft: #1e1f38;
+
   --ok: #35c07a;
   --warn: #e0a12a;
   --crit: #ef6a6d;
   --hold: #898f98;
+
+  --data-1: #8b8bf0;
+  --data-2: #2fc0d2;
+  --data-3: #b782e6;
+  --data-4: #e9a53e;
+
   --on-fill: #0a0b10;
 
   --glass: 22 25 33 / 0.66;
@@ -114,8 +153,9 @@
   --glass-edge: 255 255 255 / 0.12;
   --glass-line: 255 255 255 / 0.08;
 
-  --halo-1: 116 116 255 / 0.2;
-  --halo-2: 24 190 200 / 0.14;
+  --halo-1: 116 116 255 / 0.32;
+  --halo-2: 24 190 210 / 0.24;
+  --halo-3: 236 106 146 / 0.18;
 
   --shadow: 0 1px 2px rgb(0 0 0 / 0.5), 0 8px 28px -8px rgb(0 0 0 / 0.55);
   --shadow-lift: 0 2px 6px rgb(0 0 0 / 0.5), 0 20px 48px -12px rgb(0 0 0 / 0.65);
@@ -136,6 +176,10 @@
   --color-crit: var(--crit);
   --color-hold: var(--hold);
   --color-on-fill: var(--on-fill);
+  --color-data-1: var(--data-1);
+  --color-data-2: var(--data-2);
+  --color-data-3: var(--data-3);
+  --color-data-4: var(--data-4);
 
   --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
@@ -153,17 +197,18 @@
     color: var(--ink);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
-    /* O ambiente é `fixed`; sem isto ele rolaria junto e perderia o efeito. */
+    /* The ambient layer is `fixed`; without this it would scroll along and
+       lose the effect. */
     position: relative;
     min-height: 100dvh;
   }
 
   /*
-   * A camada que o vidro refrata.
+   * The layer the glass refracts.
    *
-   * Fica atrás de tudo, não recebe evento de ponteiro e não entra na ordem de
-   * leitura. A deriva é lenta de propósito: movimento perceptível num painel
-   * que fica aberto o dia todo cansa mais do que impressiona.
+   * Sits behind everything, takes no pointer events and stays out of the
+   * reading order. The drift is slow on purpose: perceptible movement in a
+   * panel that stays open all day wears on you more than it impresses.
    */
   body::before {
     content: "";
@@ -172,13 +217,14 @@
     z-index: -1;
     pointer-events: none;
     background:
-      radial-gradient(46% 38% at 18% 12%, rgb(var(--halo-1)) 0%, transparent 68%),
-      radial-gradient(42% 40% at 84% 24%, rgb(var(--halo-2)) 0%, transparent 66%),
-      radial-gradient(52% 44% at 62% 92%, rgb(var(--halo-1)) 0%, transparent 70%);
-    animation: deriva 42s ease-in-out infinite alternate;
+      radial-gradient(46% 38% at 16% 10%, rgb(var(--halo-1)) 0%, transparent 66%),
+      radial-gradient(44% 40% at 86% 22%, rgb(var(--halo-2)) 0%, transparent 64%),
+      radial-gradient(38% 34% at 72% 68%, rgb(var(--halo-3)) 0%, transparent 66%),
+      radial-gradient(52% 44% at 30% 94%, rgb(var(--halo-1)) 0%, transparent 68%);
+    animation: drift 42s ease-in-out infinite alternate;
   }
 
-  @keyframes deriva {
+  @keyframes drift {
     from {
       transform: translate3d(0, 0, 0) scale(1);
     }
@@ -187,7 +233,7 @@
     }
   }
 
-  /* Dígito não dança quando o número muda. */
+  /* Digits do not dance when the number changes. */
   .tnum,
   table,
   .font-mono {
@@ -203,18 +249,19 @@
 
 @layer components {
   /*
-   * O vidro.
+   * The glass.
    *
-   * A borda superior mais clara que as outras é o que o olho lê como "aresta
-   * pegando luz" — sem ela o cartão parece translúcido, não vítreo. O
-   * `saturate` compensa a lavagem que o desfoque causa nas cores atrás.
+   * The top border lighter than the others is what the eye reads as "edge
+   * catching light" — without it the card looks translucent, not glassy. The
+   * `saturate` compensates for the wash the blur causes in the colours behind,
+   * and it matters more now that there is real colour back there to wash out.
    */
   .card {
     position: relative;
     background-color: rgb(var(--glass));
-    /* Sem prefixo manual: o Lightning CSS prefixa conforme os alvos, e
-       declarar `-webkit-` à mão fazia ele descartar a propriedade padrão. */
-    backdrop-filter: blur(var(--blur)) saturate(150%);
+    /* No manual prefix: Lightning CSS prefixes according to the targets, and
+       declaring `-webkit-` by hand made it drop the standard property. */
+    backdrop-filter: blur(var(--blur)) saturate(160%);
     border: 1px solid rgb(var(--glass-line));
     border-radius: var(--radius-card);
     box-shadow: var(--shadow);
@@ -234,23 +281,23 @@
   }
 
   /*
-   * Só o que é clicável levanta. Cartão de gráfico subindo ao passar o mouse
-   * seria movimento sem significado.
+   * Only what is clickable lifts. A chart card rising under the cursor would be
+   * movement without meaning.
    */
   .card-hover:hover {
     box-shadow: var(--shadow-lift);
     transform: translateY(-2px);
   }
 
-  /* Cromo: mesma receita, tinta mais firme, porque conteúdo rola por baixo. */
+  /* Chrome: same recipe, firmer ink, because content scrolls underneath. */
   .chrome {
     background-color: rgb(var(--glass-strong));
-    /* Sem prefixo manual: o Lightning CSS prefixa conforme os alvos, e
-       declarar `-webkit-` à mão fazia ele descartar a propriedade padrão. */
-    backdrop-filter: blur(var(--blur)) saturate(150%);
+    /* No manual prefix: Lightning CSS prefixes according to the targets, and
+       declaring `-webkit-` by hand made it drop the standard property. */
+    backdrop-filter: blur(var(--blur)) saturate(160%);
   }
 
-  /* Rótulo de seção: caixa alta pequena com respiro entre letras. */
+  /* Section label: small caps with room between the letters. */
   .eyebrow {
     font-size: 11px;
     font-weight: 500;
@@ -260,9 +307,9 @@
   }
 
   /*
-   * O número que importa ganha um halo da própria cor. É o único brilho do
-   * painel, e existe para que a leitura de longe encontre o dado antes do
-   * rótulo.
+   * The number that matters gets a halo of its own colour. It is the only glow
+   * in the panel, and it exists so a reading from across the room finds the
+   * data before the label.
    */
   .stat-glow {
     text-shadow: 0 0 28px color-mix(in oklab, currentColor 35%, transparent);
@@ -270,17 +317,17 @@
 }
 
 /*
- * Quem pediu menos movimento no sistema operacional precisa que a preferência
- * ganhe de qualquer transição declarada depois — é o único caso em que
- * !important é a ferramenta certa, e não um atalho.
+ * Someone who asked their operating system for less movement needs that
+ * preference to beat any transition declared afterwards — the one case where
+ * !important is the right tool rather than a shortcut.
  */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
-    /* biome-ignore lint/complexity/noImportantStyles: a preferência do usuário precisa vencer */
+    /* biome-ignore lint/complexity/noImportantStyles: the user's preference has to win */
     animation-duration: 0.01ms !important;
-    /* biome-ignore lint/complexity/noImportantStyles: a preferência do usuário precisa vencer */
+    /* biome-ignore lint/complexity/noImportantStyles: the user's preference has to win */
     transition-duration: 0.01ms !important;
   }
 }

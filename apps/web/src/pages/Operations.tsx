@@ -42,14 +42,18 @@ export function Operations() {
                   {
                     label: t('ops.funnel.sent'),
                     value: delivery.data.funnel.sent,
-                    color: 'var(--accent)',
+                    color: 'var(--data-1)',
                   },
                   {
                     label: t('ops.funnel.delivered'),
                     value: delivery.data.funnel.delivered,
-                    color: 'var(--ok)',
+                    color: 'var(--data-2)',
                   },
                   {
+                    // Green is earned here: being read is the outcome the
+                    // funnel exists to reach. The two stages before it used to
+                    // be green as well, which flattened the progression into
+                    // one colour and told the reader nothing.
                     label: t('ops.funnel.read'),
                     value: delivery.data.funnel.read,
                     color: 'var(--ok)',
@@ -77,8 +81,16 @@ export function Operations() {
               <AreaSeries
                 series={delivery.data.throughput}
                 styles={[
-                  { key: 'messages.outbound', label: 'Enviadas', color: 'var(--accent)' },
-                  { key: 'messages.inbound', label: 'Recebidas', color: 'var(--ok)' },
+                  {
+                    key: 'messages.outbound',
+                    label: t('ops.throughput.outbound'),
+                    color: 'var(--data-1)',
+                  },
+                  {
+                    key: 'messages.inbound',
+                    label: t('ops.throughput.inbound'),
+                    color: 'var(--data-2)',
+                  },
                 ]}
                 height={210}
               />
@@ -129,7 +141,7 @@ export function Operations() {
                   {
                     label: t('ops.decision.delayed'),
                     value: risk.data.decisions.delayed,
-                    color: 'var(--accent)',
+                    color: 'var(--data-1)',
                   },
                   {
                     label: t('ops.decision.throttled'),
@@ -152,7 +164,9 @@ export function Operations() {
             {risk.data ? (
               <SeriesPoint
                 series={risk.data.scoreSeries}
-                styles={[{ key: 'risk.score.avg', label: 'Average score', color: 'var(--warn)' }]}
+                styles={[
+                  { key: 'risk.score.avg', label: t('ops.riskScore.avg'), color: 'var(--warn)' },
+                ]}
                 height={180}
                 domain={[0, 100]}
               />

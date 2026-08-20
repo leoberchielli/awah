@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Gateway de WhatsApp com fila durável, motor de risco e sessões em cluster",
+  "description": "Gateway de WhatsApp com fila dur\u00e1vel, motor de risco e sess\u00f5es em cluster",
   "license": "MIT",
   "engines": {
     "node": ">=22"
@@ -21,7 +21,8 @@
     "db:generate": "pnpm --filter @awah/db generate",
     "db:migrate": "pnpm --filter @awah/db migrate",
     "db:studio": "pnpm --filter @awah/db studio",
-    "i18n:check": "node scripts/i18n-check.mjs"
+    "i18n:check": "node scripts/i18n-check.mjs",
+    "contrast:check": "node scripts/contrast-check.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.1.2",
