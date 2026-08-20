@@ -373,6 +373,9 @@ de qualquer extensão instalada.
 | **Operação** | Está tudo no ar? A mensagem está saindo? O risco está segurando algo? |
 | **Negócio** | Quanto se conversa, quanto se responde e em quanto tempo |
 | **Sessões** | Parear, iniciar, parar, e ver risco e histórico de queda de cada número |
+| **Integrações** | Ligar Chatwoot, Typebot ou qualquer endpoint HTTP, e testar antes de confiar |
+| **Chaves** | Emitir chave de API, escopar por sessão, revogar |
+| **Usuários** | Adicionar pessoas, mudar papel, remover acesso |
 
 A janela de tempo e o filtro de sessão moram na **URL**. Um operador que vê algo
 estranho manda o link para o colega e o colega abre exatamente a mesma tela, em

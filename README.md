@@ -384,6 +384,9 @@ browser is within reach of every installed extension.
 | **Operations** | Is everything up? Are messages going out? Is risk holding anything back? |
 | **Business** | How much conversation there is, how much gets answered, and how fast |
 | **Sessions** | Pair, start, stop, and see the risk and drop history of each number |
+| **Integrations** | Connect Chatwoot, Typebot or any HTTP endpoint, and test it before trusting it |
+| **Keys** | Issue an API key, scope it to specific sessions, revoke it |
+| **Users** | Add people, change roles, remove access |
 
 The time window and the session filter live in the **URL**. An operator who sees
 something odd sends the link to a colleague and the colleague opens exactly the
