@@ -27,7 +27,7 @@ export async function seedOrg(
     .values({ name: `Teste ${suffix}`, slug: `teste-${suffix}` })
     .returning({ id: schema.orgs.id })
 
-  if (!org) throw new Error('falha ao criar organização de teste')
+  if (!org) throw new Error('failed to create the test organization')
 
   const generated = generateApiKey()
   await db.insert(schema.apiKeys).values({
@@ -68,7 +68,7 @@ export async function seedUser(
   options?: { role?: Role },
 ): Promise<SeededUser> {
   const suffix = randomUUID().slice(0, 8)
-  const email = `teste-${suffix}@exemplo.invalid`
+  const email = `test-${suffix}@example.invalid`
   const password = `senha-de-teste-${suffix}`
 
   const [user] = await db
@@ -80,7 +80,7 @@ export async function seedUser(
     })
     .returning({ id: schema.users.id })
 
-  if (!user) throw new Error('falha ao criar usuário de teste')
+  if (!user) throw new Error('failed to create the test user')
 
   await db.insert(schema.memberships).values({
     orgId,
@@ -121,6 +121,6 @@ export async function createSession(
     .values({ orgId, name, engine: 'baileys' })
     .returning({ id: schema.sessions.id })
 
-  if (!row) throw new Error('falha ao criar sessão de teste')
+  if (!row) throw new Error('failed to create the test session')
   return row.id
 }

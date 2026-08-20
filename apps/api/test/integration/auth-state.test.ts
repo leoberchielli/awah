@@ -9,7 +9,7 @@ const encryptionKey = Buffer.from(
   'base64',
 )
 
-describe.skipIf(!hasInfra)('auth state no Postgres', () => {
+describe.skipIf(!hasInfra)('auth state in Postgres', () => {
   let handle: ReturnType<typeof createDb>
   let db: Database
   let org: SeededOrg
@@ -27,7 +27,7 @@ describe.skipIf(!hasInfra)('auth state no Postgres', () => {
     await handle?.close()
   })
 
-  it('começa com credenciais novas quando a sessão nunca pareou', async () => {
+  it('starts with fresh credentials when the session has never paired', async () => {
     const auth = await usePostgresAuthState({ db, sessionId, encryptionKey })
     // initAuthCreds generates an identity pair; registration has not happened yet.
     expect(auth.state.creds.registered).toBe(false)
@@ -40,7 +40,7 @@ describe.skipIf(!hasInfra)('auth state no Postgres', () => {
    * socket, closing the window where the user pairs and the process dies before
    * the first `creds.update` — leaving a ghost device on their phone.
    */
-  it('deixa de ser nova depois de persistida', async () => {
+  it('stops being new once persisted', async () => {
     const otherSession = await createSession(db, org.orgId)
     const first = await usePostgresAuthState({ db, sessionId: otherSession, encryptionKey })
     expect(first.isNew).toBe(true)
@@ -51,7 +51,7 @@ describe.skipIf(!hasInfra)('auth state no Postgres', () => {
     expect(second.isNew).toBe(false)
   })
 
-  it('persiste e relê as credenciais entre instâncias', async () => {
+  it('persists and re-reads the credentials across instances', async () => {
     const first = await usePostgresAuthState({ db, sessionId, encryptionKey })
     first.state.creds.registered = true
     await first.saveCreds()
@@ -66,7 +66,7 @@ describe.skipIf(!hasInfra)('auth state no Postgres', () => {
    * The promise is that reading this table without the key takes over nobody's
    * WhatsApp. This test fails if anyone drops the cipher from the write path.
    */
-  it('guarda as credenciais cifradas, não em claro', async () => {
+  it('stores the credentials encrypted, not in the clear', async () => {
     const auth = await usePostgresAuthState({ db, sessionId, encryptionKey })
     await auth.saveCreds()
 
@@ -84,7 +84,7 @@ describe.skipIf(!hasInfra)('auth state no Postgres', () => {
     expect(stored.split('.')).toHaveLength(3)
   })
 
-  it('faz round-trip das signal keys preservando Buffers', async () => {
+  it('round-trips the signal keys preserving Buffers', async () => {
     const auth = await usePostgresAuthState({ db, sessionId, encryptionKey })
 
     await auth.state.keys.set({
@@ -99,7 +99,7 @@ describe.skipIf(!hasInfra)('auth state no Postgres', () => {
     expect(fetched['1']?.private).toEqual(Buffer.from([4, 5, 6]))
   })
 
-  it('devolve apenas os ids pedidos', async () => {
+  it('returns only the ids asked for', async () => {
     const auth = await usePostgresAuthState({ db, sessionId, encryptionKey })
     await auth.state.keys.set({
       'pre-key': {
@@ -113,12 +113,12 @@ describe.skipIf(!hasInfra)('auth state no Postgres', () => {
   })
 
   /** Baileys calls get with an empty list; an empty inArray makes invalid SQL. */
-  it('sobrevive a get com lista vazia', async () => {
+  it('survives a get with an empty list', async () => {
     const auth = await usePostgresAuthState({ db, sessionId, encryptionKey })
     await expect(auth.state.keys.get('pre-key', [])).resolves.toEqual({})
   })
 
-  it('apaga a chave quando o valor vem nulo', async () => {
+  it('deletes the key when the value comes in null', async () => {
     const auth = await usePostgresAuthState({ db, sessionId, encryptionKey })
 
     await auth.state.keys.set({
@@ -130,7 +130,7 @@ describe.skipIf(!hasInfra)('auth state no Postgres', () => {
     expect(await auth.state.keys.get('pre-key', ['20'])).toEqual({})
   })
 
-  it('separa chaves de tipos diferentes com o mesmo id', async () => {
+  it('separates keys of different types with the same id', async () => {
     const auth = await usePostgresAuthState({ db, sessionId, encryptionKey })
 
     await auth.state.keys.set({
@@ -145,7 +145,7 @@ describe.skipIf(!hasInfra)('auth state no Postgres', () => {
     expect(session['99']).toEqual(Buffer.from([3, 3, 3]))
   })
 
-  it('limpa credenciais e keys no logout', async () => {
+  it('clears credentials and keys on logout', async () => {
     const auth = await usePostgresAuthState({ db, sessionId, encryptionKey })
     await auth.saveCreds()
     await auth.state.keys.set({
@@ -167,7 +167,7 @@ describe.skipIf(!hasInfra)('auth state no Postgres', () => {
     expect(keys).toHaveLength(0)
   })
 
-  it('recusa credenciais quando a chave de cifra está errada', async () => {
+  it('refuses the credentials when the encryption key is wrong', async () => {
     const auth = await usePostgresAuthState({ db, sessionId, encryptionKey })
     await auth.saveCreds()
 
@@ -176,7 +176,7 @@ describe.skipIf(!hasInfra)('auth state no Postgres', () => {
   })
 })
 
-describe.skipIf(!hasInfra)('chave de cifragem trocada', () => {
+describe.skipIf(!hasInfra)('changed encryption key', () => {
   let handle: ReturnType<typeof createDb>
   let db: Database
   let org: SeededOrg
@@ -197,7 +197,7 @@ describe.skipIf(!hasInfra)('chave de cifragem trocada', () => {
    * identity would make the session ask to be paired again without saying why,
    * and the old device would be left hanging on the user's phone.
    */
-  it('falha dizendo o que aconteceu, em vez de começar do zero', async () => {
+  it('fails saying what happened instead of starting from scratch', async () => {
     const sessionId = await createSession(db, org.orgId)
 
     const original = await usePostgresAuthState({ db, sessionId, encryptionKey })

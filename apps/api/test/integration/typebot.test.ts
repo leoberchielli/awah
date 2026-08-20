@@ -14,7 +14,7 @@ const hasInfra = Boolean(process.env.DATABASE_URL && process.env.REDIS_URL)
 
 const CHAT_ID = '5511977776666@s.whatsapp.net'
 
-describe.skipIf(!hasInfra)('fluxo do Typebot', () => {
+describe.skipIf(!hasInfra)('Typebot flow', () => {
   let app: FastifyInstance
   let org: SeededOrg
   let sessionId: string
@@ -36,7 +36,7 @@ describe.skipIf(!hasInfra)('fluxo do Typebot', () => {
             messages: [
               {
                 type: 'text',
-                content: { richText: [{ children: [{ text: 'Oi! Sou o robô.' }] }] },
+                content: { richText: [{ children: [{ text: 'Hi! I am the bot.' }] }] },
               },
             ],
           },
@@ -90,7 +90,7 @@ describe.skipIf(!hasInfra)('fluxo do Typebot', () => {
       .insert(schema.sessions)
       .values({ orgId: org.orgId, name: `fluxo-${randomUUID().slice(0, 8)}`, engine: 'baileys' })
       .returning({ id: schema.sessions.id })
-    if (!row) throw new Error('falha ao criar sessão')
+    if (!row) throw new Error('failed to create the session')
     sessionId = row.id
 
     const integration = await saveIntegration(app.db, encryptionKey, {
@@ -98,7 +98,7 @@ describe.skipIf(!hasInfra)('fluxo do Typebot', () => {
       sessionId,
       kind: 'typebot',
       config: typebotConfigSchema.parse({
-        baseUrl: 'https://typebot.exemplo.com',
+        baseUrl: 'https://typebot.example.com',
         typebotId: 'meu-fluxo',
       }),
     })
@@ -114,15 +114,15 @@ describe.skipIf(!hasInfra)('fluxo do Typebot', () => {
     await app?.close()
   })
 
-  it('inicia o fluxo na primeira mensagem e continua na segunda', async () => {
-    await receive('oi')
+  it('starts the flow on the first message and continues it on the second', async () => {
+    await receive('hi')
     expect(paths[0]).toContain('/startChat')
 
     const link = await findLink(app.db, integrationId, CHAT_ID)
     expect(link?.externalConversationId).toBe('sess-do-fluxo')
 
     paths = []
-    await receive('quero saber o preço')
+    await receive('i want to know the price')
 
     /**
      * Restarting the flow on every message would erase everything the customer
@@ -131,11 +131,11 @@ describe.skipIf(!hasInfra)('fluxo do Typebot', () => {
     expect(paths[0]).toContain('/sessions/sess-do-fluxo/continueChat')
   })
 
-  it('a resposta do fluxo entra pela mesma fila de qualquer envio', async () => {
+  it('the flow reply goes through the same queue as any send', async () => {
     const id = await receive('oi de novo')
 
     const queued = (await queue()).find((l) => l.clientMessageId.includes(id))
-    expect((queued?.payload as { text?: string })?.text).toBe('Oi! Sou o robô.')
+    expect((queued?.payload as { text?: string })?.text).toBe('Hi! I am the bot.')
   })
 
   /**
@@ -143,14 +143,14 @@ describe.skipIf(!hasInfra)('fluxo do Typebot', () => {
    * Meta: the flow's reply inherits per-chat ordering, the risk engine and
    * redelivery.
    */
-  it('processar o mesmo event duas vezes não duplica a resposta', async () => {
+  it('processing the same event twice does not duplicate the reply', async () => {
     const engineMessageId = `wamid.${randomUUID()}`
     const event = {
       orgId: org.orgId,
       sessionId,
       chatId: CHAT_ID,
       engineMessageId,
-      body: 'mensagem repetida',
+      body: 'repeated message',
       fromJid: CHAT_ID,
       occurredAt: new Date(),
     }
@@ -162,9 +162,9 @@ describe.skipIf(!hasInfra)('fluxo do Typebot', () => {
     expect(duplicates).toHaveLength(1)
   })
 
-  describe('escape para atendimento humano', () => {
-    it('encerra a sessão de fluxo sem chamar o Typebot', async () => {
-      await receive('oi')
+  describe('escape to a human', () => {
+    it('ends the flow session without calling Typebot', async () => {
+      await receive('hi')
       paths = []
 
       await receive('agent')
@@ -175,7 +175,7 @@ describe.skipIf(!hasInfra)('fluxo do Typebot', () => {
       expect(await findLink(app.db, integrationId, CHAT_ID)).toBeNull()
     })
 
-    it('reconhece a palavra em qualquer caixa e avisa o cliente', async () => {
+    it('recognizes the keyword in any case and warns the customer', async () => {
       const id = await receive('AGENT')
 
       const warning = (await queue()).find((l) => l.clientMessageId.includes(id))
@@ -183,10 +183,10 @@ describe.skipIf(!hasInfra)('fluxo do Typebot', () => {
     })
   })
 
-  it('fluxo encerrado deixa a próxima mensagem recomeçar do zero', async () => {
+  it('a finished flow lets the next message start from scratch', async () => {
     const finishedFlow = fetchDoTypebot({
       sessionId: 'sess-terminada',
-      messages: [{ type: 'text', content: { richText: [{ children: [{ text: 'Até mais!' }] }] } }],
+      messages: [{ type: 'text', content: { richText: [{ children: [{ text: 'See you!' }] }] } }],
     })
 
     await receive('quero encerrar', finishedFlow)
@@ -199,8 +199,8 @@ describe.skipIf(!hasInfra)('fluxo do Typebot', () => {
     expect(await findLink(app.db, integrationId, CHAT_ID)).toBeNull()
   })
 
-  it('sessão morta do outro lado recomeça em vez de calar o contato', async () => {
-    await receive('oi')
+  it('a session dead on the other side starts over instead of muting the contact', async () => {
+    await receive('hi')
 
     let call = 0
     const expiringFetch = vi.fn(async (url: string | URL) => {
@@ -217,7 +217,7 @@ describe.skipIf(!hasInfra)('fluxo do Typebot', () => {
           sessionId: 'sess-nova',
           input: { type: 'text input' },
           messages: [
-            { type: 'text', content: { richText: [{ children: [{ text: 'Recomeçando' }] }] } },
+            { type: 'text', content: { richText: [{ children: [{ text: 'Starting over' }] }] } },
           ],
         }),
         { status: 200 },
@@ -231,6 +231,6 @@ describe.skipIf(!hasInfra)('fluxo do Typebot', () => {
     expect(paths[1]).toContain('/startChat')
 
     const response = (await queue()).find((l) => l.clientMessageId.includes(id))
-    expect((response?.payload as { text?: string })?.text).toBe('Recomeçando')
+    expect((response?.payload as { text?: string })?.text).toBe('Starting over')
   })
 })

@@ -5,7 +5,7 @@ import { loadEnv } from '../../src/env'
 
 const hasInfra = Boolean(process.env.DATABASE_URL && process.env.REDIS_URL)
 
-describe.skipIf(!hasInfra)('cabeçalhos de segurança', () => {
+describe.skipIf(!hasInfra)('security headers', () => {
   let app: FastifyInstance
 
   beforeAll(async () => {
@@ -33,7 +33,7 @@ describe.skipIf(!hasInfra)('cabeçalhos de segurança', () => {
     )
   }
 
-  it('publica CSP também fora de produção', async () => {
+  it('publishes CSP outside production too', async () => {
     // Production-only would mean finding the breakage at deploy, not in dev.
     expect(Object.keys(await csp()).length).toBeGreaterThan(0)
   })
@@ -43,28 +43,28 @@ describe.skipIf(!hasInfra)('cabeçalhos de segurança', () => {
    * someone tightens the CSP without knowing that, one of these tests falls
    * first — before the deploy does.
    */
-  it('permite o QR de pareamento, que chega como data: URI', async () => {
+  it('allows the pairing QR, which arrives as a data: URI', async () => {
     expect((await csp())['img-src']).toContain('data:')
   })
 
-  it('permite estilo inline, que o Swagger UI e as barras do painel usam', async () => {
+  it('allows inline style, which Swagger UI and the panel bars use', async () => {
     expect((await csp())['style-src']).toContain("'unsafe-inline'")
   })
 
-  it('não permite script inline', async () => {
+  it('does not allow inline script', async () => {
     const directives = await csp()
     expect(directives['script-src']).toBe("'self'")
     expect(directives['script-src']).not.toContain('unsafe-inline')
   })
 
-  it('proíbe ser embutida em iframe e falar com outra origem', async () => {
+  it('forbids being embedded in an iframe and talking to another origin', async () => {
     const directives = await csp()
     expect(directives['frame-ancestors']).toBe("'none'")
     expect(directives['connect-src']).toBe("'self'")
     expect(directives['object-src']).toBe("'none'")
   })
 
-  it('mantém os demais cabeçalhos do helmet', async () => {
+  it('keeps the remaining helmet headers', async () => {
     const response = await app.inject({ method: 'GET', url: '/health' })
 
     expect(response.headers['x-content-type-options']).toBe('nosniff')
@@ -72,7 +72,7 @@ describe.skipIf(!hasInfra)('cabeçalhos de segurança', () => {
   })
 })
 
-describe.skipIf(!hasInfra)('teto do corpo da requisição', () => {
+describe.skipIf(!hasInfra)('request body cap', () => {
   let app: FastifyInstance
 
   beforeAll(async () => {
@@ -84,7 +84,7 @@ describe.skipIf(!hasInfra)('teto do corpo da requisição', () => {
     await app?.close()
   })
 
-  it('recusa corpo acima do teto antes de qualquer processamento', async () => {
+  it('refuses a body above the cap before any processing', async () => {
     const response = await app.inject({
       method: 'POST',
       url: '/v1/auth/login',

@@ -17,7 +17,7 @@ export function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/entrar" element={<SignIn />} />
+        <Route path="/signin" element={<SignIn />} />
         <Route
           path="/*"
           element={
@@ -44,7 +44,7 @@ export function App() {
  *
  * The real authorization is the server's — every route already demands the
  * right permission. This only avoids showing a panel skeleton to someone who
- * will take a 401 on every call, and it sends them back to `/entrar` carrying
+ * will take a 401 on every call, and it sends them back to `/signin` carrying
  * the URL they came from.
  */
 function Authenticated({ children }: { children: React.ReactNode }) {
@@ -63,7 +63,7 @@ function Authenticated({ children }: { children: React.ReactNode }) {
 
   if (error || !data) {
     const returnTo = `${window.location.pathname}${window.location.search}`
-    return <Navigate to={`/entrar?voltar=${encodeURIComponent(returnTo)}`} replace />
+    return <Navigate to={`/signin?return=${encodeURIComponent(returnTo)}`} replace />
   }
 
   return <SessionProvider value={data}>{children}</SessionProvider>

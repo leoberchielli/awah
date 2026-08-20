@@ -22,8 +22,8 @@ function makeDist(): string {
   return root
 }
 
-describe('separação entre rotas do servidor e do dashboard', () => {
-  it('reconhece o que pertence à API', () => {
+describe('split between server routes and dashboard routes', () => {
+  it('recognises what belongs to the API', () => {
     expect(isServerRoute('/v1/sessions')).toBe(true)
     expect(isServerRoute('/v1/kpi/delivery?hours=24')).toBe(true)
     expect(isServerRoute('/webhooks/meta/abc')).toBe(true)
@@ -31,20 +31,20 @@ describe('separação entre rotas do servidor e do dashboard', () => {
     expect(isServerRoute('/docs')).toBe(true)
   })
 
-  it('deixa passar o que pertence ao dashboard', () => {
+  it('lets through what belongs to the dashboard', () => {
     expect(isServerRoute('/operacao')).toBe(false)
-    expect(isServerRoute('/sessoes?horas=168')).toBe(false)
-    expect(isServerRoute('/entrar')).toBe(false)
+    expect(isServerRoute('/sessions?hours=168')).toBe(false)
+    expect(isServerRoute('/signin')).toBe(false)
     // A path that merely *starts* alike is not a server route.
     expect(isServerRoute('/v1negocio')).toBe(false)
   })
 
-  it('não encontra dashboard onde não há build', () => {
+  it('finds no dashboard where there is no build', () => {
     expect(findDashboard(mkdtempSync(join(tmpdir(), 'awah-vazio-')))).toBeNull()
   })
 })
 
-describe.skipIf(!hasInfra)('SPA servida pela API', () => {
+describe.skipIf(!hasInfra)('SPA served by the API', () => {
   let app: FastifyInstance
 
   beforeAll(async () => {
@@ -58,7 +58,7 @@ describe.skipIf(!hasInfra)('SPA servida pela API', () => {
 
   const browser = { accept: 'text/html,application/xhtml+xml' }
 
-  it('entrega o HTML numa rota de cliente', async () => {
+  it('serves the HTML on a client route', async () => {
     const response = await app.inject({ method: 'GET', url: '/operacao', headers: browser })
 
     expect(response.statusCode).toBe(200)
@@ -66,7 +66,7 @@ describe.skipIf(!hasInfra)('SPA servida pela API', () => {
     expect(response.body).toContain('<div id="root">')
   })
 
-  it('entrega os arquivos estáticos', async () => {
+  it('serves the static files', async () => {
     const script = await app.inject({ method: 'GET', url: '/assets/index-abc123.js' })
     expect(script.statusCode).toBe(200)
     expect(script.headers['cache-control']).toContain('immutable')
@@ -81,7 +81,7 @@ describe.skipIf(!hasInfra)('SPA servida pela API', () => {
    * HTML page with status 200, and whoever is integrating trying to work out
    * why their JSON turned into `<!doctype html>`.
    */
-  it('não devolve HTML para rota de API inexistente', async () => {
+  it('does not return HTML for a nonexistent API route', async () => {
     const response = await app.inject({
       method: 'GET',
       url: '/v1/sessoes',
@@ -92,7 +92,7 @@ describe.skipIf(!hasInfra)('SPA servida pela API', () => {
     expect(response.json()).toHaveProperty('error.code', 'not_found')
   })
 
-  it('não devolve HTML para quem pediu JSON', async () => {
+  it('does not return HTML to whoever asked for JSON', async () => {
     const response = await app.inject({
       method: 'GET',
       url: '/operacao',
@@ -103,14 +103,14 @@ describe.skipIf(!hasInfra)('SPA servida pela API', () => {
     expect(response.json()).toHaveProperty('error.code', 'not_found')
   })
 
-  it('não devolve HTML para método que não é navegação', async () => {
+  it('does not return HTML for a method that is not navigation', async () => {
     const response = await app.inject({ method: 'POST', url: '/operacao', headers: browser })
 
     expect(response.statusCode).toBe(404)
     expect(response.json()).toHaveProperty('error.code', 'not_found')
   })
 
-  it('as rotas da API continuam respondendo o que sempre responderam', async () => {
+  it('the API routes keep answering what they always answered', async () => {
     const withoutCredential = await app.inject({ method: 'GET', url: '/v1/sessions' })
     expect(withoutCredential.statusCode).toBe(401)
     expect(withoutCredential.json()).toHaveProperty('error.code')
@@ -119,7 +119,7 @@ describe.skipIf(!hasInfra)('SPA servida pela API', () => {
     expect(health.statusCode).toBe(200)
   })
 
-  it('o webhook da Meta não é engolido pela SPA', async () => {
+  it('the Meta webhook is not swallowed by the SPA', async () => {
     const response = await app.inject({
       method: 'GET',
       url: '/webhooks/meta/00000000-0000-0000-0000-000000000000?hub.mode=subscribe',

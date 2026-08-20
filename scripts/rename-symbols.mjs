@@ -56,16 +56,16 @@ function arquivosDoProjeto(tsconfig) {
 }
 
 /** Files are read once and mutated in memory, so several renames compose. */
-const conteudo = new Map()
+const contents = new Map()
 const ler = (f) => {
-  if (!conteudo.has(f)) {
+  if (!contents.has(f)) {
     try {
-      conteudo.set(f, readFileSync(f, 'utf8'))
+      contents.set(f, readFileSync(f, 'utf8'))
     } catch {
-      conteudo.set(f, null)
+      contents.set(f, null)
     }
   }
-  return conteudo.get(f)
+  return contents.get(f)
 }
 
 const versao = new Map()
@@ -164,13 +164,13 @@ for (const projeto of PROJETOS) {
         let texto = ler(f)
         if (texto === null) continue
         for (const l of [...ls2].sort((a, b) => b.textSpan.start - a.textSpan.start)) {
-          const antes = texto.slice(0, l.textSpan.start)
-          const depois = texto.slice(l.textSpan.start + l.textSpan.length)
+          const before = texto.slice(0, l.textSpan.start)
+          const after = texto.slice(l.textSpan.start + l.textSpan.length)
           const prefixo = l.prefixText ?? ''
           const sufixo = l.suffixText ?? ''
-          texto = `${antes}${prefixo}${alvo.novo}${sufixo}${depois}`
+          texto = `${before}${prefixo}${alvo.novo}${sufixo}${after}`
         }
-        conteudo.set(f, texto)
+        contents.set(f, texto)
         tocar(f)
       }
 
@@ -194,7 +194,7 @@ if (dry) {
 }
 
 let escritos = 0
-for (const [f, texto] of conteudo) {
+for (const [f, texto] of contents) {
   if (texto !== null && versao.get(f)) {
     writeFileSync(f, texto)
     escritos++

@@ -39,20 +39,14 @@ if (!mapaPath) {
  */
 const mapa = Object.assign(Object.create(null), JSON.parse(readFileSync(mapaPath, 'utf8')))
 
-const ROOTS = [
-  'apps/api/src',
-  'apps/api/test',
-  'apps/web/src',
-  'packages/db/src',
-  'packages/sdk/src',
-]
-const SKIP = 'i18n/locales'
+const ROOTS = ['apps/api', 'apps/web', 'packages/db', 'packages/sdk']
+const SKIP = ['i18n/locales', 'node_modules', '/dist/']
 
 function collect(dir, out = []) {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const path = `${dir}/${entry.name}`
     if (entry.isDirectory()) collect(path, out)
-    else if (/\.tsx?$/.test(entry.name) && !path.includes(SKIP)) out.push(path)
+    else if (/\.tsx?$/.test(entry.name) && !SKIP.some((skip) => path.includes(skip))) out.push(path)
   }
   return out
 }

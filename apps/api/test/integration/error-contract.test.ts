@@ -9,7 +9,7 @@ import { loadEnv } from '../../src/env'
  */
 const hasInfra = Boolean(process.env.DATABASE_URL && process.env.REDIS_URL)
 
-describe.skipIf(!hasInfra)('contrato do formato de erro', () => {
+describe.skipIf(!hasInfra)('error shape contract', () => {
   let app: FastifyInstance
 
   beforeAll(async () => {
@@ -28,7 +28,7 @@ describe.skipIf(!hasInfra)('contrato do formato de erro', () => {
    * (`{statusCode, code, error, message}`) while the docs promised
    * `{error: {code, message}}`. Nothing broke — the contract was just wrong.
    */
-  it('devolve 401 no envelope do AWAH, não no padrão do Fastify', async () => {
+  it('returns 401 in the AWAH envelope, not in the Fastify default', async () => {
     const response = await app.inject({ method: 'GET', url: '/v1/auth/me' })
     const body = response.json()
 
@@ -41,8 +41,8 @@ describe.skipIf(!hasInfra)('contrato do formato de erro', () => {
     expect(typeof body.error).toBe('object')
   })
 
-  it('usa o mesmo envelope em rota inexistente', async () => {
-    const response = await app.inject({ method: 'GET', url: '/v1/nao-existe' })
+  it('uses the same envelope on a route that does not exist', async () => {
+    const response = await app.inject({ method: 'GET', url: '/v1/does-not-exist' })
     const body = response.json()
 
     expect(response.statusCode).toBe(404)
@@ -50,11 +50,11 @@ describe.skipIf(!hasInfra)('contrato do formato de erro', () => {
     expect(body).not.toHaveProperty('statusCode')
   })
 
-  it('usa o mesmo envelope em falha de validação', async () => {
+  it('uses the same envelope on a validation failure', async () => {
     const response = await app.inject({
       method: 'POST',
       url: '/v1/auth/login',
-      payload: { email: 'nao-e-email', password: '' },
+      payload: { email: 'not-an-email', password: '' },
     })
     const body = response.json()
 
@@ -64,7 +64,7 @@ describe.skipIf(!hasInfra)('contrato do formato de erro', () => {
     expect(body).not.toHaveProperty('statusCode')
   })
 
-  it('mantém o liveness fora da autenticação', async () => {
+  it('keeps liveness outside authentication', async () => {
     const response = await app.inject({ method: 'GET', url: '/health' })
     expect(response.statusCode).toBe(200)
     expect(response.json()).toHaveProperty('status', 'ok')

@@ -7,7 +7,7 @@ import { createSession, type SeededOrg, seedOrg } from './helpers'
 
 const hasInfra = Boolean(process.env.DATABASE_URL)
 
-describe.skipIf(!hasInfra)('fila de envio', () => {
+describe.skipIf(!hasInfra)('outbox queue', () => {
   let handle: ReturnType<typeof createDb>
   let db: Database
   let org: SeededOrg
@@ -40,10 +40,10 @@ describe.skipIf(!hasInfra)('fila de envio', () => {
     await db.delete(schema.outboxMessages).where(eq(schema.outboxMessages.orgId, org.orgId))
   })
 
-  describe('idempotência', () => {
-    it('não duplica o mesmo clientMessageId', async () => {
+  describe('idempotency', () => {
+    it('does not duplicate the same clientMessageId', async () => {
       const id = randomUUID()
-      const first = await enqueue('5511900000001@s.whatsapp.net', 'oi', id)
+      const first = await enqueue('5511900000001@s.whatsapp.net', 'hi', id)
       const second = await enqueue('5511900000001@s.whatsapp.net', 'oi de novo', id)
 
       expect(first.created).toBe(true)
@@ -55,7 +55,7 @@ describe.skipIf(!hasInfra)('fila de envio', () => {
     })
 
     /** The client's retry gets back the original row, not the second attempt. */
-    it('devolve o envio original no reenvio', async () => {
+    it('returns the original send on a resend', async () => {
       const id = randomUUID()
       await enqueue('5511900000002@s.whatsapp.net', 'texto original', id)
       const repetido = await enqueue('5511900000002@s.whatsapp.net', 'texto diferente', id)
@@ -65,28 +65,28 @@ describe.skipIf(!hasInfra)('fila de envio', () => {
     })
   })
 
-  describe('FIFO por chat', () => {
+  describe('FIFO per chat', () => {
     /**
      * The queue's central guarantee: inside one conversation the order is the
      * order of arrival, and two sends never leave for the same chat at once.
      */
-    it('reserva apenas a cabeça da fila de cada chat', async () => {
+    it("claims only the head of each chat's queue", async () => {
       const chat = '5511911111111@s.whatsapp.net'
-      const first = await enqueue(chat, 'mensagem 1')
-      await enqueue(chat, 'mensagem 2')
-      await enqueue(chat, 'mensagem 3')
+      const first = await enqueue(chat, 'message 1')
+      await enqueue(chat, 'message 2')
+      await enqueue(chat, 'message 3')
 
       const claimed = await claimOutbox(db, [sessionId], 10)
 
       expect(claimed).toHaveLength(1)
       expect(claimed[0]?.id).toBe(first.row.id)
-      expect(claimed[0]?.payload.text).toBe('mensagem 1')
+      expect(claimed[0]?.payload.text).toBe('message 1')
     })
 
-    it('não libera a próxima enquanto a anterior está saindo', async () => {
+    it('does not release the next one while the previous is going out', async () => {
       const chat = '5511922222222@s.whatsapp.net'
-      await enqueue(chat, 'primeira')
-      await enqueue(chat, 'segunda')
+      await enqueue(chat, 'first')
+      await enqueue(chat, 'second')
 
       await claimOutbox(db, [sessionId], 10)
       // The first is still 'sending'; the second cycle must pick up nothing.
@@ -95,10 +95,10 @@ describe.skipIf(!hasInfra)('fila de envio', () => {
       expect(secondCycle).toHaveLength(0)
     })
 
-    it('libera a seguinte depois que a anterior conclui', async () => {
+    it('releases the next one after the previous completes', async () => {
       const chat = '5511933333333@s.whatsapp.net'
-      await enqueue(chat, 'primeira')
-      const second = await enqueue(chat, 'segunda')
+      await enqueue(chat, 'first')
+      const second = await enqueue(chat, 'second')
 
       const [claimed] = await claimOutbox(db, [sessionId], 10)
       if (!claimed) throw new Error('nada reservado')
@@ -110,19 +110,19 @@ describe.skipIf(!hasInfra)('fila de envio', () => {
     })
 
     /** Distinct chats do not block each other — this is the §4.2 parallelism. */
-    it('reserva chats diferentes em paralelo', async () => {
-      await enqueue('5511944444444@s.whatsapp.net', 'para A')
-      await enqueue('5511955555555@s.whatsapp.net', 'para B')
-      await enqueue('5511966666666@s.whatsapp.net', 'para C')
+    it('claims different chats in parallel', async () => {
+      await enqueue('5511944444444@s.whatsapp.net', 'to A')
+      await enqueue('5511955555555@s.whatsapp.net', 'to B')
+      await enqueue('5511966666666@s.whatsapp.net', 'to C')
 
       const claimed = await claimOutbox(db, [sessionId], 10)
       expect(claimed).toHaveLength(3)
     })
   })
 
-  describe('exclusividade entre workers', () => {
-    it('não entrega o mesmo envio a dois consumidores', async () => {
-      await enqueue('5511977777777@s.whatsapp.net', 'única')
+  describe('exclusivity between workers', () => {
+    it('does not hand the same send to two consumers', async () => {
+      await enqueue('5511977777777@s.whatsapp.net', 'only one')
 
       const [a, b] = await Promise.all([
         claimOutbox(db, [sessionId], 10),
@@ -133,8 +133,8 @@ describe.skipIf(!hasInfra)('fila de envio', () => {
     })
   })
 
-  describe('retry e fila morta', () => {
-    it('devolve à fila com espera e consome tentativa', async () => {
+  describe('retry and dead-letter queue', () => {
+    it('requeues with a delay and spends an attempt', async () => {
       await enqueue('5511988888888@s.whatsapp.net', 'vai falhar')
       const [job] = await claimOutbox(db, [sessionId], 1)
       if (!job) throw new Error('nada reservado')
@@ -151,7 +151,7 @@ describe.skipIf(!hasInfra)('fila de envio', () => {
       expect(await claimOutbox(db, [sessionId], 10)).toHaveLength(0)
     })
 
-    it('manda para a DLQ ao esgotar as tentativas', async () => {
+    it('sends to the DLQ when the attempts run out', async () => {
       const { row } = await repo.enqueue({
         sessionId,
         chatId: '5511999999999@s.whatsapp.net',
@@ -174,7 +174,7 @@ describe.skipIf(!hasInfra)('fila de envio', () => {
       expect(dead?.attempts).toBe(2)
     })
 
-    it('reprocessa um envio morto zerando as tentativas', async () => {
+    it('reprocesses a dead send resetting the attempts', async () => {
       const { row } = await repo.enqueue({
         sessionId,
         chatId: '5511900000009@s.whatsapp.net',
@@ -195,8 +195,8 @@ describe.skipIf(!hasInfra)('fila de envio', () => {
     })
 
     /** A session that is down is not a delivery failure: released, no attempt spent. */
-    it('release não consome tentativa', async () => {
-      await enqueue('5511900000010@s.whatsapp.net', 'sessão caiu')
+    it('release spends no attempt', async () => {
+      await enqueue('5511900000010@s.whatsapp.net', 'session dropped')
       const [job] = await claimOutbox(db, [sessionId], 1)
       if (!job) throw new Error('nada reservado')
 
@@ -208,14 +208,14 @@ describe.skipIf(!hasInfra)('fila de envio', () => {
     })
   })
 
-  describe('recuperação de envios presos', () => {
+  describe('recovery of stuck sends', () => {
     /**
      * Without this, a process that dies mid-send jams that chat's queue for
      * good: the claim would keep seeing a send in flight that no longer exists
      * anywhere.
      */
-    it('devolve à fila o que ficou preso em sending', async () => {
-      await enqueue('5511900000011@s.whatsapp.net', 'órfã')
+    it('requeues what got stuck in sending', async () => {
+      await enqueue('5511900000011@s.whatsapp.net', 'orphan')
       const [job] = await claimOutbox(db, [sessionId], 1)
       if (!job) throw new Error('nada reservado')
 
@@ -231,7 +231,7 @@ describe.skipIf(!hasInfra)('fila de envio', () => {
       expect(claimed).toHaveLength(1)
     })
 
-    it('não mexe em envio recente', async () => {
+    it('does not touch a recent send', async () => {
       await enqueue('5511900000012@s.whatsapp.net', 'em curso')
       await claimOutbox(db, [sessionId], 1)
 
@@ -239,14 +239,14 @@ describe.skipIf(!hasInfra)('fila de envio', () => {
     })
   })
 
-  describe('sessões inativas', () => {
-    it('não reserva nada quando não há sessão ativa no nó', async () => {
-      await enqueue('5511900000013@s.whatsapp.net', 'sem dono')
+  describe('inactive sessions', () => {
+    it('claims nothing when the node has no active session', async () => {
+      await enqueue('5511900000013@s.whatsapp.net', 'no owner')
       expect(await claimOutbox(db, [], 10)).toHaveLength(0)
     })
 
-    it('ignora envios de sessões que não são deste nó', async () => {
-      await enqueue('5511900000014@s.whatsapp.net', 'de outra sessão')
+    it('ignores sends from sessions that are not on this node', async () => {
+      await enqueue('5511900000014@s.whatsapp.net', 'from another session')
       const otherSession = await createSession(db, org.orgId)
 
       expect(await claimOutbox(db, [otherSession], 10)).toHaveLength(0)

@@ -22,17 +22,10 @@ import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { join, relative, sep } from 'node:path'
 import ts from 'typescript'
 
-const ROOTS = [
-  'apps/api/src',
-  'apps/api/test',
-  'apps/web/src',
-  'packages/db/src',
-  'packages/sdk/src',
-  'scripts',
-]
+const ROOTS = ['apps/api', 'apps/web', 'packages/db', 'packages/sdk', 'scripts']
 
 /** Catalogs are data, not code; their "comments" are translated strings. */
-const SKIP = [join('i18n', 'locales')]
+const SKIP = [join('i18n', 'locales'), 'node_modules', join('dist', '')]
 
 function collect(dir, out = []) {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {

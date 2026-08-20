@@ -8,31 +8,31 @@ import {
   verifyWebhookRequest,
 } from '../src/index'
 
-const SEGREDO = 'segredo-do-endpoint'
-const CORPO = '{"event":"message.received","data":{"chatId":"5511999999999"}}'
-const AGORA = 1_800_000_000_000
+const SECRET = 'endpoint-secret'
+const BODY = '{"event":"message.received","data":{"chatId":"5511999999999"}}'
+const NOW = 1_800_000_000_000
 
-const agora = () => AGORA
-const emSegundos = Math.floor(AGORA / 1000)
+const agora = () => NOW
+const emSegundos = Math.floor(NOW / 1000)
 
-/** A implementação de referência do servidor, para provar que as duas batem. */
+/** The server's reference implementation, to prove the two agree. */
 function assinarComoOServidor(payload: string, secret: string, timestamp: number): string {
   return `sha256=${createHmac('sha256', secret).update(`${timestamp}.${payload}`).digest('hex')}`
 }
 
-describe('paridade com o servidor', () => {
-  it('produz exatamente a mesma assinatura que o node:crypto do servidor', async () => {
-    const doSdk = await signWebhook(CORPO, SEGREDO, emSegundos)
-    expect(doSdk).toBe(assinarComoOServidor(CORPO, SEGREDO, emSegundos))
+describe('parity with the server', () => {
+  it('produces exactly the same signature as the node:crypto on the server', async () => {
+    const doSdk = await signWebhook(BODY, SECRET, emSegundos)
+    expect(doSdk).toBe(assinarComoOServidor(BODY, SECRET, emSegundos))
   })
 })
 
-describe('verificação', () => {
-  it('aceita entrega legítima', async () => {
+describe('verification', () => {
+  it('accepts a legitimate delivery', async () => {
     const valido = await verifyWebhook({
-      payload: CORPO,
-      secret: SEGREDO,
-      signature: assinarComoOServidor(CORPO, SEGREDO, emSegundos),
+      payload: BODY,
+      secret: SECRET,
+      signature: assinarComoOServidor(BODY, SECRET, emSegundos),
       timestamp: emSegundos,
       now: agora,
     })
@@ -40,11 +40,11 @@ describe('verificação', () => {
     expect(valido).toBe(true)
   })
 
-  it('recusa segredo errado', async () => {
+  it('refuses the wrong secret', async () => {
     const valido = await verifyWebhook({
-      payload: CORPO,
-      secret: 'outro-segredo',
-      signature: assinarComoOServidor(CORPO, SEGREDO, emSegundos),
+      payload: BODY,
+      secret: 'other-secret',
+      signature: assinarComoOServidor(BODY, SECRET, emSegundos),
       timestamp: emSegundos,
       now: agora,
     })
@@ -52,11 +52,11 @@ describe('verificação', () => {
     expect(valido).toBe(false)
   })
 
-  it('recusa corpo adulterado', async () => {
+  it('refuses a tampered body', async () => {
     const valido = await verifyWebhook({
-      payload: CORPO.replace('5511999999999', '5511000000000'),
-      secret: SEGREDO,
-      signature: assinarComoOServidor(CORPO, SEGREDO, emSegundos),
+      payload: BODY.replace('5511999999999', '5511000000000'),
+      secret: SECRET,
+      signature: assinarComoOServidor(BODY, SECRET, emSegundos),
       timestamp: emSegundos,
       now: agora,
     })
@@ -65,17 +65,17 @@ describe('verificação', () => {
   })
 
   /**
-   * O ponto do esquema: o timestamp está **dentro** da assinatura. Uma entrega
-   * capturada não pode ser reenviada depois, e mudar o timestamp para escapar da
-   * janela invalida a assinatura.
+   * The point of the scheme: the timestamp is **inside** the signature. A
+   * captured delivery cannot be replayed later, and changing the timestamp to
+   * escape the window invalidates the signature.
    */
-  it('recusa entrega antiga', async () => {
+  it('refuses an old delivery', async () => {
     const velho = emSegundos - 3600
 
     const valido = await verifyWebhook({
-      payload: CORPO,
-      secret: SEGREDO,
-      signature: assinarComoOServidor(CORPO, SEGREDO, velho),
+      payload: BODY,
+      secret: SECRET,
+      signature: assinarComoOServidor(BODY, SECRET, velho),
       timestamp: velho,
       now: agora,
     })
@@ -83,14 +83,14 @@ describe('verificação', () => {
     expect(valido).toBe(false)
   })
 
-  it('recusa timestamp trocado para escapar da janela', async () => {
+  it('refuses a timestamp swapped to escape the window', async () => {
     const velho = emSegundos - 3600
 
     const valido = await verifyWebhook({
-      payload: CORPO,
-      secret: SEGREDO,
-      // Assinada com o timestamp antigo, apresentada com o atual.
-      signature: assinarComoOServidor(CORPO, SEGREDO, velho),
+      payload: BODY,
+      secret: SECRET,
+      // Signed with the old timestamp, presented with the current one.
+      signature: assinarComoOServidor(BODY, SECRET, velho),
       timestamp: emSegundos,
       now: agora,
     })
@@ -98,13 +98,13 @@ describe('verificação', () => {
     expect(valido).toBe(false)
   })
 
-  it('a janela é configurável', async () => {
+  it('the window is configurable', async () => {
     const velho = emSegundos - 3600
 
     const valido = await verifyWebhook({
-      payload: CORPO,
-      secret: SEGREDO,
-      signature: assinarComoOServidor(CORPO, SEGREDO, velho),
+      payload: BODY,
+      secret: SECRET,
+      signature: assinarComoOServidor(BODY, SECRET, velho),
       timestamp: velho,
       toleranceSeconds: 7200,
       now: agora,
@@ -113,11 +113,11 @@ describe('verificação', () => {
     expect(valido).toBe(true)
   })
 
-  it('aceita o timestamp como string, que é como ele chega no header', async () => {
+  it('accepts the timestamp as a string, which is how it arrives in the header', async () => {
     const valido = await verifyWebhook({
-      payload: CORPO,
-      secret: SEGREDO,
-      signature: assinarComoOServidor(CORPO, SEGREDO, emSegundos),
+      payload: BODY,
+      secret: SECRET,
+      signature: assinarComoOServidor(BODY, SECRET, emSegundos),
       timestamp: String(emSegundos),
       now: agora,
     })
@@ -125,37 +125,37 @@ describe('verificação', () => {
     expect(valido).toBe(true)
   })
 
-  it('recusa header ausente sem estourar', async () => {
+  it('refuses a missing header without blowing up', async () => {
     await expect(
-      verifyWebhook({ payload: CORPO, secret: SEGREDO, signature: '', timestamp: '' }),
+      verifyWebhook({ payload: BODY, secret: SECRET, signature: '', timestamp: '' }),
     ).resolves.toBe(false)
   })
 })
 
-describe('atalho para Request padrão', () => {
-  it('valida e devolve o corpo cru para quem for parsear depois', async () => {
+describe('shortcut for a standard Request', () => {
+  it('validates and returns the raw body for whoever parses it later', async () => {
     const timestamp = Math.floor(Date.now() / 1000)
 
     const request = new Request('https://meu-sistema/hook', {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
-        [SIGNATURE_HEADER]: assinarComoOServidor(CORPO, SEGREDO, timestamp),
+        [SIGNATURE_HEADER]: assinarComoOServidor(BODY, SECRET, timestamp),
         [TIMESTAMP_HEADER]: String(timestamp),
       },
-      body: CORPO,
+      body: BODY,
     })
 
-    const { valid, payload } = await verifyWebhookRequest(request, SEGREDO)
+    const { valid, payload } = await verifyWebhookRequest(request, SECRET)
 
     expect(valid).toBe(true)
-    expect(payload).toBe(CORPO)
+    expect(payload).toBe(BODY)
     expect(JSON.parse(payload).event).toBe('message.received')
   })
 
-  it('reprova quando falta a assinatura', async () => {
-    const request = new Request('https://meu-sistema/hook', { method: 'POST', body: CORPO })
-    const { valid } = await verifyWebhookRequest(request, SEGREDO)
+  it('fails when the signature is missing', async () => {
+    const request = new Request('https://meu-sistema/hook', { method: 'POST', body: BODY })
+    const { valid } = await verifyWebhookRequest(request, SECRET)
 
     expect(valid).toBe(false)
   })

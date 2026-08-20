@@ -11,7 +11,7 @@ const hasInfra = Boolean(process.env.DATABASE_URL && process.env.REDIS_URL)
 
 const silent = { info: () => {}, warn: () => {}, error: () => {} }
 
-describe.skipIf(!hasInfra)('telemetria', () => {
+describe.skipIf(!hasInfra)('telemetry', () => {
   let handle: ReturnType<typeof createDb>
   let db: Database
   let org: SeededOrg
@@ -120,32 +120,32 @@ describe.skipIf(!hasInfra)('telemetria', () => {
     return row?.value ?? null
   }
 
-  describe('agregação horária', () => {
-    it('conta o volume por direção', async () => {
+  describe('hourly aggregation', () => {
+    it('counts volume by direction', async () => {
       expect(await metric('messages.outbound')).toBe(2)
       expect(await metric('messages.inbound')).toBe(1)
     })
 
-    it('conta a trilha de ACK', async () => {
+    it('counts the ACK trail', async () => {
       expect(await metric('status.delivered')).toBe(1)
     })
 
-    it('calcula percentis de latência', async () => {
+    it('computes latency percentiles', async () => {
       // A single ACK, five seconds: every percentile comes out the same.
       expect(await metric('latency.delivered.p50')).toBe(5000)
       expect(await metric('latency.delivered.p95')).toBe(5000)
     })
 
-    it('conta decisões de risco e o score médio', async () => {
+    it('counts risk decisions and the average score', async () => {
       expect(await metric('risk.held')).toBe(1)
       expect(await metric('risk.score.avg')).toBe(62)
     })
 
-    it('conta quedas de sessão', async () => {
+    it('counts session drops', async () => {
       expect(await metric('session.disconnected')).toBe(1)
     })
 
-    it('conta contatos novos pela primeira saída de cada conversa', async () => {
+    it('counts new contacts by the first outbound of each conversation', async () => {
       expect(await metric('contacts.new')).toBe(2)
     })
 
@@ -153,7 +153,7 @@ describe.skipIf(!hasInfra)('telemetria', () => {
      * The property that lets every replica aggregate the same window without
      * coordination, and that makes a missed pass fix itself on the next one.
      */
-    it('reprocessar a mesma janela não duplica nada', async () => {
+    it('reprocessing the same window duplicates nothing', async () => {
       await new MetricsAggregator({
         db,
         logger: silent,
@@ -176,10 +176,10 @@ describe.skipIf(!hasInfra)('telemetria', () => {
     })
   })
 
-  describe('rotas de KPI', () => {
+  describe('KPI routes', () => {
     const auth = () => ({ authorization: `Bearer ${token}` })
 
-    it('entregabilidade traz funil, latência e fila', async () => {
+    it('deliverability brings the funnel, latency and queue', async () => {
       const res = await app.inject({
         method: 'GET',
         url: '/v1/kpi/delivery?hours=6',
@@ -195,7 +195,7 @@ describe.skipIf(!hasInfra)('telemetria', () => {
       expect(body.queue).toHaveProperty('dead')
     })
 
-    it('risco traz decisões e séries', async () => {
+    it('risk brings decisions and series', async () => {
       const res = await app.inject({
         method: 'GET',
         url: '/v1/kpi/risk?hours=6',
@@ -208,7 +208,7 @@ describe.skipIf(!hasInfra)('telemetria', () => {
       expect(Array.isArray(body.scoreSeries)).toBe(true)
     })
 
-    it('saúde de sessão traz quedas com causa traduzida', async () => {
+    it('session health brings drops with a translated cause', async () => {
       const res = await app.inject({
         method: 'GET',
         url: '/v1/kpi/sessions?hours=6',
@@ -223,7 +223,7 @@ describe.skipIf(!hasInfra)('telemetria', () => {
       expect(session.mtbfMinutes).toBeGreaterThan(0)
     })
 
-    it('negócio traz conversas ativas e tempo de primeira resposta', async () => {
+    it('business brings active chats and first-response time', async () => {
       const res = await app.inject({
         method: 'GET',
         url: '/v1/kpi/business?hours=6',
@@ -238,7 +238,7 @@ describe.skipIf(!hasInfra)('telemetria', () => {
       expect(body.byType.some((t: { type: string }) => t.type === 'text')).toBe(true)
     })
 
-    it('exige permissão de leitura de métricas', async () => {
+    it('requires metrics read permission', async () => {
       const withoutPermission = await createApiKey(db, org.orgId, { role: 'viewer' })
       const res = await app.inject({
         method: 'GET',
@@ -253,8 +253,8 @@ describe.skipIf(!hasInfra)('telemetria', () => {
     })
   })
 
-  describe('endpoint Prometheus', () => {
-    it('responde no formato de exposição', async () => {
+  describe('Prometheus endpoint', () => {
+    it('answers in the exposition format', async () => {
       const res = await app.inject({ method: 'GET', url: '/metrics' })
 
       expect(res.statusCode).toBe(200)
@@ -264,12 +264,12 @@ describe.skipIf(!hasInfra)('telemetria', () => {
       expect(res.body).toContain('# TYPE')
     })
 
-    it('rotula todas as séries com o nó', async () => {
+    it('labels every series with the node', async () => {
       const res = await app.inject({ method: 'GET', url: '/metrics' })
       expect(res.body).toContain('node=')
     })
 
-    it('inclui métricas de processo', async () => {
+    it('includes process metrics', async () => {
       const res = await app.inject({ method: 'GET', url: '/metrics' })
       expect(res.body).toMatch(/awah_process_|awah_nodejs_/)
     })

@@ -6,7 +6,7 @@ import { createApiKey, createSession, type SeededOrg, seedOrg } from './helpers'
 
 const hasInfra = Boolean(process.env.DATABASE_URL && process.env.REDIS_URL)
 
-describe.skipIf(!hasInfra)('rotas de sessão', () => {
+describe.skipIf(!hasInfra)('session routes', () => {
   let app: FastifyInstance
   let org: SeededOrg
 
@@ -23,7 +23,7 @@ describe.skipIf(!hasInfra)('rotas de sessão', () => {
     await app?.close()
   })
 
-  it('cria, lê e lista uma sessão', async () => {
+  it('creates, reads and lists a session', async () => {
     const created = await app.inject({
       method: 'POST',
       url: '/v1/sessions',
@@ -53,7 +53,7 @@ describe.skipIf(!hasInfra)('rotas de sessão', () => {
     expect(listed.json().sessions.some((s: { id: string }) => s.id === session.id)).toBe(true)
   })
 
-  it('recusa nome duplicado dentro da organização', async () => {
+  it('refuses a duplicate name within the organization', async () => {
     const payload = { name: 'duplicada', engine: 'baileys' }
     await app.inject({ method: 'POST', url: '/v1/sessions', headers: auth(org.token), payload })
 
@@ -68,12 +68,12 @@ describe.skipIf(!hasInfra)('rotas de sessão', () => {
     expect(again.json()).toHaveProperty('error.code', 'conflict')
   })
 
-  it('recusa iniciar a engine oficial sem credenciais', async () => {
+  it('refuses to start the official engine without credentials', async () => {
     const created = await app.inject({
       method: 'POST',
       url: '/v1/sessions',
       headers: auth(org.token),
-      payload: { name: 'oficial', engine: 'cloud_api' },
+      payload: { name: 'official', engine: 'cloud_api' },
     })
     expect(created.statusCode).toBe(201)
 
@@ -87,12 +87,12 @@ describe.skipIf(!hasInfra)('rotas de sessão', () => {
     expect(started.json().error.message).toMatch(/credentials/i)
   })
 
-  it('recusa engine ainda não implementada', async () => {
+  it('refuses an engine that is not implemented yet', async () => {
     const created = await app.inject({
       method: 'POST',
       url: '/v1/sessions',
       headers: auth(org.token),
-      payload: { name: 'nao-oficial', engine: 'wwebjs' },
+      payload: { name: 'not-official', engine: 'wwebjs' },
     })
     expect(created.statusCode).toBe(201)
 
@@ -106,7 +106,7 @@ describe.skipIf(!hasInfra)('rotas de sessão', () => {
     expect(started.json().error.message).toMatch(/not implemented/)
   })
 
-  describe('credenciais da Cloud API', () => {
+  describe('Cloud API credentials', () => {
     async function createOfficialSession(): Promise<string> {
       const created = await app.inject({
         method: 'POST',
@@ -120,11 +120,11 @@ describe.skipIf(!hasInfra)('rotas de sessão', () => {
     const credentials = {
       phoneNumberId: '109876543210987',
       accessToken: 'EAAG'.padEnd(48, 'x'),
-      verifyToken: 'segredo-do-handshake',
-      appSecret: 'segredo-do-app',
+      verifyToken: 'handshake-secret',
+      appSecret: 'app-secret',
     }
 
-    it('guarda e devolve a URL do webhook', async () => {
+    it('stores and returns the webhook URL', async () => {
       const sessionId = await createOfficialSession()
 
       const saved = await app.inject({
@@ -143,7 +143,7 @@ describe.skipIf(!hasInfra)('rotas de sessão', () => {
      * list sessions without thereby being able to send messages in the
      * company's name.
      */
-    it('não devolve o token em nenhuma leitura da sessão', async () => {
+    it('never returns the token on any read of the session', async () => {
       const sessionId = await createOfficialSession()
 
       await app.inject({
@@ -163,7 +163,7 @@ describe.skipIf(!hasInfra)('rotas de sessão', () => {
       expect(readBack.body).not.toContain(credentials.appSecret)
     })
 
-    it('recusa credenciais da Meta em sessão do Baileys', async () => {
+    it('refuses Meta credentials on a Baileys session', async () => {
       const sessionId = await createSession(app.db, org.orgId)
 
       const response = await app.inject({
@@ -178,7 +178,7 @@ describe.skipIf(!hasInfra)('rotas de sessão', () => {
     })
   })
 
-  it('não devolve QR quando não há pareamento em curso', async () => {
+  it('returns no QR when no pairing is under way', async () => {
     const sessionId = await createSession(app.db, org.orgId)
 
     const qr = await app.inject({
@@ -190,7 +190,7 @@ describe.skipIf(!hasInfra)('rotas de sessão', () => {
     expect(qr.statusCode).toBe(404)
   })
 
-  it('parar uma sessão que não está rodando é operação idempotente', async () => {
+  it('stopping a session that is not running is idempotent', async () => {
     const sessionId = await createSession(app.db, org.orgId)
 
     const stopped = await app.inject({
@@ -202,7 +202,7 @@ describe.skipIf(!hasInfra)('rotas de sessão', () => {
     expect(stopped.statusCode).toBe(200)
   })
 
-  it('publica a matriz de capacidades das engines', async () => {
+  it('publishes the engine capability matrix', async () => {
     const response = await app.inject({
       method: 'GET',
       url: '/v1/engines',
@@ -222,8 +222,8 @@ describe.skipIf(!hasInfra)('rotas de sessão', () => {
     expect(cloud.capabilities.qrPairing).toBe(false)
   })
 
-  describe('isolamento entre organizações', () => {
-    it('não enxerga sessão de outra org', async () => {
+  describe('isolation between organizations', () => {
+    it('does not see a session from another org', async () => {
       const other = await seedOrg(app.db)
       const foreign = await createSession(app.db, other.orgId)
 
@@ -241,7 +241,7 @@ describe.skipIf(!hasInfra)('rotas de sessão', () => {
     })
   })
 
-  describe('escopo de sessão da chave', () => {
+  describe("the key's session scope", () => {
     let allowed: string
     let forbidden: string
     let scopedKey: string
@@ -255,7 +255,7 @@ describe.skipIf(!hasInfra)('rotas de sessão', () => {
       })
     })
 
-    it('lista apenas as sessões do escopo', async () => {
+    it('lists only the sessions in scope', async () => {
       const response = await app.inject({
         method: 'GET',
         url: '/v1/sessions',
@@ -271,7 +271,7 @@ describe.skipIf(!hasInfra)('rotas de sessão', () => {
      * session exists, and its existence is already information this key must
      * not have.
      */
-    it('esconde sessão fora do escopo com 404, não 403', async () => {
+    it('hides an out-of-scope session with 404, not 403', async () => {
       const response = await app.inject({
         method: 'GET',
         url: `/v1/sessions/${forbidden}`,
@@ -282,7 +282,7 @@ describe.skipIf(!hasInfra)('rotas de sessão', () => {
       expect(response.json()).toHaveProperty('error.code', 'not_found')
     })
 
-    it('bloqueia operar sessão fora do escopo', async () => {
+    it('blocks operating an out-of-scope session', async () => {
       const response = await app.inject({
         method: 'POST',
         url: `/v1/sessions/${forbidden}/stop`,
@@ -292,7 +292,7 @@ describe.skipIf(!hasInfra)('rotas de sessão', () => {
       expect(response.statusCode).toBe(404)
     })
 
-    it('permite operar a sessão do escopo', async () => {
+    it('allows operating the session in scope', async () => {
       const response = await app.inject({
         method: 'POST',
         url: `/v1/sessions/${allowed}/stop`,
@@ -302,12 +302,12 @@ describe.skipIf(!hasInfra)('rotas de sessão', () => {
       expect(response.statusCode).toBe(200)
     })
 
-    it('não deixa uma chave de operator criar sessão', async () => {
+    it('does not let an operator key create a session', async () => {
       const response = await app.inject({
         method: 'POST',
         url: '/v1/sessions',
         headers: auth(scopedKey),
-        payload: { name: 'nao-deveria', engine: 'baileys' },
+        payload: { name: 'should-not', engine: 'baileys' },
       })
 
       expect(response.statusCode).toBe(403)
@@ -315,7 +315,7 @@ describe.skipIf(!hasInfra)('rotas de sessão', () => {
   })
 })
 
-describe.skipIf(!hasInfra)('primeira execução', () => {
+describe.skipIf(!hasInfra)('first run', () => {
   let app: FastifyInstance
 
   /**
@@ -344,7 +344,7 @@ describe.skipIf(!hasInfra)('primeira execução', () => {
    * screen, and the first visit landed on a login nobody could use — with the
    * way out buried in a curl command in the README.
    */
-  it('responde sem credencial nenhuma', async () => {
+  it('answers with no credential at all', async () => {
     const response = await app.inject({ method: 'GET', url: '/v1/auth/bootstrap' })
 
     expect(response.statusCode).toBe(200)
@@ -352,20 +352,20 @@ describe.skipIf(!hasInfra)('primeira execução', () => {
     expect(response.json()).toHaveProperty('openRegistration')
   })
 
-  it('diz que já foi inicializada quando existe organização', async () => {
+  it('says it is already initialized when an organization exists', async () => {
     const response = await app.inject({ method: 'GET', url: '/v1/auth/bootstrap' })
     expect(response.json().needsSetup).toBe(false)
   })
 
-  it('o registro fica fechado depois da primeira organização', async () => {
+  it('registration closes after the first organization', async () => {
     const response = await app.inject({
       method: 'POST',
       url: '/v1/auth/register',
       payload: {
         organizationName: 'Tentativa',
-        name: 'Alguém',
-        email: `tarde-${Date.now()}@exemplo.com`,
-        password: 'uma-senha-bem-longa-mesmo',
+        name: 'Someone',
+        email: `late-${Date.now()}@example.com`,
+        password: 'a-really-quite-long-password',
       },
     })
 

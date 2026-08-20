@@ -9,7 +9,7 @@ const hasInfra = Boolean(process.env.DATABASE_URL && process.env.REDIS_URL)
 /** The example UUID Swagger UI suggests for any `format: uuid` field. */
 const UUID_DE_EXEMPLO = '3fa85f64-5717-4562-b3fc-2c963f66afa6'
 
-describe.skipIf(!hasInfra)('criação de chave de API', () => {
+describe.skipIf(!hasInfra)('API key creation', () => {
   let app: FastifyInstance
   let org: SeededOrg
   let session: string
@@ -44,12 +44,12 @@ describe.skipIf(!hasInfra)('criação de chave de API', () => {
     await app?.close()
   })
 
-  it('cria chave sem escopo, valendo em toda a organização', async () => {
+  it('creates a key with no scope, valid across the whole organization', async () => {
     const response = await app.inject({
       method: 'POST',
       url: '/v1/keys',
       headers: auth(),
-      payload: { name: 'sem escopo', role: 'operator' },
+      payload: { name: 'no scope', role: 'operator' },
     })
 
     expect(response.statusCode).toBe(201)
@@ -57,7 +57,7 @@ describe.skipIf(!hasInfra)('criação de chave de API', () => {
     expect(response.json().token).toMatch(/^awah_/)
   })
 
-  it('cria chave com escopo em sessão que existe', async () => {
+  it('creates a key scoped to a session that exists', async () => {
     const response = await app.inject({
       method: 'POST',
       url: '/v1/keys',
@@ -75,7 +75,7 @@ describe.skipIf(!hasInfra)('criação de chave de API', () => {
    * showed up on the first send, as "Session not found." — which blames the
    * session and sends whoever is integrating looking in the wrong place.
    */
-  it('recusa escopo apontando para sessão inexistente', async () => {
+  it('refuses a scope pointing at a nonexistent session', async () => {
     const response = await app.inject({
       method: 'POST',
       url: '/v1/keys',
@@ -87,7 +87,7 @@ describe.skipIf(!hasInfra)('criação de chave de API', () => {
     expect(response.json().error.message).toContain(UUID_DE_EXEMPLO)
   })
 
-  it('recusa escopo vazio, que não alcançaria nenhuma sessão', async () => {
+  it('refuses an empty scope, which would reach no session', async () => {
     const response = await app.inject({
       method: 'POST',
       url: '/v1/keys',
@@ -104,7 +104,7 @@ describe.skipIf(!hasInfra)('criação de chave de API', () => {
    * as unreachable as one that does not exist — and the message must not tell
    * the two cases apart, or it becomes an existence probe across tenants.
    */
-  it('recusa sessão de outra organização', async () => {
+  it('refuses a session from another organization', async () => {
     const other = await seedOrg(app.db)
     const foreign = await createSession(app.db, other.orgId)
 

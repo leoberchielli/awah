@@ -4,29 +4,30 @@ import { decrypt, encrypt, hashToken, randomToken, safeEqual } from '../src/lib/
 
 const key = randomBytes(32)
 
-describe('cifra do auth state', () => {
-  it('faz round-trip', () => {
+describe('auth state cipher', () => {
+  it('round-trips', () => {
     const secret = JSON.stringify({ noiseKey: 'abc', signedIdentityKey: 'def' })
     expect(decrypt(encrypt(secret, key), key)).toBe(secret)
   })
 
-  it('gera ciphertext diferente a cada chamada', () => {
+  it('produces a different ciphertext on every call', () => {
     // Random IV: the same text must not produce the same payload twice.
-    expect(encrypt('mesmo texto', key)).not.toBe(encrypt('mesmo texto', key))
+    expect(encrypt('same text', key)).not.toBe(encrypt('same text', key))
   })
 
-  it('preserva unicode', () => {
+  /* Three scripts and an emoji on purpose: this is the assertion. */
+  it('preserves unicode', () => {
     const text = 'sessão ativa · 中文 · emoji 🔐'
     expect(decrypt(encrypt(text, key), key)).toBe(text)
   })
 
-  it('recusa a chave errada', () => {
+  it('refuses the wrong key', () => {
     const payload = encrypt('credencial', key)
     expect(() => decrypt(payload, randomBytes(32))).toThrow()
   })
 
   /** GCM is authenticated: a tampered ciphertext must fail, not decrypt wrong. */
-  it('detecta adulteração do ciphertext', () => {
+  it('detects a tampered ciphertext', () => {
     const [iv, tag, data] = encrypt('credencial', key).split('.') as [string, string, string]
     const corrupted = Buffer.from(data, 'base64url')
     corrupted[0] = (corrupted[0] ?? 0) ^ 0xff
@@ -34,36 +35,36 @@ describe('cifra do auth state', () => {
     expect(() => decrypt(`${iv}.${tag}.${corrupted.toString('base64url')}`, key)).toThrow()
   })
 
-  it('rejeita payload malformado', () => {
-    expect(() => decrypt('sem-separador', key)).toThrow('malformed')
+  it('rejects a malformed payload', () => {
+    expect(() => decrypt('no-separator', key)).toThrow('malformed')
     expect(() => decrypt('a.b', key)).toThrow('malformed')
     expect(() => decrypt('a.b.c', key)).toThrow('malformed')
   })
 })
 
-describe('hash de token', () => {
-  it('é determinístico', () => {
+describe('token hash', () => {
+  it('is deterministic', () => {
     expect(hashToken('token')).toBe(hashToken('token'))
   })
 
-  it('separa entradas diferentes', () => {
+  it('separates different inputs', () => {
     expect(hashToken('token-a')).not.toBe(hashToken('token-b'))
   })
 })
 
-describe('comparação segura', () => {
-  it('reconhece iguais e diferentes', () => {
+describe('safe comparison', () => {
+  it('recognizes equal and different values', () => {
     expect(safeEqual('abc', 'abc')).toBe(true)
     expect(safeEqual('abc', 'abd')).toBe(false)
   })
 
-  it('não estoura com tamanhos diferentes', () => {
-    expect(safeEqual('curto', 'muito mais longo')).toBe(false)
+  it('does not blow up on different lengths', () => {
+    expect(safeEqual('curto', 'much longer')).toBe(false)
   })
 })
 
 describe('randomToken', () => {
-  it('gera valores únicos e url-safe', () => {
+  it('generates unique url-safe values', () => {
     const token = randomToken()
     expect(token).toMatch(/^[A-Za-z0-9_-]+$/)
     expect(token).not.toBe(randomToken())

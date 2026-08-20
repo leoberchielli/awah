@@ -7,8 +7,8 @@ interface Chamada {
 }
 
 /**
- * Fetch de mentira que devolve as respostas na ordem em que foram programadas e
- * grava tudo que recebeu.
+ * A fake fetch that hands back the queued responses in order and records
+ * everything it was called with.
  */
 function fakeFetch(respostas: Array<{ status: number; body?: unknown; headers?: HeadersInit }>) {
   const calls: Chamada[] = []
@@ -21,7 +21,7 @@ function fakeFetch(respostas: Array<{ status: number; body?: unknown; headers?: 
     index++
 
     const status = programada?.status ?? 200
-    // O construtor de Response recusa corpo em 204, 205 e 304.
+    // The Response constructor refuses a body on 204, 205 and 304.
     const withoutBody = status === 204 || status === 205 || status === 304
 
     return new Response(
@@ -38,22 +38,22 @@ function fakeFetch(respostas: Array<{ status: number; body?: unknown; headers?: 
 
 function client(fetchImpl: typeof fetch, maxRetries = 2) {
   return new Awah({
-    baseUrl: 'https://awah.exemplo.com/',
+    baseUrl: 'https://awah.example.com/',
     apiKey: 'awah_abc_segredo',
     fetch: fetchImpl,
     maxRetries,
   })
 }
 
-describe('montagem da requisição', () => {
-  it('descarta a barra final da baseUrl para não gerar barra dupla', async () => {
+describe('request assembly', () => {
+  it('drops the trailing slash from baseUrl so the URL has no double slash', async () => {
     const { impl, calls } = fakeFetch([{ status: 200, body: { sessions: [] } }])
     await client(impl).sessions.list()
 
-    expect(calls[0]?.url).toBe('https://awah.exemplo.com/v1/sessions')
+    expect(calls[0]?.url).toBe('https://awah.example.com/v1/sessions')
   })
 
-  it('manda a chave como bearer', async () => {
+  it('sends the key as a bearer token', async () => {
     const { impl, calls } = fakeFetch([{ status: 200, body: { sessions: [] } }])
     await client(impl).sessions.list()
 
@@ -61,7 +61,7 @@ describe('montagem da requisição', () => {
     expect(headers.authorization).toBe('Bearer awah_abc_segredo')
   })
 
-  it('omite parâmetro de query que não foi informado', async () => {
+  it('omits a query parameter that was not given', async () => {
     const { impl, calls } = fakeFetch([{ status: 200, body: {} }])
     await client(impl).kpi.delivery({ hours: 168 })
 
@@ -70,46 +70,46 @@ describe('montagem da requisição', () => {
   })
 })
 
-describe('idempotência do envio', () => {
+describe('send idempotency', () => {
   /**
-   * É o que torna o retry automático seguro: sem chave, repetir um POST depois
-   * de um timeout de rede geraria duas mensagens para o cliente final.
+   * This is what makes the automatic retry safe: without a key, repeating a POST
+   * after a network timeout would send the end customer two messages.
    */
-  it('gera clientMessageId quando não vem um', async () => {
+  it('generates a clientMessageId when none is given', async () => {
     const { impl, calls } = fakeFetch([{ status: 202, body: { id: 'x' } }])
-    await client(impl).messages.sendText('sessao', { chatId: '5511999999999', text: 'oi' })
+    await client(impl).messages.sendText('session', { chatId: '5511999999999', text: 'hi' })
 
     const body = JSON.parse(String(calls[0]?.init.body))
     expect(body.clientMessageId).toBeTruthy()
-    expect(body.text).toBe('oi')
+    expect(body.text).toBe('hi')
   })
 
-  it('respeita o clientMessageId de quem chamou', async () => {
+  it('respects the clientMessageId the caller supplied', async () => {
     const { impl, calls } = fakeFetch([{ status: 202, body: { id: 'x' } }])
-    await client(impl).messages.sendText('sessao', {
+    await client(impl).messages.sendText('session', {
       chatId: '5511999999999',
-      text: 'oi',
+      text: 'hi',
       clientMessageId: 'pedido-4821',
     })
 
     expect(JSON.parse(String(calls[0]?.init.body)).clientMessageId).toBe('pedido-4821')
   })
 
-  it('a mesma chave em duas chamadas vai igual nas duas', async () => {
+  it('the same key goes out identical on both calls', async () => {
     const { impl, calls } = fakeFetch([{ status: 202, body: { duplicate: false } }])
     const awah = client(impl)
 
-    const envio = { chatId: '5511999999999', text: 'oi', clientMessageId: 'pedido-1' }
-    await awah.messages.sendText('sessao', envio)
-    await awah.messages.sendText('sessao', envio)
+    const envio = { chatId: '5511999999999', text: 'hi', clientMessageId: 'pedido-1' }
+    await awah.messages.sendText('session', envio)
+    await awah.messages.sendText('session', envio)
 
     const keys = calls.map((c) => JSON.parse(String(c.init.body)).clientMessageId)
     expect(keys).toEqual(['pedido-1', 'pedido-1'])
   })
 
-  it('o override de risco vira cabeçalho, não campo do corpo', async () => {
+  it('the risk override becomes a header, not a body field', async () => {
     const { impl, calls } = fakeFetch([{ status: 202, body: {} }])
-    await client(impl).messages.sendText('sessao', {
+    await client(impl).messages.sendText('session', {
       chatId: '5511999999999',
       text: 'urgente',
       bypassRisk: true,
@@ -121,8 +121,8 @@ describe('idempotência do envio', () => {
   })
 })
 
-describe('política de retentativa', () => {
-  it('repete 503 e devolve a resposta boa', async () => {
+describe('retry policy', () => {
+  it('retries a 503 and returns the good response', async () => {
     const { impl, calls } = fakeFetch([
       { status: 503, body: { error: { code: 'unavailable', message: 'fora do ar' } } },
       { status: 200, body: { sessions: [{ id: 'a' }] } },
@@ -135,35 +135,35 @@ describe('política de retentativa', () => {
   })
 
   /**
-   * Repetir 4xx é desperdício: o servidor rejeitou o conteúdo, e mandar de novo
-   * produz exatamente a mesma rejeição.
+   * Retrying a 4xx is waste: the server rejected the content, and sending it
+   * again produces exactly the same rejection.
    */
-  it('não repete 400', async () => {
+  it('does not retry a 400', async () => {
     const { impl, calls } = fakeFetch([
-      { status: 400, body: { error: { code: 'validation_failed', message: 'inválido' } } },
+      { status: 400, body: { error: { code: 'validation_failed', message: 'invalid' } } },
     ])
 
-    await expect(client(impl).sessions.list()).rejects.toThrow(/inválido/)
+    await expect(client(impl).sessions.list()).rejects.toThrow(/invalid/)
     expect(calls).toHaveLength(1)
   })
 
-  it('não repete 401', async () => {
+  it('does not retry a 401', async () => {
     const { impl, calls } = fakeFetch([
-      { status: 401, body: { error: { code: 'unauthorized', message: 'chave inválida' } } },
+      { status: 401, body: { error: { code: 'unauthorized', message: 'invalid key' } } },
     ])
 
     await expect(client(impl).sessions.list()).rejects.toMatchObject({ isAuth: true })
     expect(calls).toHaveLength(1)
   })
 
-  it('desiste depois do teto de tentativas', async () => {
+  it('gives up after the attempt cap', async () => {
     const { impl, calls } = fakeFetch([{ status: 500, body: {} }])
 
     await expect(client(impl, 2).sessions.list()).rejects.toBeInstanceOf(AwahError)
     expect(calls).toHaveLength(3)
   })
 
-  it('respeita o Retry-After quando ele é curto', async () => {
+  it('respects Retry-After when it is short', async () => {
     const { impl, calls } = fakeFetch([
       { status: 429, body: {}, headers: { 'retry-after': '0' } },
       { status: 200, body: { sessions: [] } },
@@ -173,7 +173,7 @@ describe('política de retentativa', () => {
     expect(calls).toHaveLength(2)
   })
 
-  it('repete falha de rede em rota segura', async () => {
+  it('retries a network failure on a safe route', async () => {
     let attempts = 0
     const impl = vi.fn(async () => {
       attempts++
@@ -186,18 +186,18 @@ describe('política de retentativa', () => {
   })
 })
 
-describe('erros', () => {
-  it('preserva o code do envelope da API', async () => {
+describe('errors', () => {
+  it('preserves the code from the API envelope', async () => {
     const { impl } = fakeFetch([
       {
         status: 409,
-        body: { error: { code: 'conflict', message: 'Esta sessão já está em execução.' } },
+        body: { error: { code: 'conflict', message: 'This session is already running.' } },
       },
     ])
 
     try {
       await client(impl).sessions.start('abc')
-      expect.unreachable('deveria ter lançado')
+      expect.unreachable('should have thrown')
     } catch (error) {
       expect(error).toBeInstanceOf(AwahError)
       expect((error as AwahError).code).toBe('conflict')
@@ -205,8 +205,8 @@ describe('erros', () => {
     }
   })
 
-  it('sobrevive a resposta fora do envelope', async () => {
-    const { impl } = fakeFetch([{ status: 502, body: 'gateway ruim' }])
+  it('survives a response outside the envelope', async () => {
+    const { impl } = fakeFetch([{ status: 502, body: 'bad gateway' }])
 
     await expect(client(impl, 0).sessions.list()).rejects.toMatchObject({
       code: 'unknown',
@@ -214,14 +214,14 @@ describe('erros', () => {
     })
   })
 
-  it('204 vira undefined, não erro de parse', async () => {
+  it('204 becomes undefined, not a parse error', async () => {
     const { impl } = fakeFetch([{ status: 204 }])
     await expect(client(impl).sessions.delete('abc')).resolves.toBeUndefined()
   })
 })
 
-describe('construção do cliente', () => {
-  it('exige baseUrl e apiKey', () => {
+describe('client construction', () => {
+  it('requires baseUrl and apiKey', () => {
     expect(() => new Awah({ baseUrl: '', apiKey: 'x' })).toThrow(/baseUrl/)
     expect(() => new Awah({ baseUrl: 'https://a', apiKey: '' })).toThrow(/apiKey/)
   })

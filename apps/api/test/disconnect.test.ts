@@ -5,8 +5,8 @@ import {
   statusCodeFromError,
 } from '../src/engines/disconnect'
 
-describe('tradução de códigos de desconexão', () => {
-  it('separa queda passageira de credencial morta', () => {
+describe('disconnect code translation', () => {
+  it('separates a passing drop from a dead credential', () => {
     // 428 and 408 come back on their own; 401 and 500 need pairing again.
     expect(describeDisconnect(428).shouldReconnect).toBe(true)
     expect(describeDisconnect(408).shouldReconnect).toBe(true)
@@ -20,24 +20,24 @@ describe('tradução de códigos de desconexão', () => {
    * taken over somewhere else. Reconnecting in a loop makes the two ends knock
    * each other offline in turn, so this case has to stay non-reconnectable.
    */
-  it('não reconecta quando a sessão foi assumida em outro lugar', () => {
+  it('does not reconnect when the session was taken over elsewhere', () => {
     const info = describeDisconnect(440)
     expect(info.shouldReconnect).toBe(false)
     expect(info.loggedOut).toBe(false)
     expect(info.cause).toMatch(/elsewhere/i)
   })
 
-  it('trata 515 como reinício esperado, não como falha', () => {
+  it('treats 515 as an expected restart, not as a failure', () => {
     const info = describeDisconnect(515)
     expect(info.shouldReconnect).toBe(true)
     expect(info.loggedOut).toBe(false)
   })
 
-  it('não reconecta quando o acesso foi negado', () => {
+  it('does not reconnect when access was denied', () => {
     expect(describeDisconnect(403).shouldReconnect).toBe(false)
   })
 
-  it('cai no genérico com código desconhecido ou ausente', () => {
+  it('falls back to the generic case on an unknown or missing code', () => {
     expect(describeDisconnect(null).cause).toMatch(/unknown/i)
     expect(describeDisconnect(undefined).cause).toMatch(/unknown/i)
     expect(describeDisconnect(999).cause).toMatch(/unknown/i)
@@ -45,7 +45,7 @@ describe('tradução de códigos de desconexão', () => {
     expect(describeDisconnect(999).shouldReconnect).toBe(true)
   })
 
-  it('sempre traz causa e orientação preenchidas', () => {
+  it('always comes with cause and guidance filled in', () => {
     for (const code of [401, 403, 408, 411, 428, 440, 500, 503, 515, 999]) {
       const info = describeDisconnect(code)
       expect(info.cause.length).toBeGreaterThan(0)
@@ -54,26 +54,26 @@ describe('tradução de códigos de desconexão', () => {
   })
 })
 
-describe('extração do código de erro', () => {
-  it('lê o formato do Boom, usado pelo Baileys', () => {
+describe('error code extraction', () => {
+  it('reads the Boom shape, the one Baileys uses', () => {
     expect(statusCodeFromError({ output: { statusCode: 428 } })).toBe(428)
   })
 
-  it('aceita statusCode na raiz', () => {
+  it('accepts statusCode at the root', () => {
     expect(statusCodeFromError({ statusCode: 515 })).toBe(515)
   })
 
-  it('devolve null para o que não carrega código', () => {
-    expect(statusCodeFromError(new Error('sem código'))).toBeNull()
+  it('returns null for what carries no code', () => {
+    expect(statusCodeFromError(new Error('no code'))).toBeNull()
     expect(statusCodeFromError(null)).toBeNull()
     expect(statusCodeFromError(undefined)).toBeNull()
     expect(statusCodeFromError('texto')).toBeNull()
-    expect(statusCodeFromError({ output: { statusCode: 'nao-numero' } })).toBeNull()
+    expect(statusCodeFromError({ output: { statusCode: 'not-a-number' } })).toBeNull()
   })
 })
 
-describe('espera entre reconexões', () => {
-  it('cresce exponencialmente', () => {
+describe('wait between reconnections', () => {
+  it('grows exponentially', () => {
     const withoutJitter = () => 0
     expect(reconnectDelayMs(1, withoutJitter)).toBe(1000)
     expect(reconnectDelayMs(2, withoutJitter)).toBe(2000)
@@ -81,7 +81,7 @@ describe('espera entre reconexões', () => {
     expect(reconnectDelayMs(5, withoutJitter)).toBe(16000)
   })
 
-  it('para de crescer em 5 minutos', () => {
+  it('stops growing at 5 minutes', () => {
     expect(reconnectDelayMs(20, () => 0)).toBe(300_000)
     expect(reconnectDelayMs(50, () => 0)).toBe(300_000)
   })
@@ -90,13 +90,13 @@ describe('espera entre reconexões', () => {
    * Without jitter, every session that drops together — a host network outage —
    * comes back on the same millisecond and repeats the burst every cycle.
    */
-  it('espalha as tentativas com jitter de até 25%', () => {
+  it('spreads the attempts with jitter of up to 25%', () => {
     expect(reconnectDelayMs(3, () => 0)).toBe(4000)
     expect(reconnectDelayMs(3, () => 1)).toBe(5000)
     expect(reconnectDelayMs(3, () => 0.5)).toBe(4500)
   })
 
-  it('trata tentativa zero ou negativa sem quebrar', () => {
+  it('handles attempt zero or negative without breaking', () => {
     expect(reconnectDelayMs(0, () => 0)).toBe(1000)
     expect(reconnectDelayMs(-5, () => 0)).toBe(1000)
   })

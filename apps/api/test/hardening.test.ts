@@ -14,8 +14,8 @@ const OWN_SECRETS = {
   COOKIE_SECRET: 'x'.repeat(48),
 }
 
-describe('segredos de desenvolvimento', () => {
-  it('passam fora de produção', () => {
+describe('development secrets', () => {
+  it('pass outside production', () => {
     expect(() => loadEnv({ ...BASE, NODE_ENV: 'development' })).not.toThrow()
   })
 
@@ -24,14 +24,14 @@ describe('segredos de desenvolvimento', () => {
    * Anyone who goes to production with them hands session cookie forgery and
    * auth state decryption to whoever reads the project.
    */
-  it('derrubam o processo em produção', () => {
+  it('bring the process down in production', () => {
     expect(() => loadEnv({ ...BASE, NODE_ENV: 'production' })).toThrow(/development secrets/i)
   })
 
-  it('a mensagem diz quais são e como gerar os próprios', () => {
+  it('the message says which ones they are and how to generate your own', () => {
     try {
       loadEnv({ ...BASE, NODE_ENV: 'production' })
-      expect.unreachable('deveria ter lançado')
+      expect.unreachable('should have thrown')
     } catch (error) {
       const message = (error as Error).message
       expect(message).toContain('ENCRYPTION_KEY')
@@ -40,14 +40,14 @@ describe('segredos de desenvolvimento', () => {
     }
   })
 
-  it('aponta só o que de fato é fraco', () => {
+  it('points only at what is actually weak', () => {
     try {
       loadEnv({
         ...BASE,
         NODE_ENV: 'production',
         ENCRYPTION_KEY: OWN_SECRETS.ENCRYPTION_KEY,
       })
-      expect.unreachable('deveria ter lançado')
+      expect.unreachable('should have thrown')
     } catch (error) {
       // The first line is the accusation; the rest is the recipe, which names both.
       const receipt = (error as Error).message.split('\n')[0] ?? ''
@@ -56,62 +56,62 @@ describe('segredos de desenvolvimento', () => {
     }
   })
 
-  it('segredos próprios sobem em produção', () => {
+  it('your own secrets boot in production', () => {
     expect(() => loadEnv({ ...BASE, ...OWN_SECRETS, NODE_ENV: 'production' })).not.toThrow()
   })
 })
 
-describe('confiança em proxy', () => {
+describe('proxy trust', () => {
   /**
    * The default matters: the per-IP rate limit uses `request.ip`, and trusting
    * `X-Forwarded-For` with no proxy in front lets any client change IP on every
    * request and never hit the limit.
    */
-  it('não confia por padrão', () => {
+  it('does not trust by default', () => {
     expect(loadEnv(BASE).TRUST_PROXY).toBe(false)
   })
 
-  it('entende as grafias de booleano', () => {
+  it('understands the spellings of a boolean', () => {
     expect(loadEnv({ ...BASE, TRUST_PROXY: 'true' }).TRUST_PROXY).toBe(true)
     expect(loadEnv({ ...BASE, TRUST_PROXY: 'yes' }).TRUST_PROXY).toBe(true)
     expect(loadEnv({ ...BASE, TRUST_PROXY: 'false' }).TRUST_PROXY).toBe(false)
     expect(loadEnv({ ...BASE, TRUST_PROXY: '' }).TRUST_PROXY).toBe(false)
   })
 
-  it('aceita número de saltos', () => {
+  it('accepts a number of hops', () => {
     expect(loadEnv({ ...BASE, TRUST_PROXY: '2' }).TRUST_PROXY).toBe(2)
   })
 
   /** The safe form behind a proxy: trust only the addresses that are the proxy. */
-  it('aceita lista de CIDRs', () => {
+  it('accepts a list of CIDRs', () => {
     expect(loadEnv({ ...BASE, TRUST_PROXY: '10.0.0.0/8,172.16.0.0/12' }).TRUST_PROXY).toBe(
       '10.0.0.0/8,172.16.0.0/12',
     )
   })
 })
 
-describe('endereço público', () => {
-  it('é opcional', () => {
+describe('public address', () => {
+  it('is optional', () => {
     expect(loadEnv(BASE).PUBLIC_URL).toBeUndefined()
   })
 
-  it('descarta a barra final para não gerar URL com barra dupla', () => {
-    expect(loadEnv({ ...BASE, PUBLIC_URL: 'https://awah.exemplo.com/' }).PUBLIC_URL).toBe(
-      'https://awah.exemplo.com',
+  it('drops the trailing slash so no URL comes out with a double slash', () => {
+    expect(loadEnv({ ...BASE, PUBLIC_URL: 'https://awah.example.com/' }).PUBLIC_URL).toBe(
+      'https://awah.example.com',
     )
   })
 
-  it('recusa valor que não é URL', () => {
-    expect(() => loadEnv({ ...BASE, PUBLIC_URL: 'awah.exemplo.com' })).toThrow(/PUBLIC_URL/)
+  it('refuses a value that is not a URL', () => {
+    expect(() => loadEnv({ ...BASE, PUBLIC_URL: 'awah.example.com' })).toThrow(/PUBLIC_URL/)
   })
 })
 
-describe('teto do corpo da requisição', () => {
-  it('vem com 1 MiB', () => {
+describe('request body ceiling', () => {
+  it('comes with 1 MiB', () => {
     expect(loadEnv(BASE).BODY_LIMIT_BYTES).toBe(1_048_576)
   })
 
-  it('recusa teto absurdo', () => {
+  it('refuses an absurd ceiling', () => {
     expect(() => loadEnv({ ...BASE, BODY_LIMIT_BYTES: '999999999' })).toThrow(/BODY_LIMIT_BYTES/)
   })
 })

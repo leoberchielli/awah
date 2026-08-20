@@ -32,13 +32,13 @@ describe.skipIf(!hasInfra)('cluster', () => {
     sessionId = randomUUID()
   })
 
-  describe('posse de sessão', () => {
+  describe('session ownership', () => {
     /**
      * The cluster's central guarantee. Two replicas with the same auth state
      * open two sockets to the same number, and WhatsApp knocks both offline in
      * turn with 440.
      */
-    it('só um nó ganha a posse', async () => {
+    it('only one node wins ownership', async () => {
       const nodeA = new SessionLease(redis, 'awah-1')
       const nodeB = new SessionLease(redis, 'awah-2')
 
@@ -49,7 +49,7 @@ describe.skipIf(!hasInfra)('cluster', () => {
       await nodeB.release(sessionId)
     })
 
-    it('identifica o dono', async () => {
+    it('identifies the owner', async () => {
       const nodeA = new SessionLease(redis, 'awah-1')
       await nodeA.acquire(sessionId)
 
@@ -62,7 +62,7 @@ describe.skipIf(!hasInfra)('cluster', () => {
       await nodeA.release(sessionId)
     })
 
-    it('renova a posse de quem é dono', async () => {
+    it('renews ownership for the node that owns it', async () => {
       const nodeA = new SessionLease(redis, 'awah-1', { ttlMs: 3000 })
       await nodeA.acquire(sessionId)
 
@@ -74,7 +74,7 @@ describe.skipIf(!hasInfra)('cluster', () => {
      * The Lua compare-and-swap exists for this: without it, a node that lost
      * ownership could extend someone else's with a blind PEXPIRE.
      */
-    it('não deixa um nó renovar posse alheia', async () => {
+    it("does not let a node renew someone else's ownership", async () => {
       const nodeA = new SessionLease(redis, 'awah-1')
       const nodeB = new SessionLease(redis, 'awah-2')
 
@@ -86,7 +86,7 @@ describe.skipIf(!hasInfra)('cluster', () => {
       await nodeA.release(sessionId)
     })
 
-    it('não deixa um nó soltar posse alheia', async () => {
+    it("does not let a node release someone else's ownership", async () => {
       const nodeA = new SessionLease(redis, 'awah-1')
       const nodeB = new SessionLease(redis, 'awah-2')
 
@@ -98,7 +98,7 @@ describe.skipIf(!hasInfra)('cluster', () => {
     })
 
     /** This is what makes failover possible with no coordinator and no election. */
-    it('a posse expira sozinha quando ninguém renova', async () => {
+    it('ownership expires on its own when nobody renews it', async () => {
       const ephemeral = new SessionLease(redis, 'awah-morto', { ttlMs: 3000 })
       await ephemeral.acquire(sessionId)
       expect(await ephemeral.owner(sessionId)).toBe('awah-morto')
@@ -112,7 +112,7 @@ describe.skipIf(!hasInfra)('cluster', () => {
       await survivor.release(sessionId)
     })
 
-    it('consulta a posse de várias sessões de uma vez', async () => {
+    it('queries ownership of several sessions at once', async () => {
       const nodeA = new SessionLease(redis, 'awah-1')
       const withOwner = randomUUID()
       const withoutOwner = randomUUID()
@@ -126,30 +126,30 @@ describe.skipIf(!hasInfra)('cluster', () => {
       await nodeA.release(withOwner)
     })
 
-    it('lista vazia não vai ao Redis', async () => {
+    it('an empty list never reaches Redis', async () => {
       const nodeA = new SessionLease(redis, 'awah-1')
       expect((await nodeA.owners([])).size).toBe(0)
     })
   })
 
-  describe('QR compartilhado', () => {
-    it('o que um nó publica, outro lê', async () => {
+  describe('shared QR', () => {
+    it('what one node publishes, another reads', async () => {
       const fromOwner = new QrCache(redis)
       const deOutroNo = new QrCache(redis)
 
-      await fromOwner.publish(sessionId, '2@codigo-de-pareamento')
-      expect(await deOutroNo.read(sessionId)).toBe('2@codigo-de-pareamento')
+      await fromOwner.publish(sessionId, '2@pairing-code')
+      expect(await deOutroNo.read(sessionId)).toBe('2@pairing-code')
 
       await fromOwner.clear(sessionId)
       expect(await deOutroNo.read(sessionId)).toBeNull()
     })
 
-    it('sessão sem pareamento em curso não tem QR', async () => {
+    it('a session with no pairing under way has no QR', async () => {
       expect(await new QrCache(redis).read(randomUUID())).toBeNull()
     })
   })
 
-  describe('roteamento de comandos', () => {
+  describe('command routing', () => {
     let publisher: Redis
     let ownerSubscriber: Redis
     let senderSubscriber: Redis
@@ -172,7 +172,7 @@ describe.skipIf(!hasInfra)('cluster', () => {
       owner = new CommandBus({
         publisher,
         subscriber: ownerSubscriber,
-        nodeId: 'awah-dono',
+        nodeId: 'awah-owner',
         logger: silent,
       })
       sender = new CommandBus({
@@ -198,7 +198,7 @@ describe.skipIf(!hasInfra)('cluster', () => {
      * Without this, stopping a session would work or not depending on which
      * replica the load balancer picked — intermittent behaviour nobody can debug.
      */
-    it('entrega o comando ao dono e devolve o resultado', async () => {
+    it('delivers the command to the owner and returns the result', async () => {
       await owner.claim(sessionId, async (request) => ({
         executed: request.command,
         to: request.sessionId,
@@ -216,7 +216,7 @@ describe.skipIf(!hasInfra)('cluster', () => {
       await owner.unclaim(sessionId)
     })
 
-    it('leva o payload junto', async () => {
+    it('carries the payload along', async () => {
       await owner.claim(sessionId, async (request) => ({
         received: request.payload?.phoneNumber,
       }))
@@ -232,21 +232,21 @@ describe.skipIf(!hasInfra)('cluster', () => {
       await owner.unclaim(sessionId)
     })
 
-    it('propaga a falha do dono em vez de silenciar', async () => {
+    it("propagates the owner's failure instead of swallowing it", async () => {
       await owner.claim(sessionId, async () => {
-        throw new Error('sessão já estava parada')
+        throw new Error('session was already stopped')
       })
 
       const response = await sender.send({ sessionId, orgId: randomUUID(), command: 'stop' })
 
       expect(response.ok).toBe(false)
-      expect(response.error).toContain('já estava parada')
+      expect(response.error).toContain('already stopped')
 
       await owner.unclaim(sessionId)
     })
 
     /** A dead node must not leave the caller waiting forever. */
-    it('devolve erro de timeout quando ninguém atende', async () => {
+    it('returns a timeout error when nobody answers', async () => {
       const response = await sender.send({
         sessionId: randomUUID(),
         orgId: randomUUID(),
@@ -257,7 +257,7 @@ describe.skipIf(!hasInfra)('cluster', () => {
       expect(response.error).toMatch(/did not respond/i)
     })
 
-    it('para de atender depois de soltar a sessão', async () => {
+    it('stops answering after releasing the session', async () => {
       await owner.claim(sessionId, async () => ({ ok: true }))
       await owner.unclaim(sessionId)
 

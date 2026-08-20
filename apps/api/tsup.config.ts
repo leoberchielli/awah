@@ -8,8 +8,8 @@ export default defineConfig({
   outDir: 'dist',
   clean: true,
   sourcemap: true,
-  // O pacote do workspace é distribuído como TypeScript, então entra no bundle.
+  // The workspace package ships as TypeScript, so it goes into the bundle.
   noExternal: ['@awah/db'],
-  // Binário nativo: precisa continuar externo para resolver o .node em runtime.
+  // Native binary: it has to stay external so the .node resolves at runtime.
   external: ['@node-rs/argon2'],
 })

@@ -3,11 +3,11 @@ import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 
 /**
- * O build sai em `dist`, que a API serve como estático a partir da onda 6.
+ * The build lands in `dist`, which the API serves as static files from wave 6 on.
  *
- * Em desenvolvimento o Vite roda sozinho e faz proxy do que for `/v1` ou
- * `/webhooks` para a API — assim o cookie de sessão continua sendo de mesma
- * origem e o navegador não entra em CORS nem em SameSite estrito.
+ * In development Vite runs on its own and proxies anything under `/v1` or
+ * `/webhooks` to the API — that keeps the session cookie same-origin, so the
+ * browser never gets into CORS or strict SameSite.
  */
 export default defineConfig({
   plugins: [react(), tailwindcss()],
@@ -21,18 +21,18 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    // O dashboard é ferramenta interna: sourcemap ajuda mais que economiza.
+    // The dashboard is an internal tool: a sourcemap helps more than it costs.
     sourcemap: true,
     chunkSizeWarningLimit: 900,
     rollupOptions: {
       output: {
         /**
-         * A biblioteca de gráficos é dois terços do bundle e muda em ritmo de
-         * release dela, não do AWAH. Em pedaço próprio, ela sobrevive no cache do
-         * navegador a cada versão nova do dashboard.
+         * The charting library is two thirds of the bundle and moves on its own
+         * release rhythm, not AWAH's. In a chunk of its own it survives in the
+         * browser cache across every new dashboard version.
          */
         manualChunks: {
-          graficos: ['recharts'],
+          charts: ['recharts'],
           react: ['react', 'react-dom', 'react-router-dom'],
         },
       },

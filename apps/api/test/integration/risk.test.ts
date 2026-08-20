@@ -9,7 +9,7 @@ import { createSession, type SeededOrg, seedOrg } from './helpers'
 
 const hasInfra = Boolean(process.env.DATABASE_URL && process.env.REDIS_URL)
 
-describe.skipIf(!hasInfra)('motor de risco', () => {
+describe.skipIf(!hasInfra)('risk engine', () => {
   let handle: ReturnType<typeof createDb>
   let db: Database
   let redis: Redis
@@ -43,8 +43,8 @@ describe.skipIf(!hasInfra)('motor de risco', () => {
     await budget.reset(sessionId)
   })
 
-  describe('janela deslizante', () => {
-    it('conta os envios de cada janela', async () => {
+  describe('sliding window', () => {
+    it('counts the sends in each window', async () => {
       await budget.record(sessionId, 'a@s.whatsapp.net', false)
       await budget.record(sessionId, 'b@s.whatsapp.net', false)
 
@@ -59,7 +59,7 @@ describe.skipIf(!hasInfra)('motor de risco', () => {
      * out more than a minute ago stops counting in the minute, but stays in the
      * hour.
      */
-    it('esquece o que saiu da janela conforme o tempo passa', async () => {
+    it('forgets what left the window as time passes', async () => {
       await budget.record(sessionId, 'a@s.whatsapp.net', false)
 
       nowMs += 61_000
@@ -70,7 +70,7 @@ describe.skipIf(!hasInfra)('motor de risco', () => {
       expect(usage.day).toBe(1)
     })
 
-    it('conta contatos novos separadamente', async () => {
+    it('counts new contacts separately', async () => {
       await budget.record(sessionId, 'novo@s.whatsapp.net', true)
       await budget.record(sessionId, 'conhecido@s.whatsapp.net', false)
 
@@ -80,14 +80,14 @@ describe.skipIf(!hasInfra)('motor de risco', () => {
     })
   })
 
-  describe('verificação de teto', () => {
-    it('libera enquanto há vaga', async () => {
+  describe('cap check', () => {
+    it('allows while there is room', async () => {
       const verdict = await budget.check(sessionId, DEFAULT_LIMITS, false)
       expect(verdict.exceeded).toBeNull()
       expect(verdict.availableAt).toBeNull()
     })
 
-    it('segura quando a janela do minuto enche', async () => {
+    it('holds when the minute window fills up', async () => {
       const limits = { ...DEFAULT_LIMITS, perMinute: 3 }
       for (let i = 0; i < 3; i++) {
         await budget.record(sessionId, `c${i}@s.whatsapp.net`, false)
@@ -103,7 +103,7 @@ describe.skipIf(!hasInfra)('motor de risco', () => {
      * leaves the window. That is what lets the panel say "goes out at 14:03"
      * instead of "try again later".
      */
-    it('calcula a ETA a partir do envio mais antigo da janela', async () => {
+    it('computes the ETA from the oldest send in the window', async () => {
       const limits = { ...DEFAULT_LIMITS, perMinute: 2 }
       await budget.record(sessionId, 'a@s.whatsapp.net', false)
       nowMs += 20_000
@@ -115,7 +115,7 @@ describe.skipIf(!hasInfra)('motor de risco', () => {
       expect(verdict.availableAt?.getTime()).toBe(expected)
     })
 
-    it('segura por contato novo sem bloquear conversa existente', async () => {
+    it('holds for a new contact without blocking an existing conversation', async () => {
       const limits = { ...DEFAULT_LIMITS, newContactsPerDay: 1 }
       await budget.record(sessionId, 'primeiro@s.whatsapp.net', true)
 
@@ -128,12 +128,12 @@ describe.skipIf(!hasInfra)('motor de risco', () => {
     })
   })
 
-  describe('reconhecimento de contato', () => {
-    it('trata destinatário inédito como novo', async () => {
+  describe('contact recognition', () => {
+    it('treats a never-seen recipient as new', async () => {
       expect(await budget.isKnownContact(sessionId, 'inedito@s.whatsapp.net')).toBe(false)
     })
 
-    it('reconhece quem já recebeu envio', async () => {
+    it('recognises someone who has already received a send', async () => {
       await budget.record(sessionId, 'ja-falei@s.whatsapp.net', true)
       expect(await budget.isKnownContact(sessionId, 'ja-falei@s.whatsapp.net')).toBe(true)
     })
@@ -143,7 +143,7 @@ describe.skipIf(!hasInfra)('motor de risco', () => {
      * a restart would make the whole contact base look new, and the daily cap
      * would freeze someone who is only replying to old conversations.
      */
-    it('recupera do Postgres quando o cache foi perdido', async () => {
+    it('recovers from Postgres when the cache was lost', async () => {
       const chatId = 'historico@s.whatsapp.net'
       await db.insert(schema.messages).values({
         orgId: org.orgId,
@@ -161,12 +161,12 @@ describe.skipIf(!hasInfra)('motor de risco', () => {
     })
   })
 
-  describe('decisão do motor', () => {
-    it('libera envio normal com jitter', async () => {
+  describe('engine decision', () => {
+    it('allows a normal send with jitter', async () => {
       const engine = new RiskEngine({ db, budget, now })
       const decision = await engine.evaluate({
         sessionId,
-        chatId: 'alguem@s.whatsapp.net',
+        chatId: 'someone@s.whatsapp.net',
         textLength: 20,
       })
 
@@ -176,7 +176,7 @@ describe.skipIf(!hasInfra)('motor de risco', () => {
     })
 
     /** Never dropped: held with a time on it, and the reason comes back in words. */
-    it('segura quando o orçamento acabou, sem perder a mensagem', async () => {
+    it('holds when the budget ran out, without losing the message', async () => {
       await db
         .update(schema.sessions)
         .set({ config: { limits: { perMinute: 1 } }, pairedAt: new Date('2026-01-01') })
@@ -187,7 +187,7 @@ describe.skipIf(!hasInfra)('motor de risco', () => {
       const engine = new RiskEngine({ db, budget, now })
       const decision = await engine.evaluate({
         sessionId,
-        chatId: 'outro@s.whatsapp.net',
+        chatId: 'other@s.whatsapp.net',
         textLength: 10,
       })
 
@@ -196,7 +196,7 @@ describe.skipIf(!hasInfra)('motor de risco', () => {
       expect(decision.reason).toMatch(/per minute/i)
     })
 
-    it('o override explícito passa por cima do teto', async () => {
+    it('an explicit override goes over the cap', async () => {
       await budget.record(sessionId, 'ja@s.whatsapp.net', false)
 
       const engine = new RiskEngine({ db, budget, now })
@@ -212,7 +212,7 @@ describe.skipIf(!hasInfra)('motor de risco', () => {
       expect(decision.reason).toMatch(/override/i)
     })
 
-    it('desligado, libera tudo na hora', async () => {
+    it('switched off, it releases everything right away', async () => {
       const engine = new RiskEngine({ db, budget, now, enabled: false })
       const decision = await engine.evaluate({
         sessionId,
@@ -224,7 +224,7 @@ describe.skipIf(!hasInfra)('motor de risco', () => {
       expect(decision.delayMs).toBe(0)
     })
 
-    it('o retrato traz score, uso e limites já com warmup', async () => {
+    it('the snapshot carries score, usage and limits with warm-up already applied', async () => {
       await db
         .update(schema.sessions)
         .set({ config: {}, pairedAt: new Date(nowMs - 24 * 60 * 60 * 1000) })

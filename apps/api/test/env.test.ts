@@ -10,8 +10,8 @@ const valid = {
   COOKIE_SECRET: randomBytes(48).toString('base64'),
 }
 
-describe('validação de ambiente', () => {
-  it('aceita a configuração mínima e aplica os defaults', () => {
+describe('environment validation', () => {
+  it('accepts the minimal configuration and applies the defaults', () => {
     const env = loadEnv(valid)
     expect(env.PORT).toBe(2900)
     expect(env.NODE_ENV).toBe('development')
@@ -19,12 +19,12 @@ describe('validação de ambiente', () => {
     expect(env.ALLOW_OPEN_REGISTRATION).toBe(false)
   })
 
-  it('deriva NODE_ID do hostname quando não é informado', () => {
+  it('derives NODE_ID from the hostname when it is not given', () => {
     expect(loadEnv(valid).NODE_ID).toBe(hostname())
     expect(loadEnv({ ...valid, NODE_ID: 'awah-3' }).NODE_ID).toBe('awah-3')
   })
 
-  it('exige chave de cifra de exatamente 32 bytes', () => {
+  it('requires an encryption key of exactly 32 bytes', () => {
     expect(() => loadEnv({ ...valid, ENCRYPTION_KEY: 'curta-demais' })).toThrow('ENCRYPTION_KEY')
     expect(() => loadEnv({ ...valid, ENCRYPTION_KEY: randomBytes(16).toString('base64') })).toThrow(
       'ENCRYPTION_KEY',
@@ -34,11 +34,11 @@ describe('validação de ambiente', () => {
     )
   })
 
-  it('exige segredo de cookie longo', () => {
+  it('requires a long cookie secret', () => {
     expect(() => loadEnv({ ...valid, COOKIE_SECRET: 'curto' })).toThrow('COOKIE_SECRET')
   })
 
-  it('reclama de dependência ausente', () => {
+  it('complains about a missing dependency', () => {
     const { DATABASE_URL: _omitido, ...withoutDatabase } = valid
     expect(() => loadEnv(withoutDatabase)).toThrow('DATABASE_URL')
   })
@@ -57,13 +57,13 @@ describe('validação de ambiente', () => {
     ['0', false],
     ['no', false],
     ['', false],
-  ])('lê ALLOW_OPEN_REGISTRATION=%s como %s', (raw, expected) => {
+  ])('reads ALLOW_OPEN_REGISTRATION=%s as %s', (raw, expected) => {
     expect(loadEnv({ ...valid, ALLOW_OPEN_REGISTRATION: raw }).ALLOW_OPEN_REGISTRATION).toBe(
       expected,
     )
   })
 
-  it('recusa porta fora da faixa', () => {
+  it('refuses a port out of range', () => {
     expect(() => loadEnv({ ...valid, PORT: '70000' })).toThrow('PORT')
     expect(() => loadEnv({ ...valid, PORT: '0' })).toThrow('PORT')
   })
@@ -76,30 +76,30 @@ describe('validação de ambiente', () => {
    * "PUBLIC_URL: Invalid url" for anyone who had just downloaded the compose.
    */
   it.each(['PUBLIC_URL', 'METRICS_TOKEN', 'DASHBOARD_DIR'] as const)(
-    'trata %s vazio como não configurado',
+    'treats an empty %s as not configured',
     (key) => {
       expect(loadEnv({ ...valid, [key]: '' })[key]).toBeUndefined()
     },
   )
 
   /** Empty NODE_ID is not "no identity" — it means "use the hostname", as absent does. */
-  it('trata NODE_ID vazio como não configurado', () => {
+  it('treats an empty NODE_ID as not configured', () => {
     expect(loadEnv({ ...valid, NODE_ID: '' }).NODE_ID).toBe(hostname())
   })
 
-  it('só em branco também conta como não configurado', () => {
+  it('whitespace only also counts as not configured', () => {
     expect(loadEnv({ ...valid, PUBLIC_URL: '   ' }).PUBLIC_URL).toBeUndefined()
   })
 
   /** Empty becomes absent; wrong stays wrong. */
-  it('continua recusando valor preenchido e inválido', () => {
-    expect(() => loadEnv({ ...valid, PUBLIC_URL: 'nao-e-url' })).toThrow('PUBLIC_URL')
+  it('goes on refusing a value that is filled in but invalid', () => {
+    expect(() => loadEnv({ ...valid, PUBLIC_URL: 'not-a-url' })).toThrow('PUBLIC_URL')
     expect(() => loadEnv({ ...valid, METRICS_TOKEN: 'curto-demais' })).toThrow('METRICS_TOKEN')
   })
 
-  it('tira a barra final do PUBLIC_URL', () => {
-    expect(loadEnv({ ...valid, PUBLIC_URL: 'https://awah.exemplo.com//' }).PUBLIC_URL).toBe(
-      'https://awah.exemplo.com',
+  it('strips the trailing slash from PUBLIC_URL', () => {
+    expect(loadEnv({ ...valid, PUBLIC_URL: 'https://awah.example.com//' }).PUBLIC_URL).toBe(
+      'https://awah.example.com',
     )
   })
 })

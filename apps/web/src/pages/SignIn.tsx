@@ -19,7 +19,7 @@ import { FirstRun } from './FirstRun'
 export function SignIn() {
   const t = useT()
   const [params] = useSearchParams()
-  // Whoever opens /entrar on an empty instance needs the setup screen, not login.
+  // Whoever opens /signin on an empty instance needs the setup screen, not login.
   const bootstrap = useQuery<Bootstrap>('/v1/auth/bootstrap')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -33,7 +33,7 @@ export function SignIn() {
 
     try {
       await post('/v1/auth/login', { email, password: password })
-      const goBack = params.get('voltar')
+      const goBack = params.get('return')
       window.location.assign(goBack?.startsWith('/') ? goBack : '/operacao')
     } catch (failure) {
       setError(failure instanceof ApiError ? failure.message : t('login.failed'))

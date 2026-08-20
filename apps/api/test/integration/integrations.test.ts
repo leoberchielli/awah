@@ -15,7 +15,7 @@ const hasInfra = Boolean(process.env.DATABASE_URL && process.env.REDIS_URL)
 const CHAT_ID = '5511988887777@s.whatsapp.net'
 const TOKEN = 'w'.repeat(32)
 
-describe.skipIf(!hasInfra)('integrações com ferramentas externas', () => {
+describe.skipIf(!hasInfra)('integrations with external tools', () => {
   let app: FastifyInstance
   let org: SeededOrg
   let sessionId: string
@@ -95,7 +95,7 @@ describe.skipIf(!hasInfra)('integrações com ferramentas externas', () => {
       .insert(schema.sessions)
       .values({ orgId: org.orgId, name: `integra-${randomUUID().slice(0, 8)}`, engine: 'baileys' })
       .returning({ id: schema.sessions.id })
-    if (!row) throw new Error('falha ao criar sessão')
+    if (!row) throw new Error('failed to create the session')
     sessionId = row.id
 
     const integration = await saveIntegration(app.db, encryptionKey, {
@@ -103,7 +103,7 @@ describe.skipIf(!hasInfra)('integrações com ferramentas externas', () => {
       sessionId,
       kind: 'chatwoot',
       config: chatwootConfigSchema.parse({
-        baseUrl: 'https://chat.exemplo.com',
+        baseUrl: 'https://chat.example.com',
         accountId: 1,
         inboxId: 7,
         apiAccessToken: 'token-de-acesso-do-agente',
@@ -122,9 +122,9 @@ describe.skipIf(!hasInfra)('integrações com ferramentas externas', () => {
     await app?.close()
   })
 
-  describe('do WhatsApp para o Chatwoot', () => {
-    it('abre a conversa uma vez e reaproveita nas seguintes', async () => {
-      await receive('primeira mensagem')
+  describe('from WhatsApp to Chatwoot', () => {
+    it('opens the conversation once and reuses it on the following ones', async () => {
+      await receive('first message')
 
       const link = await findLink(app.db, integrationId, CHAT_ID)
       expect(link?.externalConversationId).toBe('555')
@@ -134,7 +134,7 @@ describe.skipIf(!hasInfra)('integrações com ferramentas externas', () => {
       expect(conversationsCreated).toBe(1)
 
       calls = []
-      await receive('segunda mensagem')
+      await receive('second message')
 
       /**
        * Reopening the conversation on every message would create a new Chatwoot
@@ -145,7 +145,7 @@ describe.skipIf(!hasInfra)('integrações com ferramentas externas', () => {
       expect(calls.some((c) => c.url.includes('/messages'))).toBe(true)
     })
 
-    it('leva o id do WhatsApp como source_id', async () => {
+    it('carries the WhatsApp id as source_id', async () => {
       const id = await receive('com rastro')
 
       const message = calls.find((c) => c.url.includes('/messages'))
@@ -153,7 +153,7 @@ describe.skipIf(!hasInfra)('integrações com ferramentas externas', () => {
       expect((message?.body as { message_type?: string })?.message_type).toBe('incoming')
     })
 
-    it('ignora mensagem sem texto', async () => {
+    it('ignores a message with no text', async () => {
       await receive('')
       expect(calls).toHaveLength(0)
     })
@@ -162,7 +162,7 @@ describe.skipIf(!hasInfra)('integrações com ferramentas externas', () => {
      * Chatwoot being down must not take the event handling with it — at the
      * limit, it would drop the WhatsApp connection over a third-party tool.
      */
-    it('engole a falha e registra o erro na integração', async () => {
+    it('swallows the failure and records the error on the integration', async () => {
       const broken = vi.fn(
         async () => new Response(JSON.stringify({ message: 'fora do ar' }), { status: 503 }),
       ) as unknown as typeof fetch
@@ -189,7 +189,7 @@ describe.skipIf(!hasInfra)('integrações com ferramentas externas', () => {
     })
   })
 
-  describe('do Chatwoot para o WhatsApp', () => {
+  describe('from Chatwoot to WhatsApp', () => {
     const webhook = (payload: unknown) =>
       app.inject({
         method: 'POST',
@@ -198,7 +198,7 @@ describe.skipIf(!hasInfra)('integrações com ferramentas externas', () => {
         payload: JSON.stringify(payload),
       })
 
-    const agentReply = (id: number, content = 'resposta do agente') => ({
+    const agentReply = (id: number, content = 'agent reply') => ({
       event: 'message_created',
       id,
       content,
@@ -214,7 +214,7 @@ describe.skipIf(!hasInfra)('integrações com ferramentas externas', () => {
       await receive('abre a conversa')
     })
 
-    it('recusa token errado', async () => {
+    it('refuses the wrong token', async () => {
       const response = await app.inject({
         method: 'POST',
         url: `/webhooks/chatwoot/${integrationId}/${'x'.repeat(32)}`,
@@ -225,12 +225,12 @@ describe.skipIf(!hasInfra)('integrações com ferramentas externas', () => {
       expect(response.statusCode).toBe(403)
     })
 
-    it('recusa evento de outra conta do Chatwoot', async () => {
+    it('refuses an event from another Chatwoot account', async () => {
       const response = await webhook({ ...agentReply(2), account: { id: 99 } })
       expect(response.statusCode).toBe(403)
     })
 
-    it('enfileira a resposta do agente', async () => {
+    it('queues the agent reply', async () => {
       const before = (await queue()).length
       expect((await webhook(agentReply(1001))).statusCode).toBe(200)
 
@@ -241,7 +241,7 @@ describe.skipIf(!hasInfra)('integrações com ferramentas externas', () => {
 
       const newRow = after?.find((l) => l.clientMessageId === 'chatwoot:1001')
       expect(newRow?.chatId).toBe(CHAT_ID)
-      expect((newRow?.payload as { text?: string })?.text).toBe('resposta do agente')
+      expect((newRow?.payload as { text?: string })?.text).toBe('agent reply')
     })
 
     /**
@@ -249,7 +249,7 @@ describe.skipIf(!hasInfra)('integrações com ferramentas externas', () => {
      * 200 in time, and with no idempotency key the customer gets the same reply
      * twice.
      */
-    it('reentrega do mesmo evento não duplica a mensagem', async () => {
+    it('redelivery of the same event does not duplicate the message', async () => {
       await webhook(agentReply(2002))
       await webhook(agentReply(2002))
       await webhook(agentReply(2002))
@@ -266,7 +266,7 @@ describe.skipIf(!hasInfra)('integrações com ferramentas externas', () => {
      * The echo loop: a message born on WhatsApp, created by us in Chatwoot, and
      * about to go back out to WhatsApp again. `source_id` is what cuts it.
      */
-    it('não devolve ao WhatsApp a mensagem que veio de lá', async () => {
+    it('does not send back to WhatsApp the message that came from there', async () => {
       const before = (await queue()).length
 
       await webhook({
@@ -274,13 +274,13 @@ describe.skipIf(!hasInfra)('integrações com ferramentas externas', () => {
         message_type: 'incoming',
         source_id: 'wamid.QUEVEIODOWHATSAPP',
       })
-      await webhook({ ...agentReply(3004), source_id: 'wamid.OUTRA' })
+      await webhook({ ...agentReply(3004), source_id: 'wamid.OTHER' })
 
       await new Promise((r) => setTimeout(r, 400))
       expect((await queue()).length).toBe(before)
     })
 
-    it('não manda nota interna para o cliente', async () => {
+    it('does not send an internal note to the customer', async () => {
       const before = (await queue()).length
       await webhook({ ...agentReply(4004), private: true })
 
@@ -288,7 +288,7 @@ describe.skipIf(!hasInfra)('integrações com ferramentas externas', () => {
       expect((await queue()).length).toBe(before)
     })
 
-    it('ignora evento que não é criação de mensagem', async () => {
+    it('ignores an event that is not a message creation', async () => {
       const before = (await queue()).length
       await webhook({ ...agentReply(5005), event: 'conversation_status_changed' })
 
@@ -296,7 +296,7 @@ describe.skipIf(!hasInfra)('integrações com ferramentas externas', () => {
       expect((await queue()).length).toBe(before)
     })
 
-    it('ignora resposta vazia', async () => {
+    it('ignores an empty reply', async () => {
       const before = (await queue()).length
       await webhook(agentReply(6006, '   '))
 
@@ -305,8 +305,8 @@ describe.skipIf(!hasInfra)('integrações com ferramentas externas', () => {
     })
   })
 
-  describe('isolamento entre organizações', () => {
-    it('não lista integração de outra org', async () => {
+  describe('isolation between organizations', () => {
+    it('does not list an integration from another org', async () => {
       const other = await seedOrg(app.db)
 
       try {
@@ -323,7 +323,7 @@ describe.skipIf(!hasInfra)('integrações com ferramentas externas', () => {
       }
     })
 
-    it('não devolve as credenciais em leitura', async () => {
+    it('does not return the credentials on read', async () => {
       const response = await app.inject({
         method: 'GET',
         url: '/v1/integrations',
@@ -335,12 +335,12 @@ describe.skipIf(!hasInfra)('integrações com ferramentas externas', () => {
     })
   })
 
-  it('uma integração de cada tipo por sessão', async () => {
+  it('one integration of each kind per session', async () => {
     const config = chatwootConfigSchema.parse({
-      baseUrl: 'https://outro.exemplo.com',
+      baseUrl: 'https://other.example.com',
       accountId: 2,
       inboxId: 9,
-      apiAccessToken: 'outro-token-de-acesso',
+      apiAccessToken: 'another-access-token',
       webhookToken: 'z'.repeat(32),
     })
 

@@ -1,42 +1,42 @@
 import { describe, expect, it } from 'vitest'
 import { apiKeyCan, can, isRole, ROLES, roleAtLeast } from '../src/auth/rbac'
 
-describe('hierarquia de papéis', () => {
-  it('cobre todos os papéis abaixo', () => {
+describe('role hierarchy', () => {
+  it('covers every role below', () => {
     expect(roleAtLeast('owner', 'viewer')).toBe(true)
     expect(roleAtLeast('admin', 'operator')).toBe(true)
     expect(roleAtLeast('operator', 'viewer')).toBe(true)
   })
 
-  it('não cobre papéis acima', () => {
+  it('does not cover roles above', () => {
     expect(roleAtLeast('viewer', 'operator')).toBe(false)
     expect(roleAtLeast('operator', 'admin')).toBe(false)
     expect(roleAtLeast('admin', 'owner')).toBe(false)
   })
 
-  it('cobre a si mesmo', () => {
+  it('covers itself', () => {
     for (const role of ROLES) {
       expect(roleAtLeast(role, role)).toBe(true)
     }
   })
 })
 
-describe('permissões de usuário', () => {
-  it('deixa viewer ler mas não escrever', () => {
+describe('user permissions', () => {
+  it('lets a viewer read but not write', () => {
     expect(can('viewer', 'session:read')).toBe(true)
     expect(can('viewer', 'metrics:read')).toBe(true)
     expect(can('viewer', 'message:send')).toBe(false)
     expect(can('viewer', 'session:write')).toBe(false)
   })
 
-  it('deixa operator enviar mensagem sem administrar', () => {
+  it('lets an operator send messages without administering', () => {
     expect(can('operator', 'message:send')).toBe(true)
     expect(can('operator', 'session:operate')).toBe(true)
     expect(can('operator', 'apikey:write')).toBe(false)
     expect(can('operator', 'member:write')).toBe(false)
   })
 
-  it('reserva a exclusão da org e a promoção a owner para o owner', () => {
+  it('reserves deleting the org and promoting to owner for the owner', () => {
     expect(can('admin', 'org:delete')).toBe(false)
     expect(can('admin', 'member:set_owner')).toBe(false)
     expect(can('owner', 'org:delete')).toBe(true)
@@ -44,12 +44,12 @@ describe('permissões de usuário', () => {
   })
 })
 
-describe('permissões de chave de API', () => {
+describe('API key permissions', () => {
   /**
    * This is the test that blocks privilege escalation through a leaked key: a
    * key never administers identity, not even an owner key.
    */
-  it('nunca administra identidade, mesmo com papel de owner', () => {
+  it('never administers identity, even with the owner role', () => {
     expect(apiKeyCan('owner', 'apikey:write')).toBe(false)
     expect(apiKeyCan('owner', 'apikey:read')).toBe(false)
     expect(apiKeyCan('owner', 'member:write')).toBe(false)
@@ -58,21 +58,21 @@ describe('permissões de chave de API', () => {
     expect(apiKeyCan('owner', 'org:update')).toBe(false)
   })
 
-  it('mantém o que é operação normal do gateway', () => {
+  it('keeps what is normal gateway operation', () => {
     expect(apiKeyCan('operator', 'message:send')).toBe(true)
     expect(apiKeyCan('operator', 'session:operate')).toBe(true)
     expect(apiKeyCan('viewer', 'metrics:read')).toBe(true)
     expect(apiKeyCan('admin', 'session:write')).toBe(true)
   })
 
-  it('continua respeitando a hierarquia no que é permitido', () => {
+  it('still respects the hierarchy within what is allowed', () => {
     expect(apiKeyCan('viewer', 'message:send')).toBe(false)
     expect(apiKeyCan('operator', 'session:write')).toBe(false)
   })
 })
 
 describe('isRole', () => {
-  it('aceita apenas papéis conhecidos', () => {
+  it('accepts only known roles', () => {
     expect(isRole('owner')).toBe(true)
     expect(isRole('superuser')).toBe(false)
     expect(isRole('')).toBe(false)

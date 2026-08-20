@@ -5,8 +5,8 @@ export default defineConfig({
     environment: 'node',
     include: ['test/**/*.test.ts'],
     globals: false,
-    // Os testes de integração compartilham Postgres e Redis: rodar em paralelo
-    // faria um arquivo derrubar a conexão do outro no teardown.
+    // The integration tests share one Postgres and one Redis: running them in
+    // parallel would have one file tear down another's connection.
     fileParallelism: false,
   },
 })

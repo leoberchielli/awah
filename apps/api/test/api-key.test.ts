@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { bearerFrom, generateApiKey, parseApiKey } from '../src/auth/api-key'
 
-describe('geração de chave', () => {
-  it('faz round-trip de prefixo e segredo', () => {
+describe('key generation', () => {
+  it('round-trips prefix and secret', () => {
     const generated = generateApiKey()
     const parsed = parseApiKey(generated.token)
 
@@ -16,7 +16,7 @@ describe('geração de chave', () => {
    * first separator after the scheme, the prefix has to be hex — this test
    * pins that assumption down.
    */
-  it('sobrevive a segredo contendo underscore', () => {
+  it('survives a secret containing an underscore', () => {
     const generated = generateApiKey()
     expect(generated.prefix).toMatch(/^[0-9a-f]{16}$/)
 
@@ -25,7 +25,7 @@ describe('geração de chave', () => {
     expect(parsed?.secret).toBe('abc_def-ghi_jkl')
   })
 
-  it('gera valores distintos a cada chamada', () => {
+  it('generates distinct values on every call', () => {
     const a = generateApiKey()
     const b = generateApiKey()
     expect(a.prefix).not.toBe(b.prefix)
@@ -33,28 +33,28 @@ describe('geração de chave', () => {
   })
 })
 
-describe('parse de chave malformada', () => {
+describe('parsing a malformed key', () => {
   it.each([
-    ['esquema errado', 'waha_deadbeefdeadbeef_segredo'],
-    ['sem separador', 'awah_deadbeefdeadbeefsegredo'.replace('_', '')],
-    ['prefixo vazio', 'awah__segredo'],
-    ['segredo vazio', 'awah_deadbeefdeadbeef_'],
-    ['prefixo não hex', 'awah_ZZZZ_segredo'],
-    ['string vazia', ''],
-    ['só o esquema', 'awah_'],
-  ])('rejeita %s', (_label, token) => {
+    ['wrong scheme', 'waha_deadbeefdeadbeef_segredo'],
+    ['no separator', 'awah_deadbeefdeadbeefsegredo'.replace('_', '')],
+    ['empty prefix', 'awah__segredo'],
+    ['empty secret', 'awah_deadbeefdeadbeef_'],
+    ['non-hex prefix', 'awah_ZZZZ_segredo'],
+    ['empty string', ''],
+    ['scheme only', 'awah_'],
+  ])('rejects %s', (_label, token) => {
     expect(parseApiKey(token)).toBeNull()
   })
 })
 
-describe('header Authorization', () => {
-  it('extrai o token do esquema Bearer, sem diferenciar caixa', () => {
+describe('Authorization header', () => {
+  it('extracts the token from the Bearer scheme, case-insensitively', () => {
     expect(bearerFrom('Bearer abc123')).toBe('abc123')
     expect(bearerFrom('bearer abc123')).toBe('abc123')
     expect(bearerFrom('BEARER abc123')).toBe('abc123')
   })
 
-  it('ignora header ausente ou de outro esquema', () => {
+  it('ignores a missing header or another scheme', () => {
     expect(bearerFrom(undefined)).toBeNull()
     expect(bearerFrom('Basic abc123')).toBeNull()
     expect(bearerFrom('Bearer')).toBeNull()

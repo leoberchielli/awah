@@ -9,7 +9,7 @@ import { type SeededOrg, seedOrg } from './helpers'
 
 const hasInfra = Boolean(process.env.DATABASE_URL && process.env.REDIS_URL)
 
-const APP_SECRET = 'segredo-do-app-da-meta'
+const APP_SECRET = 'meta-app-secret'
 const VERIFY_TOKEN = 'token-de-verificacao'
 
 /**
@@ -17,7 +17,7 @@ const VERIFY_TOKEN = 'token-de-verificacao'
  * their infrastructure, with no API key. The whole defence is the signature,
  * and that is exactly what these tests exercise.
  */
-describe.skipIf(!hasInfra)('webhook da Cloud API', () => {
+describe.skipIf(!hasInfra)('Cloud API webhook', () => {
   let app: FastifyInstance
   let org: SeededOrg
   let sessionId: string
@@ -48,7 +48,7 @@ describe.skipIf(!hasInfra)('webhook da Cloud API', () => {
       .insert(schema.sessions)
       .values({ orgId: org.orgId, name: `meta-${randomUUID().slice(0, 8)}`, engine: 'cloud_api' })
       .returning({ id: schema.sessions.id })
-    if (!row) throw new Error('falha ao criar sessão de teste')
+    if (!row) throw new Error('failed to create the test session')
     sessionId = row.id
 
     await saveCloudApiCredentials(
@@ -70,8 +70,8 @@ describe.skipIf(!hasInfra)('webhook da Cloud API', () => {
     await app?.close()
   })
 
-  describe('handshake de verificação', () => {
-    it('devolve o desafio quando o token confere', async () => {
+  describe('verification handshake', () => {
+    it('returns the challenge when the token matches', async () => {
       const response = await app.inject({
         method: 'GET',
         url: `/webhooks/meta/${sessionId}?hub.mode=subscribe&hub.verify_token=${VERIFY_TOKEN}&hub.challenge=1234567890`,
@@ -82,7 +82,7 @@ describe.skipIf(!hasInfra)('webhook da Cloud API', () => {
     })
 
     /** Without this, anyone could point another account's webhook at us. */
-    it('recusa token de verificação errado', async () => {
+    it('refuses a wrong verify token', async () => {
       const response = await app.inject({
         method: 'GET',
         url: `/webhooks/meta/${sessionId}?hub.mode=subscribe&hub.verify_token=errado&hub.challenge=1234`,
@@ -91,7 +91,7 @@ describe.skipIf(!hasInfra)('webhook da Cloud API', () => {
       expect(response.statusCode).toBe(403)
     })
 
-    it('não confirma a existência de sessão desconhecida', async () => {
+    it('does not confirm that an unknown session exists', async () => {
       const response = await app.inject({
         method: 'GET',
         url: `/webhooks/meta/${randomUUID()}?hub.mode=subscribe&hub.verify_token=${VERIFY_TOKEN}&hub.challenge=1`,
@@ -101,21 +101,21 @@ describe.skipIf(!hasInfra)('webhook da Cloud API', () => {
     })
   })
 
-  describe('recebimento de eventos', () => {
-    it('recusa evento sem assinatura', async () => {
+  describe('event intake', () => {
+    it('refuses an event with no signature', async () => {
       const response = await send({ entry: [] })
       expect(response.statusCode).toBe(403)
     })
 
-    it('recusa assinatura de outro segredo', async () => {
+    it('refuses a signature made with another secret', async () => {
       const body = { entry: [] }
-      const forged = `sha256=${createHmac('sha256', 'outro-segredo').update(JSON.stringify(body)).digest('hex')}`
+      const forged = `sha256=${createHmac('sha256', 'other-secret').update(JSON.stringify(body)).digest('hex')}`
 
       const response = await send(body, forged)
       expect(response.statusCode).toBe(403)
     })
 
-    it('persiste a mensagem recebida e responde 200', async () => {
+    it('persists the received message and answers 200', async () => {
       const messageId = `wamid.${randomUUID()}`
       const body = {
         entry: [
@@ -129,7 +129,7 @@ describe.skipIf(!hasInfra)('webhook da Cloud API', () => {
                       from: '5511988887777',
                       timestamp: String(Math.floor(Date.now() / 1000)),
                       type: 'text',
-                      text: { body: 'olá pela oficial' },
+                      text: { body: 'hello via the official one' },
                     },
                   ],
                 },
@@ -157,7 +157,7 @@ describe.skipIf(!hasInfra)('webhook da Cloud API', () => {
         return row ?? null
       })
 
-      expect(recorded?.body).toBe('olá pela oficial')
+      expect(recorded?.body).toBe('hello via the official one')
       expect(recorded?.direction).toBe('inbound')
     })
 
@@ -167,7 +167,7 @@ describe.skipIf(!hasInfra)('webhook da Cloud API', () => {
      * intermittently. This body has odd spacing precisely to prove it is the
      * raw buffer being checked.
      */
-    it('confere a assinatura sobre os bytes crus, não sobre o JSON reserializado', async () => {
+    it('checks the signature over the raw bytes, not over re-serialized JSON', async () => {
       const raw = '{ "entry" :  [ ] }'
 
       const response = await app.inject({

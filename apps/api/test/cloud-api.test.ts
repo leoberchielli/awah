@@ -5,9 +5,9 @@ import type { EngineEvent } from '../src/engines/types'
 
 const credentials: CloudApiCredentials = {
   phoneNumberId: '123456789',
-  accessToken: 'token-de-teste-bem-longo-aqui',
+  accessToken: 'a-nice-long-test-token-here',
   verifyToken: 'verificacao',
-  appSecret: 'segredo-do-app',
+  appSecret: 'app-secret',
   graphVersion: 'v21.0',
 }
 
@@ -22,7 +22,7 @@ function response(body: unknown, ok = true, status = 200): Response {
 function makeAdapter(fetchImpl: typeof fetch) {
   const events: EngineEvent[] = []
   const adapter = new CloudApiAdapter({
-    sessionId: 'sessao-teste',
+    sessionId: 'test-session',
     credentials: credentials,
     onEvent: (event) => events.push(event),
     fetchImpl,
@@ -30,12 +30,12 @@ function makeAdapter(fetchImpl: typeof fetch) {
   return { adapter, events: events }
 }
 
-describe('capacidades da engine oficial', () => {
+describe('official engine capabilities', () => {
   /**
    * The matrix is the contract with whoever picks the engine. These values
    * exist so the difference shows up before the migration, not after.
    */
-  it('declara o que não faz', () => {
+  it('declares what it does not do', () => {
     const { adapter } = makeAdapter(vi.fn())
 
     expect(adapter.capabilities.groups).toBe(false)
@@ -45,7 +45,7 @@ describe('capacidades da engine oficial', () => {
     expect(adapter.capabilities.freeformMessaging).toBe(false)
   })
 
-  it('não tem QR nem código de pareamento', async () => {
+  it('has no QR and no pairing code', async () => {
     const { adapter } = makeAdapter(vi.fn())
 
     expect(adapter.currentQr()).toBeNull()
@@ -53,7 +53,7 @@ describe('capacidades da engine oficial', () => {
   })
 
   /** Presence does not exist in the Cloud API; ignoring it beats failing a send. */
-  it('presença é silenciosamente ignorada', async () => {
+  it('presence is silently ignored', async () => {
     const calls = vi.fn()
     const { adapter } = makeAdapter(calls)
 
@@ -62,8 +62,8 @@ describe('capacidades da engine oficial', () => {
   })
 })
 
-describe('conexão', () => {
-  it('valida as credenciais e reporta o número', async () => {
+describe('connection', () => {
+  it('validates the credentials and reports the number', async () => {
     const fetchImpl = vi.fn(async () => response({ display_phone_number: '+55 11 99999-9999' }))
     const { adapter, events } = makeAdapter(fetchImpl as unknown as typeof fetch)
 
@@ -79,7 +79,7 @@ describe('conexão', () => {
    * would only surface on the first message, already inside the queue and
    * counting as a delivery failure.
    */
-  it('recusa credencial inválida antes de qualquer envio', async () => {
+  it('refuses an invalid credential before any send', async () => {
     const fetchImpl = vi.fn(async () =>
       response({ error: { message: 'Invalid OAuth access token' } }, false, 401),
     )
@@ -92,7 +92,7 @@ describe('conexão', () => {
     expect(closing).toMatchObject({ shouldReconnect: false, loggedOut: true })
   })
 
-  it('token expirado não fica reconectando em laço', async () => {
+  it('an expired token does not reconnect in a loop', async () => {
     const fetchImpl = vi.fn(async () => response({ error: { message: 'expired' } }, false, 403))
     const { adapter, events } = makeAdapter(fetchImpl as unknown as typeof fetch)
 
@@ -102,13 +102,13 @@ describe('conexão', () => {
   })
 })
 
-describe('envio', () => {
-  it('recusa envio antes de conectar', async () => {
+describe('sending', () => {
+  it('refuses to send before connecting', async () => {
     const { adapter } = makeAdapter(vi.fn())
-    await expect(adapter.sendText('5511999999999', 'oi')).rejects.toThrow(/not connected/i)
+    await expect(adapter.sendText('5511999999999', 'hi')).rejects.toThrow(/not connected/i)
   })
 
-  it('envia e devolve o id da Meta', async () => {
+  it("sends and returns Meta's id", async () => {
     const fetchImpl = vi.fn(async (_url: string, init?: RequestInit) => {
       if (!init?.method) return response({ display_phone_number: '5511999999999' })
       return response({ messages: [{ id: 'wamid.ABC123' }] })
@@ -117,12 +117,12 @@ describe('envio', () => {
     const { adapter } = makeAdapter(fetchImpl as unknown as typeof fetch)
     await adapter.connect()
 
-    const result = await adapter.sendText('5511988887777@s.whatsapp.net', 'olá')
+    const result = await adapter.sendText('5511988887777@s.whatsapp.net', 'hi')
     expect(result.engineMessageId).toBe('wamid.ABC123')
   })
 
   /** Meta expects digits; the JID suffix belongs to the unofficial protocol. */
-  it('converte JID para o formato da Meta', async () => {
+  it("converts a JID to Meta's format", async () => {
     let sentBody: Record<string, unknown> = {}
     const fetchImpl = vi.fn(async (_url: string, init?: RequestInit) => {
       if (!init?.method) return response({ display_phone_number: '551199999999' })
@@ -132,7 +132,7 @@ describe('envio', () => {
 
     const { adapter } = makeAdapter(fetchImpl as unknown as typeof fetch)
     await adapter.connect()
-    await adapter.sendText('5511988887777@s.whatsapp.net', 'oi')
+    await adapter.sendText('5511988887777@s.whatsapp.net', 'hi')
 
     expect(sentBody.to).toBe('5511988887777')
     expect(sentBody.messaging_product).toBe('whatsapp')
@@ -143,7 +143,7 @@ describe('envio', () => {
    * sees a numeric code and concludes the credential broke, when the real
    * problem is the window.
    */
-  it('traduz a janela de 24 h encerrada', async () => {
+  it('translates the closed 24 h window', async () => {
     const fetchImpl = vi.fn(async (_url: string, init?: RequestInit) => {
       if (!init?.method) return response({ display_phone_number: '551199999999' })
       return response({ error: { code: 131047, message: 'Re-engagement message' } }, false, 400)
@@ -152,10 +152,10 @@ describe('envio', () => {
     const { adapter } = makeAdapter(fetchImpl as unknown as typeof fetch)
     await adapter.connect()
 
-    await expect(adapter.sendText('5511988887777', 'oi')).rejects.toThrow(/24 h window/i)
+    await expect(adapter.sendText('5511988887777', 'hi')).rejects.toThrow(/24 h window/i)
   })
 
-  it('propaga a mensagem de erro da Meta', async () => {
+  it("propagates Meta's error message", async () => {
     const fetchImpl = vi.fn(async (_url: string, init?: RequestInit) => {
       if (!init?.method) return response({ display_phone_number: '551199999999' })
       return response(
@@ -168,10 +168,10 @@ describe('envio', () => {
     const { adapter } = makeAdapter(fetchImpl as unknown as typeof fetch)
     await adapter.connect()
 
-    await expect(adapter.sendText('5511988887777', 'oi')).rejects.toThrow(/allowed list/i)
+    await expect(adapter.sendText('5511988887777', 'hi')).rejects.toThrow(/allowed list/i)
   })
 
-  it('usa a versão configurada da Graph API', async () => {
+  it('uses the configured Graph API version', async () => {
     const urls: string[] = []
     const fetchImpl = vi.fn(async (url: string) => {
       urls.push(url)

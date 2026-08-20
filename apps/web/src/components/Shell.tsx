@@ -39,22 +39,22 @@ export const WINDOWS = [
  */
 export function useFilter() {
   const [params, setParams] = useSearchParams()
-  const raw = Number(params.get('horas') ?? 24)
+  const raw = Number(params.get('hours') ?? 24)
   const hours = WINDOWS.some((j) => j.hours === raw) ? raw : 24
-  const session = params.get('sessao')
+  const session = params.get('session')
 
   return {
     hours: hours,
     session: session,
     setHours: (value: number) => {
       const next = new URLSearchParams(params)
-      next.set('horas', String(value))
+      next.set('hours', String(value))
       setParams(next, { replace: true })
     },
     setSession: (value: string | null) => {
       const next = new URLSearchParams(params)
-      if (value) next.set('sessao', value)
-      else next.delete('sessao')
+      if (value) next.set('session', value)
+      else next.delete('session')
       setParams(next, { replace: true })
     },
     /** Suffix ready to append to the endpoint URL. */
@@ -127,7 +127,7 @@ function CabecalhoMovel() {
           type="button"
           onClick={async () => {
             await post('/v1/auth/logout').catch(() => undefined)
-            window.location.assign('/entrar')
+            window.location.assign('/signin')
           }}
           className="flex items-center gap-1.5 text-xs text-muted"
         >
@@ -199,7 +199,7 @@ function Rail() {
           type="button"
           onClick={async () => {
             await post('/v1/auth/logout').catch(() => undefined)
-            window.location.assign('/entrar')
+            window.location.assign('/signin')
           }}
           className="flex items-center gap-2 py-1.5 text-xs text-muted hover:text-ink"
         >
