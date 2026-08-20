@@ -175,13 +175,13 @@ export async function sessionRoutes(app: FastifyInstance) {
       const rows = await new SessionRepository(app.db, auth.orgId).list(auth.sessionScope)
 
       // One ownership lookup for the whole list, instead of one per session.
-      const donos = await app.sessions.ownersOf(rows.map((s) => s.id))
+      const owners = await app.sessions.ownersOf(rows.map((s) => s.id))
 
       return {
         sessions: rows.map((session) => ({
           ...session,
-          ownerNodeId: donos.get(session.id) ?? null,
-          running: donos.has(session.id),
+          ownerNodeId: owners.get(session.id) ?? null,
+          running: owners.has(session.id),
           runningHere: app.sessions.isRunning(session.id),
         })),
       }

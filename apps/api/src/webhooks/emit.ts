@@ -66,7 +66,7 @@ export async function replayDeadDeliveries(
 ): Promise<number> {
   // One parameter per id: interpolating the whole array would make the driver
   // send it as text, and Postgres would refuse with "malformed array literal".
-  const filtroIds =
+  const filterIds =
     ids && ids.length > 0
       ? sql`AND id IN (${sql.join(
           ids.map((id) => sql`${id}::uuid`),
@@ -82,7 +82,7 @@ export async function replayDeadDeliveries(
         last_error = NULL
     WHERE org_id = ${orgId}::uuid
       AND status = 'dead'
-      ${filtroIds}
+      ${filterIds}
     RETURNING id
   `)
 

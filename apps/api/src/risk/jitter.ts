@@ -59,6 +59,6 @@ export function typingDurationMs(
 ): number {
   const { charsPerSecond = 18, minMs = 700, maxMs = 9000 } = options
 
-  const estimado = (textLength / charsPerSecond) * 1000
-  return Math.round(Math.min(Math.max(estimado, minMs), maxMs))
+  const estimated = (textLength / charsPerSecond) * 1000
+  return Math.round(Math.min(Math.max(estimated, minMs), maxMs))
 }

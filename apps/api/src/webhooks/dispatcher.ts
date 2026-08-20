@@ -115,7 +115,7 @@ export class WebhookDispatcher {
     const timestamp = Math.floor(Date.now() / 1000)
 
     const iniciadoEm = Date.now()
-    const decorrido = () => (Date.now() - iniciadoEm) / 1000
+    const elapsed = () => (Date.now() - iniciadoEm) / 1000
 
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), this.deps.requestTimeoutMs)
@@ -135,7 +135,7 @@ export class WebhookDispatcher {
 
       if (response.ok) {
         await this.markDelivered(delivery.id, response.status)
-        this.deps.observeDelivery?.('delivered', decorrido())
+        this.deps.observeDelivery?.('delivered', elapsed())
         return
       }
 
@@ -157,7 +157,7 @@ export class WebhookDispatcher {
         (await response.text().catch(() => '')).slice(0, 1000),
         permanent,
       )
-      this.deps.observeDelivery?.(desfecho, decorrido())
+      this.deps.observeDelivery?.(desfecho, elapsed())
     } catch (error) {
       const message =
         error instanceof Error && error.name === 'AbortError'
@@ -167,7 +167,7 @@ export class WebhookDispatcher {
             : String(error)
 
       const desfecho = await this.markFailed(delivery, message, null, null, false)
-      this.deps.observeDelivery?.(desfecho, decorrido())
+      this.deps.observeDelivery?.(desfecho, elapsed())
     } finally {
       clearTimeout(timeout)
     }

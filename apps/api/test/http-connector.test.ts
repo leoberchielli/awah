@@ -10,22 +10,22 @@ import { verify } from '../src/webhooks/signature'
 
 const CONFIG = httpConfigSchema.parse({ url: 'https://meu-fluxo.exemplo.com/awah' })
 
-function resposta(corpo: string, status = 200): Response {
-  return new Response(status === 204 ? null : corpo, { status })
+function resposta(body: string, status = 200): Response {
+  return new Response(status === 204 ? null : body, { status })
 }
 
-function conector(corpo: string, status = 200, extra?: Partial<typeof CONFIG>) {
-  const chamadas: Array<{ url: string; init?: RequestInit }> = []
+function conector(body: string, status = 200, extra?: Partial<typeof CONFIG>) {
+  const calls: Array<{ url: string; init?: RequestInit }> = []
   const fetchImpl = vi.fn(async (url: string | URL, init?: RequestInit) => {
-    chamadas.push({ url: String(url), init })
-    return resposta(corpo, status)
+    calls.push({ url: String(url), init })
+    return resposta(body, status)
   })
 
   return {
     conector: new HttpConnector(httpConfigSchema.parse({ ...CONFIG, ...extra }), {
       fetch: fetchImpl as unknown as typeof fetch,
     }),
-    chamadas,
+    calls: calls,
   }
 }
 
@@ -64,13 +64,13 @@ describe('formatos de resposta aceitos', () => {
 
   /** Not every event wants a reply: a flow that only logs arrivals returns empty. */
   it('corpo vazio é resposta válida, não erro', () => {
-    expect(extrairRespostas('')).toEqual({ replies: [], diagnostico: null })
-    expect(extrairRespostas('   ')).toEqual({ replies: [], diagnostico: null })
+    expect(extrairRespostas('')).toEqual({ replies: [], diagnosis: null })
+    expect(extrairRespostas('   ')).toEqual({ replies: [], diagnosis: null })
   })
 
   it('segue o caminho configurado quando a resposta vem aninhada', () => {
-    const corpo = '{"data":{"saida":{"reply":"achou"}}}'
-    expect(extrairRespostas(corpo, 'data.saida').replies).toEqual(['achou'])
+    const body = '{"data":{"saida":{"reply":"achou"}}}'
+    expect(extrairRespostas(body, 'data.saida').replies).toEqual(['achou'])
   })
 })
 
@@ -80,33 +80,33 @@ describe('diagnóstico de quem acabou de plugar', () => {
    * conversation with no clue what is wrong.
    */
   it('explica resposta que não é JSON', () => {
-    const { diagnostico } = extrairRespostas('<html>erro</html>')
-    expect(diagnostico).toMatch(/not JSON/i)
-    expect(diagnostico).toMatch(/reply/)
+    const { diagnosis } = extrairRespostas('<html>erro</html>')
+    expect(diagnosis).toMatch(/not JSON/i)
+    expect(diagnosis).toMatch(/reply/)
   })
 
   it('lista os campos que vieram quando nenhum serve', () => {
-    const { replies, diagnostico } = extrairRespostas('{"resultado":"ok","codigo":200}')
+    const { replies, diagnosis } = extrairRespostas('{"resultado":"ok","codigo":200}')
 
     expect(replies).toEqual([])
-    expect(diagnostico).toMatch(/resultado, codigo/)
-    expect(diagnostico).toMatch(/"reply"/)
+    expect(diagnosis).toMatch(/resultado, codigo/)
+    expect(diagnosis).toMatch(/"reply"/)
   })
 
   it('avisa quando o caminho configurado não existe', () => {
-    const { diagnostico } = extrairRespostas('{"data":{}}', 'data.saida')
-    expect(diagnostico).toMatch(/data\.saida/)
+    const { diagnosis } = extrairRespostas('{"data":{}}', 'data.saida')
+    expect(diagnosis).toMatch(/data\.saida/)
   })
 })
 
 describe('envio', () => {
   it('posta o evento com a forma do webhook message.received', async () => {
-    const { conector: c, chamadas } = conector('{"reply":"oi"}')
-    await c.enviar(EVENTO_DE_TESTE)
+    const { conector: c, calls } = conector('{"reply":"oi"}')
+    await c.send(EVENTO_DE_TESTE)
 
-    const corpo = JSON.parse(String(chamadas[0]?.init?.body))
-    expect(corpo.event).toBe('message.received')
-    expect(corpo.data.chatId).toBe('5511999999999@s.whatsapp.net')
+    const body = JSON.parse(String(calls[0]?.init?.body))
+    expect(body.event).toBe('message.received')
+    expect(body.data.chatId).toBe('5511999999999@s.whatsapp.net')
   })
 
   /**
@@ -115,12 +115,12 @@ describe('envio', () => {
    */
   it('assina com o mesmo esquema dos webhooks', async () => {
     const segredo = 'segredo-do-conector-http'
-    const { conector: c, chamadas } = conector('{"reply":"oi"}', 200, { secret: segredo })
+    const { conector: c, calls } = conector('{"reply":"oi"}', 200, { secret: segredo })
 
-    await c.enviar(EVENTO_DE_TESTE)
+    await c.send(EVENTO_DE_TESTE)
 
-    const headers = chamadas[0]?.init?.headers as Record<string, string>
-    const payload = String(chamadas[0]?.init?.body)
+    const headers = calls[0]?.init?.headers as Record<string, string>
+    const payload = String(calls[0]?.init?.body)
 
     expect(
       verify({
@@ -133,44 +133,44 @@ describe('envio', () => {
   })
 
   it('não assina quando não há segredo', async () => {
-    const { conector: c, chamadas } = conector('{"reply":"oi"}')
-    await c.enviar(EVENTO_DE_TESTE)
+    const { conector: c, calls } = conector('{"reply":"oi"}')
+    await c.send(EVENTO_DE_TESTE)
 
-    const headers = chamadas[0]?.init?.headers as Record<string, string>
+    const headers = calls[0]?.init?.headers as Record<string, string>
     expect(headers['x-awah-signature']).toBeUndefined()
   })
 
   it('manda os cabeçalhos fixos, que é onde entra a autenticação do outro lado', async () => {
-    const { conector: c, chamadas } = conector('{}', 200, {
+    const { conector: c, calls } = conector('{}', 200, {
       headers: { authorization: 'Bearer token-do-n8n' },
     })
 
-    await c.enviar(EVENTO_DE_TESTE)
+    await c.send(EVENTO_DE_TESTE)
 
-    const headers = chamadas[0]?.init?.headers as Record<string, string>
+    const headers = calls[0]?.init?.headers as Record<string, string>
     expect(headers.authorization).toBe('Bearer token-do-n8n')
   })
 
   it('204 sem corpo não vira erro', async () => {
     const { conector: c } = conector('', 204)
-    const resultado = await c.enviar(EVENTO_DE_TESTE)
+    const result = await c.send(EVENTO_DE_TESTE)
 
-    expect(resultado.replies).toEqual([])
-    expect(resultado.diagnostico).toBeNull()
+    expect(result.replies).toEqual([])
+    expect(result.diagnosis).toBeNull()
   })
 
   it('mede o tempo, para o painel mostrar quanto a plataforma demorou', async () => {
     const { conector: c } = conector('{"reply":"oi"}')
-    const resultado = await c.enviar(EVENTO_DE_TESTE)
+    const result = await c.send(EVENTO_DE_TESTE)
 
-    expect(resultado.durationMs).toBeGreaterThanOrEqual(0)
-    expect(resultado.status).toBe(200)
+    expect(result.durationMs).toBeGreaterThanOrEqual(0)
+    expect(result.status).toBe(200)
   })
 
   it('erro da plataforma vira exceção com o corpo dela', async () => {
     const { conector: c } = conector('{"erro":"fluxo não encontrado"}', 404)
 
-    await expect(c.enviar(EVENTO_DE_TESTE)).rejects.toMatchObject({
+    await expect(c.send(EVENTO_DE_TESTE)).rejects.toMatchObject({
       status: 404,
       isPermanente: true,
     })

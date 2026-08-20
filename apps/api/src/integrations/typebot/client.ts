@@ -26,16 +26,16 @@ export class TypebotError extends Error {
   }
 }
 
-interface BlocoRichText {
+interface RichTextBlock {
   type?: string
   text?: string
-  children?: BlocoRichText[]
+  children?: RichTextBlock[]
 }
 
-interface MensagemTypebot {
+interface TypebotMessage {
   type?: string
   content?: {
-    richText?: BlocoRichText[]
+    richText?: RichTextBlock[]
     url?: string
     text?: string
   }
@@ -43,16 +43,16 @@ interface MensagemTypebot {
 
 interface RespostaChat {
   sessionId?: string
-  messages?: MensagemTypebot[]
+  messages?: TypebotMessage[]
   /** Present when the flow expects an answer. Absent means the flow is over. */
   input?: { type?: string } | null
 }
 
 export interface TurnoDeFluxo {
   sessionId: string | null
-  textos: string[]
+  texts: string[]
   /** False when the flow has finished and expects nothing more. */
-  aguardandoResposta: boolean
+  awaitingReply: boolean
 }
 
 /**
@@ -92,11 +92,11 @@ export class TypebotClient {
         body: JSON.stringify(body),
       })
 
-      const texto = await resposta.text()
-      const parsed = texto ? safeJson(texto) : null
+      const text = await resposta.text()
+      const parsed = text ? safeJson(text) : null
 
       if (!resposta.ok) {
-        const detalhe = (parsed as { message?: string })?.message ?? texto.slice(0, 200)
+        const detalhe = (parsed as { message?: string })?.message ?? text.slice(0, 200)
         throw new TypebotError(resposta.status, `Typebot responded ${resposta.status}: ${detalhe}`)
       }
 
@@ -107,23 +107,23 @@ export class TypebotClient {
   }
 
   /** Validates the address and the flow before saving the integration. */
-  async verificar(): Promise<void> {
+  async verify(): Promise<void> {
     await this.iniciar()
   }
 
-  async iniciar(mensagem?: string): Promise<TurnoDeFluxo> {
+  async iniciar(message?: string): Promise<TurnoDeFluxo> {
     const resposta = await this.request<RespostaChat>(
       `/typebots/${encodeURIComponent(this.config.typebotId)}/startChat`,
-      { message: mensagem, isStreamEnabled: false },
+      { message: message, isStreamEnabled: false },
     )
 
     return interpretar(resposta)
   }
 
-  async continuar(sessionId: string, mensagem: string): Promise<TurnoDeFluxo> {
+  async continuar(sessionId: string, message: string): Promise<TurnoDeFluxo> {
     const resposta = await this.request<RespostaChat>(
       `/sessions/${encodeURIComponent(sessionId)}/continueChat`,
-      { message: mensagem },
+      { message: message },
     )
 
     return { ...interpretar(resposta), sessionId }
@@ -133,9 +133,9 @@ export class TypebotClient {
 function interpretar(resposta: RespostaChat): TurnoDeFluxo {
   return {
     sessionId: resposta.sessionId ?? null,
-    textos: (resposta.messages ?? []).map(paraTexto).filter((t): t is string => Boolean(t)),
+    texts: (resposta.messages ?? []).map(toText).filter((t): t is string => Boolean(t)),
     // With no `input`, the flow is over and the next message starts from zero.
-    aguardandoResposta: Boolean(resposta.input),
+    awaitingReply: Boolean(resposta.input),
   }
 }
 
@@ -146,26 +146,26 @@ function interpretar(resposta: RespostaChat): TurnoDeFluxo {
  * running text. Media becomes the URL — honest and useful while the gateway
  * does not send attachments, and better than swallowing the message in silence.
  */
-function paraTexto(mensagem: MensagemTypebot): string | null {
-  if (mensagem.content?.richText?.length) {
-    const texto = mensagem.content.richText.map(achatar).join('\n').trim()
-    return texto || null
+function toText(message: TypebotMessage): string | null {
+  if (message.content?.richText?.length) {
+    const text = message.content.richText.map(achatar).join('\n').trim()
+    return text || null
   }
 
-  if (mensagem.content?.text) return mensagem.content.text
-  if (mensagem.content?.url) return mensagem.content.url
+  if (message.content?.text) return message.content.text
+  if (message.content?.url) return message.content.url
 
   return null
 }
 
-function achatar(bloco: BlocoRichText): string {
+function achatar(bloco: RichTextBlock): string {
   if (bloco.text) return bloco.text
   return (bloco.children ?? []).map(achatar).join('')
 }
 
-function safeJson(texto: string): unknown {
+function safeJson(text: string): unknown {
   try {
-    return JSON.parse(texto)
+    return JSON.parse(text)
   } catch {
     return null
   }

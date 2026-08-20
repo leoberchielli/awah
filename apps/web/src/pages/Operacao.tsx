@@ -1,37 +1,37 @@
-import { AreaSerie, BarrasHorizontais, Funil, LinhaSerie } from '../components/charts'
-import { FiltroDeSessao, Shell, useFiltro } from '../components/Shell'
+import { AreaSerie, BarrasHorizontais, Funil, SeriesPoint } from '../components/charts'
+import { SessionFilter, Shell, useFilter } from '../components/Shell'
 import { Card, Empty, Pill, Skeleton, Stat } from '../components/ui'
 import { useQuery } from '../hooks/useQuery'
 import { useT } from '../i18n'
 import type { KpiDelivery, KpiRisk, KpiSessions, SessionRow } from '../lib/api'
-import { desde, duracao, minutos, num, pct } from '../lib/format'
+import { duration, minutes, num, pct, since } from '../lib/format'
 import { statusLabel, statusTone } from '../lib/sessionStatus'
 
 /** Five seconds: fast enough to follow an incident, light enough to leave running. */
 const POLL_MS = 5000
 
-export function Operacao() {
+export function Operations() {
   const t = useT()
-  const { query } = useFiltro()
+  const { query } = useFilter()
 
-  const sessoes = useQuery<{ sessions: SessionRow[] }>('/v1/sessions', POLL_MS)
+  const sessions = useQuery<{ sessions: SessionRow[] }>('/v1/sessions', POLL_MS)
   const entrega = useQuery<KpiDelivery>(`/v1/kpi/delivery?${query}`, POLL_MS)
-  const risco = useQuery<KpiRisk>(`/v1/kpi/risk?${query}`, POLL_MS)
+  const risk = useQuery<KpiRisk>(`/v1/kpi/risk?${query}`, POLL_MS)
   const saude = useQuery<KpiSessions>(`/v1/kpi/sessions?${query}`, POLL_MS)
 
-  const lista = sessoes.data?.sessions ?? []
-  const conectadas = lista.filter((s) => s.status === 'connected').length
-  const querRodar = lista.filter((s) => s.desiredState === 'running').length
+  const list = sessions.data?.sessions ?? []
+  const connected = list.filter((s) => s.status === 'connected').length
+  const wantsToRun = list.filter((s) => s.desiredState === 'running').length
 
   return (
-    <Shell acoes={<FiltroDeSessao sessoes={lista} />}>
+    <Shell acoes={<SessionFilter sessions={list} />}>
       <div className="flex flex-col gap-4">
         <FaixaDeResumo
-          conectadas={conectadas}
-          querRodar={querRodar}
+          connected={connected}
+          wantsToRun={wantsToRun}
           entrega={entrega.data}
-          risco={risco.data}
-          carregando={!entrega.settled}
+          risk={risk.data}
+          loading={!entrega.settled}
         />
 
         <div className="grid gap-4 lg:grid-cols-3">
@@ -40,24 +40,24 @@ export function Operacao() {
               <Funil
                 etapas={[
                   {
-                    rotulo: t('ops.funnel.sent'),
-                    valor: entrega.data.funnel.sent,
-                    cor: 'var(--accent)',
+                    label: t('ops.funnel.sent'),
+                    value: entrega.data.funnel.sent,
+                    color: 'var(--accent)',
                   },
                   {
-                    rotulo: t('ops.funnel.delivered'),
-                    valor: entrega.data.funnel.delivered,
-                    cor: 'var(--ok)',
+                    label: t('ops.funnel.delivered'),
+                    value: entrega.data.funnel.delivered,
+                    color: 'var(--ok)',
                   },
                   {
-                    rotulo: t('ops.funnel.read'),
-                    valor: entrega.data.funnel.read,
-                    cor: 'var(--ok)',
+                    label: t('ops.funnel.read'),
+                    value: entrega.data.funnel.read,
+                    color: 'var(--ok)',
                   },
                   {
-                    rotulo: t('ops.funnel.failed'),
-                    valor: entrega.data.funnel.failed,
-                    cor: 'var(--crit)',
+                    label: t('ops.funnel.failed'),
+                    value: entrega.data.funnel.failed,
+                    color: 'var(--crit)',
                     // Failed is measured against what was sent, not against what was read.
                     base: entrega.data.funnel.sent,
                   },
@@ -80,7 +80,7 @@ export function Operacao() {
                   { key: 'messages.outbound', label: 'Enviadas', color: 'var(--accent)' },
                   { key: 'messages.inbound', label: 'Recebidas', color: 'var(--ok)' },
                 ]}
-                altura={210}
+                height={210}
               />
             ) : (
               <Skeleton className="h-52" />
@@ -117,29 +117,29 @@ export function Operacao() {
           </Card>
 
           <Card title={t('ops.riskDecisions')} hint={t('ops.riskDecisionsHint')}>
-            {risco.data ? (
+            {risk.data ? (
               <BarrasHorizontais
-                altura={180}
+                height={180}
                 dados={[
                   {
-                    rotulo: t('ops.decision.allowed'),
-                    valor: risco.data.decisions.allowed,
-                    cor: 'var(--ok)',
+                    label: t('ops.decision.allowed'),
+                    value: risk.data.decisions.allowed,
+                    color: 'var(--ok)',
                   },
                   {
-                    rotulo: t('ops.decision.delayed'),
-                    valor: risco.data.decisions.delayed,
-                    cor: 'var(--accent)',
+                    label: t('ops.decision.delayed'),
+                    value: risk.data.decisions.delayed,
+                    color: 'var(--accent)',
                   },
                   {
-                    rotulo: t('ops.decision.throttled'),
-                    valor: risco.data.decisions.throttled,
-                    cor: 'var(--warn)',
+                    label: t('ops.decision.throttled'),
+                    value: risk.data.decisions.throttled,
+                    color: 'var(--warn)',
                   },
                   {
-                    rotulo: t('ops.decision.held'),
-                    valor: risco.data.decisions.held,
-                    cor: 'var(--crit)',
+                    label: t('ops.decision.held'),
+                    value: risk.data.decisions.held,
+                    color: 'var(--crit)',
                   },
                 ]}
               />
@@ -149,11 +149,11 @@ export function Operacao() {
           </Card>
 
           <Card title={t('ops.riskScore')} hint={t('ops.riskScoreHint')}>
-            {risco.data ? (
-              <LinhaSerie
-                series={risco.data.scoreSeries}
+            {risk.data ? (
+              <SeriesPoint
+                series={risk.data.scoreSeries}
                 visuais={[{ key: 'risk.score.avg', label: 'Score médio', color: 'var(--warn)' }]}
-                altura={180}
+                height={180}
                 dominio={[0, 100]}
               />
             ) : (
@@ -164,7 +164,7 @@ export function Operacao() {
 
         <Card title={t('ops.sessionHealth')} hint={t('ops.sessionHealthHint')}>
           {saude.data ? (
-            <TabelaDeSaude linhas={saude.data.sessions} />
+            <TabelaDeSaude rows={saude.data.sessions} />
           ) : (
             <Skeleton className="h-40" />
           )}
@@ -175,20 +175,20 @@ export function Operacao() {
 }
 
 function FaixaDeResumo({
-  conectadas,
-  querRodar,
+  connected,
+  wantsToRun,
   entrega,
-  risco,
-  carregando,
+  risk,
+  loading,
 }: {
-  conectadas: number
-  querRodar: number
+  connected: number
+  wantsToRun: number
   entrega: KpiDelivery | null
-  risco: KpiRisk | null
-  carregando: boolean
+  risk: KpiRisk | null
+  loading: boolean
 }) {
   const t = useT()
-  if (carregando) {
+  if (loading) {
     return (
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {[0, 1, 2, 3, 4].map((i) => (
@@ -202,16 +202,16 @@ function FaixaDeResumo({
 
   const taxa = entrega?.funnel.deliveryRate ?? 0
   const p95 = entrega?.latencyMs.p95 ?? null
-  const segurado = risco?.decisions.held ?? 0
+  const held = risk?.decisions.held ?? 0
 
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
       <div className="card p-4">
         <Stat
           label={t('ops.connectedSessions')}
-          value={`${conectadas}/${querRodar}`}
-          tone={conectadas === querRodar ? 'ok' : conectadas === 0 ? 'crit' : 'warn'}
-          hint={querRodar === 0 ? t('ops.noneRunning') : t('ops.ofWhatShouldRun')}
+          value={`${connected}/${wantsToRun}`}
+          tone={connected === wantsToRun ? 'ok' : connected === 0 ? 'crit' : 'warn'}
+          hint={wantsToRun === 0 ? t('ops.noneRunning') : t('ops.ofWhatShouldRun')}
         />
       </div>
       <div className="card p-4">
@@ -228,7 +228,7 @@ function FaixaDeResumo({
       <div className="card p-4">
         <Stat
           label={t('ops.latencyP95')}
-          value={duracao(p95)}
+          value={duration(p95)}
           tone={p95 === null ? 'neutral' : p95 < 5000 ? 'ok' : p95 < 20000 ? 'warn' : 'crit'}
           hint={t('ops.latencyHint')}
         />
@@ -244,19 +244,19 @@ function FaixaDeResumo({
       <div className="card p-4">
         <Stat
           label={t('ops.heldByRisk')}
-          value={num(segurado)}
-          tone={segurado > 0 ? 'warn' : 'ok'}
-          hint={t('ops.newContacts', { n: num(risco?.newContacts ?? 0) })}
+          value={num(held)}
+          tone={held > 0 ? 'warn' : 'ok'}
+          hint={t('ops.newContacts', { n: num(risk?.newContacts ?? 0) })}
         />
       </div>
     </div>
   )
 }
 
-function TabelaDeSaude({ linhas }: { linhas: KpiSessions['sessions'] }) {
+function TabelaDeSaude({ rows }: { rows: KpiSessions['sessions'] }) {
   const t = useT()
 
-  if (linhas.length === 0) {
+  if (rows.length === 0) {
     return <Empty>{t('ops.noSessions')}</Empty>
   }
 
@@ -267,37 +267,37 @@ function TabelaDeSaude({ linhas }: { linhas: KpiSessions['sessions'] }) {
           <tr className="border-b border-line text-left">
             <Th>{t('ops.col.session')}</Th>
             <Th>{t('ops.col.state')}</Th>
-            <Th alinhamento="right">{t('ops.col.drops')}</Th>
-            <Th alinhamento="right">{t('ops.col.reconnects')}</Th>
-            <Th alinhamento="right">{t('ops.col.mtbf')}</Th>
+            <Th align="right">{t('ops.col.drops')}</Th>
+            <Th align="right">{t('ops.col.reconnects')}</Th>
+            <Th align="right">{t('ops.col.mtbf')}</Th>
             <Th>{t('ops.col.lastCause')}</Th>
           </tr>
         </thead>
         <tbody>
-          {linhas.map((linha) => (
-            <tr key={linha.sessionId} className="border-b border-line/60 last:border-0">
-              <td className="py-2.5 pr-3 font-medium text-ink">{linha.name}</td>
+          {rows.map((row) => (
+            <tr key={row.sessionId} className="border-b border-line/60 last:border-0">
+              <td className="py-2.5 pr-3 font-medium text-ink">{row.name}</td>
               <td className="py-2.5 pr-3">
-                <Pill tone={statusTone(linha.status)}>{statusLabel(t, linha.status)}</Pill>
+                <Pill tone={statusTone(row.status)}>{statusLabel(t, row.status)}</Pill>
               </td>
               <td
                 className={`py-2.5 pr-3 text-right font-mono tnum ${
-                  linha.disconnects > 0 ? 'text-crit' : 'text-muted'
+                  row.disconnects > 0 ? 'text-crit' : 'text-muted'
                 }`}
               >
-                {num(linha.disconnects)}
+                {num(row.disconnects)}
               </td>
               <td className="py-2.5 pr-3 text-right font-mono text-muted tnum">
-                {num(linha.reconnects)}
+                {num(row.reconnects)}
               </td>
               <td className="py-2.5 pr-3 text-right font-mono text-ink tnum">
-                {minutos(linha.mtbfMinutes)}
+                {minutes(row.mtbfMinutes)}
               </td>
               <td className="py-2.5 text-xs text-muted">
-                {linha.lastCause ? (
-                  <span title={linha.lastDisconnectAt ?? undefined}>
-                    {linha.lastCause}
-                    <span className="ml-1.5 opacity-70">{desde(linha.lastDisconnectAt)}</span>
+                {row.lastCause ? (
+                  <span title={row.lastDisconnectAt ?? undefined}>
+                    {row.lastCause}
+                    <span className="ml-1.5 opacity-70">{since(row.lastDisconnectAt)}</span>
                   </span>
                 ) : (
                   '—'
@@ -311,18 +311,12 @@ function TabelaDeSaude({ linhas }: { linhas: KpiSessions['sessions'] }) {
   )
 }
 
-function Th({
-  children,
-  alinhamento = 'left',
-}: {
-  children: React.ReactNode
-  alinhamento?: 'left' | 'right'
-}) {
+function Th({ children, align = 'left' }: { children: React.ReactNode; align?: 'left' | 'right' }) {
   return (
     <th
       scope="col"
       className={`pb-2 pr-3 text-[11px] font-medium tracking-wide text-muted uppercase ${
-        alinhamento === 'right' ? 'text-right' : ''
+        align === 'right' ? 'text-right' : ''
       }`}
     >
       {children}

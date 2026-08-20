@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 
-export type Tema = 'system' | 'light' | 'dark'
+export type Theme = 'system' | 'light' | 'dark'
 
-const CHAVE = 'awah:tema'
+const STORAGE_KEY = 'awah:tema'
 
-function ler(): Tema {
-  const salvo = localStorage.getItem(CHAVE)
+function ler(): Theme {
+  const salvo = localStorage.getItem(STORAGE_KEY)
   return salvo === 'light' || salvo === 'dark' ? salvo : 'system'
 }
 
@@ -16,18 +16,18 @@ function ler(): Tema {
  * `prefers-color-scheme` is in charge, which is the right behaviour for anyone
  * who never chose.
  */
-export function useTheme(): [Tema, (proximo: Tema) => void] {
-  const [tema, setTema] = useState<Tema>(ler)
+export function useTheme(): [Theme, (next: Theme) => void] {
+  const [theme, setTheme] = useState<Theme>(ler)
 
   useEffect(() => {
-    if (tema === 'system') {
+    if (theme === 'system') {
       document.documentElement.removeAttribute('data-theme')
-      localStorage.removeItem(CHAVE)
+      localStorage.removeItem(STORAGE_KEY)
     } else {
-      document.documentElement.setAttribute('data-theme', tema)
-      localStorage.setItem(CHAVE, tema)
+      document.documentElement.setAttribute('data-theme', theme)
+      localStorage.setItem(STORAGE_KEY, theme)
     }
-  }, [tema])
+  }, [theme])
 
-  return [tema, setTema]
+  return [theme, setTheme]
 }

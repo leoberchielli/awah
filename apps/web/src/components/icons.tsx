@@ -31,7 +31,7 @@ export const IconeNegocio = (p: Props) => (
   </svg>
 )
 
-export const IconeSessao = (p: Props) => (
+export const SessionIcon = (p: Props) => (
   <svg {...base} {...p} aria-hidden>
     <rect x="4" y="2.5" width="16" height="19" rx="3" />
     <path d="M10 18.5h4" />
@@ -58,20 +58,20 @@ export const IconeMonitor = (p: Props) => (
   </svg>
 )
 
-export const IconeSair = (p: Props) => (
+export const SignOutIcon = (p: Props) => (
   <svg {...base} {...p} aria-hidden>
     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
   </svg>
 )
 
-export const IconeLigacao = (p: Props) => (
+export const PlugIcon = (p: Props) => (
   <svg {...base} {...p} aria-hidden>
     <path d="M10 13.5a4.5 4.5 0 0 0 6.6.6l2.6-2.6a4.5 4.5 0 0 0-6.4-6.4l-1.5 1.5" />
     <path d="M14 10.5a4.5 4.5 0 0 0-6.6-.6l-2.6 2.6a4.5 4.5 0 0 0 6.4 6.4l1.5-1.5" />
   </svg>
 )
 
-export const IconeChave = (p: Props) => (
+export const KeyIcon = (p: Props) => (
   <svg {...base} {...p} aria-hidden>
     <circle cx="7.5" cy="15.5" r="4.5" />
     <path d="M10.8 12.2 20.5 2.5M16 7l3 3 2.5-2.5-3-3" />

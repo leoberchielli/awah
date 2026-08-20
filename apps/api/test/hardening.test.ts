@@ -32,11 +32,11 @@ describe('segredos de desenvolvimento', () => {
     try {
       loadEnv({ ...BASE, NODE_ENV: 'production' })
       expect.unreachable('deveria ter lançado')
-    } catch (erro) {
-      const mensagem = (erro as Error).message
-      expect(mensagem).toContain('ENCRYPTION_KEY')
-      expect(mensagem).toContain('COOKIE_SECRET')
-      expect(mensagem).toContain('openssl rand')
+    } catch (error) {
+      const message = (error as Error).message
+      expect(message).toContain('ENCRYPTION_KEY')
+      expect(message).toContain('COOKIE_SECRET')
+      expect(message).toContain('openssl rand')
     }
   })
 
@@ -48,11 +48,11 @@ describe('segredos de desenvolvimento', () => {
         ENCRYPTION_KEY: PROPRIAS.ENCRYPTION_KEY,
       })
       expect.unreachable('deveria ter lançado')
-    } catch (erro) {
+    } catch (error) {
       // The first line is the accusation; the rest is the recipe, which names both.
-      const acusacao = (erro as Error).message.split('\n')[0] ?? ''
-      expect(acusacao).toContain('COOKIE_SECRET')
-      expect(acusacao).not.toContain('ENCRYPTION_KEY')
+      const receipt = (error as Error).message.split('\n')[0] ?? ''
+      expect(receipt).toContain('COOKIE_SECRET')
+      expect(receipt).not.toContain('ENCRYPTION_KEY')
     }
   })
 

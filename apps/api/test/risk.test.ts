@@ -12,11 +12,11 @@ describe('curva de warmup', () => {
   })
 
   it('sobe de forma monotônica', () => {
-    let anterior = 0
-    for (const dia of [0, 1, 3, 7, 14, 21, 30]) {
-      const atual = warmupFactor(dia)
-      expect(atual).toBeGreaterThanOrEqual(anterior)
-      anterior = atual
+    let previous = 0
+    for (const day of [0, 1, 3, 7, 14, 21, 30]) {
+      const current = warmupFactor(day)
+      expect(current).toBeGreaterThanOrEqual(previous)
+      previous = current
     }
   })
 
@@ -34,10 +34,10 @@ describe('curva de warmup', () => {
 
   /** A zero cap would freeze the session entirely; it sends little, but it sends. */
   it('nunca zera os limites', () => {
-    const limites = applyWarmup(DEFAULT_LIMITS, 0)
-    expect(limites.perMinute).toBeGreaterThanOrEqual(1)
-    expect(limites.perDay).toBeGreaterThanOrEqual(1)
-    expect(limites.newContactsPerDay).toBeGreaterThanOrEqual(1)
+    const limits = applyWarmup(DEFAULT_LIMITS, 0)
+    expect(limits.perMinute).toBeGreaterThanOrEqual(1)
+    expect(limits.perDay).toBeGreaterThanOrEqual(1)
+    expect(limits.newContactsPerDay).toBeGreaterThanOrEqual(1)
   })
 
   it('libera o teto cheio quando a sessão amadurece', () => {
@@ -77,17 +77,17 @@ describe('limites por sessão', () => {
   })
 
   it('aceita override parcial', () => {
-    const limites = resolveLimits({ limits: { perMinute: 30 } })
-    expect(limites.perMinute).toBe(30)
-    expect(limites.perHour).toBe(DEFAULT_LIMITS.perHour)
+    const limits = resolveLimits({ limits: { perMinute: 30 } })
+    expect(limits.perMinute).toBe(30)
+    expect(limits.perHour).toBe(DEFAULT_LIMITS.perHour)
   })
 
   /** A corrupted config must never unlock the limit. */
   it('ignora valores inválidos e mantém o conservador', () => {
-    const limites = resolveLimits({
+    const limits = resolveLimits({
       limits: { perMinute: -5, perHour: 0, perDay: 'muitos', newContactsPerDay: Number.NaN },
     })
-    expect(limites).toEqual(DEFAULT_LIMITS)
+    expect(limits).toEqual(DEFAULT_LIMITS)
   })
 })
 
@@ -113,9 +113,9 @@ describe('score de risco', () => {
 
   /** The strongest signal: people talk both ways, a bot only talks. */
   it('penaliza conversa unilateral', () => {
-    const unilateral = computeScore({ ...base, outbound24h: 500, inbound24h: 2 })
+    const oneSided = computeScore({ ...base, outbound24h: 500, inbound24h: 2 })
     const equilibrada = computeScore({ ...base, outbound24h: 500, inbound24h: 400 })
-    expect(unilateral.value).toBeGreaterThan(equilibrada.value + 25)
+    expect(oneSided.value).toBeGreaterThan(equilibrada.value + 25)
   })
 
   /** Low volume is not blasting, even with no replies — 5 messages unanswered is normal. */
@@ -184,17 +184,17 @@ describe('freio adaptativo', () => {
 describe('jitter humano', () => {
   it('respeita o piso e o teto', () => {
     for (let i = 0; i < 200; i++) {
-      const atraso = humanDelayMs()
-      expect(atraso).toBeGreaterThanOrEqual(250)
-      expect(atraso).toBeLessThanOrEqual(120_000)
+      const delayMs = humanDelayMs()
+      expect(delayMs).toBeGreaterThanOrEqual(250)
+      expect(delayMs).toBeLessThanOrEqual(120_000)
     }
   })
 
   it('fica perto da mediana com sorte neutra', () => {
     // random = 0.5 on both draws returns a z close to zero.
-    const atraso = humanDelayMs({ medianMs: 3000, random: () => 0.5 })
-    expect(atraso).toBeGreaterThan(1500)
-    expect(atraso).toBeLessThan(6000)
+    const delayMs = humanDelayMs({ medianMs: 3000, random: () => 0.5 })
+    expect(delayMs).toBeGreaterThan(1500)
+    expect(delayMs).toBeLessThan(6000)
   })
 
   it('o freio do score aumenta a espera', () => {

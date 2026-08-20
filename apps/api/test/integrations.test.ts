@@ -4,8 +4,8 @@ import { chatwootConfigSchema, typebotConfigSchema } from '../src/integrations/c
 import { derivarDoLink, TypebotClient, TypebotError } from '../src/integrations/typebot/client'
 
 function resposta(body: unknown, status = 200): Response {
-  const semCorpo = status === 204 || status === 304
-  return new Response(semCorpo ? null : JSON.stringify(body), {
+  const withoutBody = status === 204 || status === 304
+  return new Response(withoutBody ? null : JSON.stringify(body), {
     status,
     headers: { 'content-type': 'application/json' },
   })
@@ -42,16 +42,16 @@ describe('configuração', () => {
 
 describe('cliente do Chatwoot', () => {
   it('autentica pelo cabeçalho que o Chatwoot espera', async () => {
-    const chamadas: Array<{ url: string; init?: RequestInit }> = []
+    const calls: Array<{ url: string; init?: RequestInit }> = []
     const fetchImpl = vi.fn(async (url: string | URL, init?: RequestInit) => {
-      chamadas.push({ url: String(url), init })
+      calls.push({ url: String(url), init })
       return resposta({ name: 'WhatsApp', channel_type: 'Channel::Api' })
     })
 
-    await new ChatwootClient(CHATWOOT, { fetch: fetchImpl as unknown as typeof fetch }).verificar()
+    await new ChatwootClient(CHATWOOT, { fetch: fetchImpl as unknown as typeof fetch }).verify()
 
-    expect(chamadas[0]?.url).toBe('https://chat.exemplo.com/api/v1/accounts/1/inboxes/7')
-    const headers = chamadas[0]?.init?.headers as Record<string, string>
+    expect(calls[0]?.url).toBe('https://chat.exemplo.com/api/v1/accounts/1/inboxes/7')
+    const headers = calls[0]?.init?.headers as Record<string, string>
     expect(headers.api_access_token).toBe('token-de-acesso-do-agente')
   })
 
@@ -61,7 +61,7 @@ describe('cliente do Chatwoot', () => {
     )
     const info = await new ChatwootClient(CHATWOOT, {
       fetch: fetchImpl as unknown as typeof fetch,
-    }).verificar()
+    }).verify()
 
     expect(info.channelType).toBe('Channel::WebWidget')
   })
@@ -87,20 +87,20 @@ describe('cliente do Chatwoot', () => {
       }),
     )
 
-    const contato = await new ChatwootClient(CHATWOOT, {
+    const contact = await new ChatwootClient(CHATWOOT, {
       fetch: fetchImpl as unknown as typeof fetch,
-    }).garantirContato({ identifier: '5511999999999', phoneNumber: '+5511999999999', name: 'X' })
+    }).ensureContact({ identifier: '5511999999999', phoneNumber: '+5511999999999', name: 'X' })
 
-    expect(contato).toEqual({ contactId: 42, sourceId: 'do-whatsapp' })
+    expect(contact).toEqual({ contactId: 42, sourceId: 'do-whatsapp' })
   })
 
   it('ignora contato que não tem vínculo com a caixa configurada', async () => {
-    let chamada = 0
+    let call = 0
     const fetchImpl = vi.fn(async (_url: string | URL, init?: RequestInit) => {
-      chamada++
+      call++
       // Search: finds a contact, but only in the wrong inbox.
       if (!init?.method || init.method === 'GET') {
-        if (chamada === 1) {
+        if (call === 1) {
           return resposta({
             payload: [{ id: 9, contact_inboxes: [{ source_id: 'outro', inbox: { id: 3 } }] }],
           })
@@ -115,49 +115,49 @@ describe('cliente do Chatwoot', () => {
       })
     })
 
-    const contato = await new ChatwootClient(CHATWOOT, {
+    const contact = await new ChatwootClient(CHATWOOT, {
       fetch: fetchImpl as unknown as typeof fetch,
-    }).garantirContato({ identifier: '5511999999999', phoneNumber: '+5511999999999', name: 'X' })
+    }).ensureContact({ identifier: '5511999999999', phoneNumber: '+5511999999999', name: 'X' })
 
-    expect(contato.sourceId).toBe('novo')
+    expect(contact.sourceId).toBe('novo')
   })
 
   /** A 422 on create is a race, not a failure: another process created it since the search. */
   it('sobrevive a contato criado por outro processo no meio do caminho', async () => {
-    let busca = 0
+    let search = 0
     const fetchImpl = vi.fn(async (_url: string | URL, init?: RequestInit) => {
       if (init?.method === 'POST') return resposta({ message: 'já existe' }, 422)
-      busca++
-      if (busca === 1) return resposta({ payload: [] })
+      search++
+      if (search === 1) return resposta({ payload: [] })
       return resposta({
         payload: [{ id: 5, contact_inboxes: [{ source_id: 'tarde', inbox: { id: 7 } }] }],
       })
     })
 
-    const contato = await new ChatwootClient(CHATWOOT, {
+    const contact = await new ChatwootClient(CHATWOOT, {
       fetch: fetchImpl as unknown as typeof fetch,
-    }).garantirContato({ identifier: '5511999999999', phoneNumber: '+5511999999999', name: 'X' })
+    }).ensureContact({ identifier: '5511999999999', phoneNumber: '+5511999999999', name: 'X' })
 
-    expect(contato.contactId).toBe(5)
+    expect(contact.contactId).toBe(5)
   })
 
   it('manda o id do WhatsApp como source_id, que é o que corta o eco', async () => {
-    let corpo: Record<string, unknown> = {}
+    let body: Record<string, unknown> = {}
     const fetchImpl = vi.fn(async (_url: string | URL, init?: RequestInit) => {
-      corpo = JSON.parse(String(init?.body))
+      body = JSON.parse(String(init?.body))
       return resposta({ id: 900 })
     })
 
     await new ChatwootClient(CHATWOOT, {
       fetch: fetchImpl as unknown as typeof fetch,
-    }).criarMensagemRecebida({
+    }).buildIncomingMessage({
       conversationId: '12',
       content: 'olá',
       sourceId: 'wamid.ABC',
     })
 
-    expect(corpo.message_type).toBe('incoming')
-    expect(corpo.source_id).toBe('wamid.ABC')
+    expect(body.message_type).toBe('incoming')
+    expect(body.source_id).toBe('wamid.ABC')
   })
 
   it('separa erro de configuração de erro de disponibilidade', () => {
@@ -193,9 +193,9 @@ describe('cliente do Typebot', () => {
       fetch: fetchImpl as unknown as typeof fetch,
     }).iniciar('oi')
 
-    expect(turno.textos).toEqual(['Olá! Tudo bem?\nComo posso ajudar?'])
+    expect(turno.texts).toEqual(['Olá! Tudo bem?\nComo posso ajudar?'])
     expect(turno.sessionId).toBe('sess-1')
-    expect(turno.aguardandoResposta).toBe(true)
+    expect(turno.awaitingReply).toBe(true)
   })
 
   /** With no `input`, the flow is over — and the next message starts from scratch. */
@@ -211,7 +211,7 @@ describe('cliente do Typebot', () => {
       fetch: fetchImpl as unknown as typeof fetch,
     }).iniciar()
 
-    expect(turno.aguardandoResposta).toBe(false)
+    expect(turno.awaitingReply).toBe(false)
   })
 
   it('mídia vira a URL, em vez de sumir', async () => {
@@ -227,7 +227,7 @@ describe('cliente do Typebot', () => {
       fetch: fetchImpl as unknown as typeof fetch,
     }).iniciar()
 
-    expect(turno.textos).toEqual(['https://exemplo.com/foto.png'])
+    expect(turno.texts).toEqual(['https://exemplo.com/foto.png'])
   })
 
   it('descarta mensagem sem conteúdo aproveitável', async () => {
@@ -239,7 +239,7 @@ describe('cliente do Typebot', () => {
       fetch: fetchImpl as unknown as typeof fetch,
     }).iniciar()
 
-    expect(turno.textos).toEqual([])
+    expect(turno.texts).toEqual([])
   })
 
   /**
@@ -252,20 +252,20 @@ describe('cliente do Typebot', () => {
   })
 
   it('só manda o bearer quando há token', async () => {
-    const semToken: Array<Record<string, string>> = []
+    const withoutToken: Array<Record<string, string>> = []
     const fetchImpl = vi.fn(async (_url: string | URL, init?: RequestInit) => {
-      semToken.push(init?.headers as Record<string, string>)
+      withoutToken.push(init?.headers as Record<string, string>)
       return resposta({ sessionId: 's', messages: [] })
     })
 
     await new TypebotClient(TYPEBOT, { fetch: fetchImpl as unknown as typeof fetch }).iniciar()
-    expect(semToken[0]?.authorization).toBeUndefined()
+    expect(withoutToken[0]?.authorization).toBeUndefined()
 
     await new TypebotClient(
       { ...TYPEBOT, apiToken: 'token-do-typebot' },
       { fetch: fetchImpl as unknown as typeof fetch },
     ).iniciar()
-    expect(semToken[1]?.authorization).toBe('Bearer token-do-typebot')
+    expect(withoutToken[1]?.authorization).toBe('Bearer token-do-typebot')
   })
 })
 
@@ -326,13 +326,13 @@ describe('descoberta no Chatwoot', () => {
       })
     })
 
-    const contas = await new ChatwootClient(CHATWOOT, {
+    const accounts = await new ChatwootClient(CHATWOOT, {
       fetch: fetchImpl as unknown as typeof fetch,
-    }).contas()
+    }).accounts()
 
     // The profile does not live under /accounts/{id} — it is the one absolute path.
     expect(urls[0]).toBe('https://chat.exemplo.com/api/v1/profile')
-    expect(contas).toEqual([
+    expect(accounts).toEqual([
       { id: 1, name: 'Minha Empresa', role: 'administrator' },
       { id: 2, name: 'Cliente X', role: 'agent' },
     ])
@@ -341,11 +341,11 @@ describe('descoberta no Chatwoot', () => {
   it('descarta conta sem id em vez de estourar', async () => {
     const fetchImpl = vi.fn(async () => resposta({ accounts: [{ name: 'sem id' }, { id: 3 }] }))
 
-    const contas = await new ChatwootClient(CHATWOOT, {
+    const accounts = await new ChatwootClient(CHATWOOT, {
       fetch: fetchImpl as unknown as typeof fetch,
-    }).contas()
+    }).accounts()
 
-    expect(contas).toEqual([{ id: 3, name: 'Conta 3', role: 'agent' }])
+    expect(accounts).toEqual([{ id: 3, name: 'Conta 3', role: 'agent' }])
   })
 
   it('lista as caixas com o tipo, para o painel marcar as que não servem', async () => {
@@ -358,11 +358,11 @@ describe('descoberta no Chatwoot', () => {
       }),
     )
 
-    const caixas = await new ChatwootClient(CHATWOOT, {
+    const inboxes = await new ChatwootClient(CHATWOOT, {
       fetch: fetchImpl as unknown as typeof fetch,
-    }).caixas()
+    }).inboxes()
 
-    expect(caixas).toEqual([
+    expect(inboxes).toEqual([
       { id: 7, name: 'WhatsApp', channelType: 'Channel::Api' },
       { id: 8, name: 'Site', channelType: 'Channel::WebWidget' },
     ])
@@ -373,27 +373,27 @@ describe('descoberta no Chatwoot', () => {
    * steps that made most people give up. One call handles both.
    */
   it('cria a caixa já com o webhook apontado', async () => {
-    let corpo: Record<string, unknown> = {}
+    let body: Record<string, unknown> = {}
     const fetchImpl = vi.fn(async (_url: string | URL, init?: RequestInit) => {
-      corpo = JSON.parse(String(init?.body))
+      body = JSON.parse(String(init?.body))
       return resposta({ id: 12, name: 'WhatsApp (AWAH)' })
     })
 
-    const criada = await new ChatwootClient(CHATWOOT, {
+    const created = await new ChatwootClient(CHATWOOT, {
       fetch: fetchImpl as unknown as typeof fetch,
-    }).criarCaixa('WhatsApp (AWAH)', 'https://gateway/webhooks/chatwoot/abc/token')
+    }).createInboxFor('WhatsApp (AWAH)', 'https://gateway/webhooks/chatwoot/abc/token')
 
-    expect(criada).toEqual({ id: 12, name: 'WhatsApp (AWAH)' })
-    expect(corpo.channel).toEqual({
+    expect(created).toEqual({ id: 12, name: 'WhatsApp (AWAH)' })
+    expect(body.channel).toEqual({
       type: 'api',
       webhook_url: 'https://gateway/webhooks/chatwoot/abc/token',
     })
   })
 
   it('corrige o webhook de uma caixa que já existia', async () => {
-    const chamadas: Array<{ url: string; method?: string; body: unknown }> = []
+    const calls: Array<{ url: string; method?: string; body: unknown }> = []
     const fetchImpl = vi.fn(async (url: string | URL, init?: RequestInit) => {
-      chamadas.push({
+      calls.push({
         url: String(url),
         method: init?.method,
         body: init?.body ? JSON.parse(String(init.body)) : null,
@@ -405,15 +405,15 @@ describe('descoberta no Chatwoot', () => {
       fetch: fetchImpl as unknown as typeof fetch,
     }).apontarWebhook(7, 'https://gateway/webhooks/chatwoot/abc/token')
 
-    expect(chamadas[0]?.method).toBe('PATCH')
-    expect(chamadas[0]?.url).toContain('/accounts/1/inboxes/7')
+    expect(calls[0]?.method).toBe('PATCH')
+    expect(calls[0]?.url).toContain('/accounts/1/inboxes/7')
   })
 
   it('propaga 403 para a rota poder falar de permissão', async () => {
     const fetchImpl = vi.fn(async () => resposta({ message: 'sem permissão' }, 403))
 
     await expect(
-      new ChatwootClient(CHATWOOT, { fetch: fetchImpl as unknown as typeof fetch }).criarCaixa(
+      new ChatwootClient(CHATWOOT, { fetch: fetchImpl as unknown as typeof fetch }).createInboxFor(
         'x',
         'https://gateway/hook',
       ),

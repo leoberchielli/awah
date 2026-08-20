@@ -117,16 +117,16 @@ describe.skipIf(!hasInfra)('cluster', () => {
 
     it('consulta a posse de várias sessões de uma vez', async () => {
       const nodeA = new SessionLease(redis, 'awah-1')
-      const comDono = randomUUID()
-      const semDono = randomUUID()
+      const withOwner = randomUUID()
+      const withoutOwner = randomUUID()
 
-      await nodeA.acquire(comDono)
-      const donos = await nodeA.owners([comDono, semDono])
+      await nodeA.acquire(withOwner)
+      const owners = await nodeA.owners([withOwner, withoutOwner])
 
-      expect(donos.get(comDono)).toBe('awah-1')
-      expect(donos.has(semDono)).toBe(false)
+      expect(owners.get(withOwner)).toBe('awah-1')
+      expect(owners.has(withoutOwner)).toBe(false)
 
-      await nodeA.release(comDono)
+      await nodeA.release(withOwner)
     })
 
     it('lista vazia não vai ao Redis', async () => {
@@ -137,13 +137,13 @@ describe.skipIf(!hasInfra)('cluster', () => {
 
   describe('QR compartilhado', () => {
     it('o que um nó publica, outro lê', async () => {
-      const doDono = new QrCache(redis)
+      const fromOwner = new QrCache(redis)
       const deOutroNo = new QrCache(redis)
 
-      await doDono.publish(sessionId, '2@codigo-de-pareamento')
+      await fromOwner.publish(sessionId, '2@codigo-de-pareamento')
       expect(await deOutroNo.read(sessionId)).toBe('2@codigo-de-pareamento')
 
-      await doDono.clear(sessionId)
+      await fromOwner.clear(sessionId)
       expect(await deOutroNo.read(sessionId)).toBeNull()
     })
 
@@ -154,14 +154,14 @@ describe.skipIf(!hasInfra)('cluster', () => {
 
   describe('roteamento de comandos', () => {
     let publisher: Redis
-    let subscriberDono: Redis
+    let ownerSubscriber: Redis
     let subscriberEmissor: Redis
-    let dono: CommandBus
+    let owner: CommandBus
     let emissor: CommandBus
 
     beforeAll(async () => {
       publisher = redis.duplicate()
-      subscriberDono = redis.duplicate()
+      ownerSubscriber = redis.duplicate()
       subscriberEmissor = redis.duplicate()
 
       /**
@@ -170,11 +170,11 @@ describe.skipIf(!hasInfra)('cluster', () => {
        * before the test, and without this warm-up the first exchange races the
        * handshake.
        */
-      await Promise.all([publisher.ping(), subscriberDono.ping(), subscriberEmissor.ping()])
+      await Promise.all([publisher.ping(), ownerSubscriber.ping(), subscriberEmissor.ping()])
 
-      dono = new CommandBus({
+      owner = new CommandBus({
         publisher,
-        subscriber: subscriberDono,
+        subscriber: ownerSubscriber,
         nodeId: 'awah-dono',
         logger: silencioso,
       })
@@ -188,11 +188,11 @@ describe.skipIf(!hasInfra)('cluster', () => {
     })
 
     afterAll(async () => {
-      await dono?.close()
+      await owner?.close()
       await emissor?.close()
       await Promise.allSettled([
         publisher?.quit(),
-        subscriberDono?.quit(),
+        ownerSubscriber?.quit(),
         subscriberEmissor?.quit(),
       ])
     })
@@ -202,9 +202,9 @@ describe.skipIf(!hasInfra)('cluster', () => {
      * replica the load balancer picked — intermittent behaviour nobody can debug.
      */
     it('entrega o comando ao dono e devolve o resultado', async () => {
-      await dono.claim(sessionId, async (request) => ({
+      await owner.claim(sessionId, async (request) => ({
         executado: request.command,
-        para: request.sessionId,
+        to: request.sessionId,
       }))
 
       const resposta = await emissor.send({
@@ -214,13 +214,13 @@ describe.skipIf(!hasInfra)('cluster', () => {
       })
 
       expect(resposta.ok).toBe(true)
-      expect(resposta.result).toEqual({ executado: 'stop', para: sessionId })
+      expect(resposta.result).toEqual({ executado: 'stop', to: sessionId })
 
-      await dono.unclaim(sessionId)
+      await owner.unclaim(sessionId)
     })
 
     it('leva o payload junto', async () => {
-      await dono.claim(sessionId, async (request) => ({
+      await owner.claim(sessionId, async (request) => ({
         recebido: request.payload?.phoneNumber,
       }))
 
@@ -232,11 +232,11 @@ describe.skipIf(!hasInfra)('cluster', () => {
       })
 
       expect(resposta.result).toEqual({ recebido: '5511999999999' })
-      await dono.unclaim(sessionId)
+      await owner.unclaim(sessionId)
     })
 
     it('propaga a falha do dono em vez de silenciar', async () => {
-      await dono.claim(sessionId, async () => {
+      await owner.claim(sessionId, async () => {
         throw new Error('sessão já estava parada')
       })
 
@@ -245,7 +245,7 @@ describe.skipIf(!hasInfra)('cluster', () => {
       expect(resposta.ok).toBe(false)
       expect(resposta.error).toContain('já estava parada')
 
-      await dono.unclaim(sessionId)
+      await owner.unclaim(sessionId)
     })
 
     /** A dead node must not leave the caller waiting forever. */
@@ -261,8 +261,8 @@ describe.skipIf(!hasInfra)('cluster', () => {
     })
 
     it('para de atender depois de soltar a sessão', async () => {
-      await dono.claim(sessionId, async () => ({ ok: true }))
-      await dono.unclaim(sessionId)
+      await owner.claim(sessionId, async () => ({ ok: true }))
+      await owner.unclaim(sessionId)
 
       const resposta = await emissor.send({ sessionId, orgId: randomUUID(), command: 'stop' })
       expect(resposta.ok).toBe(false)

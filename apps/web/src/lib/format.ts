@@ -24,7 +24,7 @@ let ativo: string = FALLBACK
  * site would cost more than it explains. There is exactly one active language
  * at a time, so a module holds it honestly.
  */
-export function usarIdioma(code: string): void {
+export function setFormatLocale(code: string): void {
   ativo = code
   cache.clear()
 }
@@ -32,54 +32,54 @@ export function usarIdioma(code: string): void {
 /** One formatter per (kind, language). Rebuilding them per cell is not free. */
 const cache = new Map<string, Intl.NumberFormat | Intl.RelativeTimeFormat>()
 
-function numFmt(chave: string, opcoes: Intl.NumberFormatOptions): Intl.NumberFormat {
-  const k = `${chave}:${ativo}`
+function numFmt(key: string, options: Intl.NumberFormatOptions): Intl.NumberFormat {
+  const k = `${key}:${ativo}`
   const existente = cache.get(k)
   if (existente) return existente as Intl.NumberFormat
-  const criado = new Intl.NumberFormat(ativo, opcoes)
-  cache.set(k, criado)
-  return criado
+  const created = new Intl.NumberFormat(ativo, options)
+  cache.set(k, created)
+  return created
 }
 
 function relFmt(): Intl.RelativeTimeFormat {
   const k = `rel:${ativo}`
   const existente = cache.get(k)
   if (existente) return existente as Intl.RelativeTimeFormat
-  const criado = new Intl.RelativeTimeFormat(ativo, { numeric: 'auto' })
-  cache.set(k, criado)
-  return criado
+  const created = new Intl.RelativeTimeFormat(ativo, { numeric: 'auto' })
+  cache.set(k, created)
+  return created
 }
 
-export const num = (valor: number): string => numFmt('int', {}).format(Math.round(valor))
+export const num = (value: number): string => numFmt('int', {}).format(Math.round(value))
 
-export function pct(fracao: number): string {
-  return numFmt('pct', { style: 'percent', maximumFractionDigits: 1 }).format(fracao)
+export function pct(fraction: number): string {
+  return numFmt('pct', { style: 'percent', maximumFractionDigits: 1 }).format(fraction)
 }
 
 /** Unit names come from `Intl` too, so `min` is `мин` in Russian and `د` in Arabic. */
-function comUnidade(valor: number, unit: string, casas = 1): string {
+function withUnit(value: number, unit: string, casas = 1): string {
   return numFmt(`u:${unit}:${casas}`, {
     style: 'unit',
     unit,
     unitDisplay: 'short',
     maximumFractionDigits: casas,
-  }).format(valor)
+  }).format(value)
 }
 
 /** Readable duration: "3.2 s" lands faster than "3200 ms". */
-export function duracao(ms: number | null): string {
+export function duration(ms: number | null): string {
   if (ms === null || Number.isNaN(ms)) return '—'
-  if (ms < 1000) return comUnidade(Math.round(ms), 'millisecond', 0)
-  if (ms < 60_000) return comUnidade(ms / 1000, 'second')
-  if (ms < 3_600_000) return comUnidade(ms / 60_000, 'minute')
-  return comUnidade(ms / 3_600_000, 'hour')
+  if (ms < 1000) return withUnit(Math.round(ms), 'millisecond', 0)
+  if (ms < 60_000) return withUnit(ms / 1000, 'second')
+  if (ms < 3_600_000) return withUnit(ms / 60_000, 'minute')
+  return withUnit(ms / 3_600_000, 'hour')
 }
 
-export function minutos(valor: number | null): string {
-  if (valor === null) return '—'
-  if (valor < 60) return comUnidade(Math.round(valor), 'minute', 0)
-  if (valor < 1440) return comUnidade(valor / 60, 'hour')
-  return comUnidade(valor / 1440, 'day')
+export function minutes(value: number | null): string {
+  if (value === null) return '—'
+  if (value < 60) return withUnit(Math.round(value), 'minute', 0)
+  if (value < 1440) return withUnit(value / 60, 'hour')
+  return withUnit(value / 1440, 'day')
 }
 
 /**
@@ -89,7 +89,7 @@ export function minutos(valor: number | null): string {
  * language has the word, and it is also what makes the under-a-minute case read
  * as "now" rather than "in 0 seconds".
  */
-export function desde(iso: string | null): string {
+export function since(iso: string | null): string {
   if (!iso) return '—'
   const ms = Date.now() - new Date(iso).getTime()
   const rel = relFmt()
@@ -107,16 +107,16 @@ export function desde(iso: string | null): string {
  * and Russian needs a third for 1. `Intl` already carries every language's
  * plural rules, so nobody has to be asked for a form the catalog cannot hold.
  */
-export function janela(valor: number, unidade: 'hour' | 'day'): string {
-  return comUnidade(valor, unidade, 0)
+export function windowLabel(value: number, unit: 'hour' | 'day'): string {
+  return withUnit(value, unit, 0)
 }
 
-export function horario(iso: string | Date): string {
+export function timeOfDay(iso: string | Date): string {
   const data = typeof iso === 'string' ? new Date(iso) : iso
   return data.toLocaleTimeString(ativo, { hour: '2-digit', minute: '2-digit' })
 }
 
-export function dataHora(iso: string | Date): string {
+export function dateTime(iso: string | Date): string {
   const data = typeof iso === 'string' ? new Date(iso) : iso
   return data.toLocaleString(ativo, {
     day: '2-digit',
@@ -134,9 +134,9 @@ export function dataHora(iso: string | Date): string {
  * country and not the reader's: +55 (11) 99350-9185 is how that number is
  * written whoever is looking at it.
  */
-export function telefone(valor: string | null): string {
-  if (!valor) return '—'
-  const digitos = valor.replace(/\D/g, '')
+export function telefone(value: string | null): string {
+  if (!value) return '—'
+  const digitos = value.replace(/\D/g, '')
   if (digitos.length === 13 && digitos.startsWith('55')) {
     return `+55 (${digitos.slice(2, 4)}) ${digitos.slice(4, 9)}-${digitos.slice(9)}`
   }
@@ -153,7 +153,7 @@ export function telefone(valor: string | null): string {
  * language; the tail of the JID is what distinguishes one from another.
  */
 export function chat(chatId: string, rotularGrupo: (id: string) => string): string {
-  const semSufixo = chatId.replace(/@.*$/, '')
-  if (chatId.includes('@g.us')) return rotularGrupo(semSufixo.slice(-6))
-  return telefone(semSufixo)
+  const withoutSuffix = chatId.replace(/@.*$/, '')
+  if (chatId.includes('@g.us')) return rotularGrupo(withoutSuffix.slice(-6))
+  return telefone(withoutSuffix)
 }

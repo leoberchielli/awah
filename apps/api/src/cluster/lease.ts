@@ -87,12 +87,12 @@ export class SessionLease {
   async owners(sessionIds: string[]): Promise<Map<string, string>> {
     if (sessionIds.length === 0) return new Map()
 
-    const valores = await this.redis.mget(sessionIds.map((id) => this.key(id)))
+    const values = await this.redis.mget(sessionIds.map((id) => this.key(id)))
     const mapa = new Map<string, string>()
 
     sessionIds.forEach((id, index) => {
-      const dono = valores[index]
-      if (dono) mapa.set(id, dono)
+      const owner = values[index]
+      if (owner) mapa.set(id, owner)
     })
 
     return mapa

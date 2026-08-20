@@ -74,11 +74,11 @@ describe('extração do código de erro', () => {
 
 describe('espera entre reconexões', () => {
   it('cresce exponencialmente', () => {
-    const semJitter = () => 0
-    expect(reconnectDelayMs(1, semJitter)).toBe(1000)
-    expect(reconnectDelayMs(2, semJitter)).toBe(2000)
-    expect(reconnectDelayMs(3, semJitter)).toBe(4000)
-    expect(reconnectDelayMs(5, semJitter)).toBe(16000)
+    const withoutJitter = () => 0
+    expect(reconnectDelayMs(1, withoutJitter)).toBe(1000)
+    expect(reconnectDelayMs(2, withoutJitter)).toBe(2000)
+    expect(reconnectDelayMs(3, withoutJitter)).toBe(4000)
+    expect(reconnectDelayMs(5, withoutJitter)).toBe(16000)
   })
 
   it('para de crescer em 5 minutos', () => {

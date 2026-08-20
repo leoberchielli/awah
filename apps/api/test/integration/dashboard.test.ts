@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import type { FastifyInstance } from 'fastify'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { buildApp } from '../../src/app'
-import { ehRotaDoServidor, encontrarDashboard } from '../../src/dashboard/plugin'
+import { ehRotaDoServidor, findDashboard } from '../../src/dashboard/plugin'
 import { loadEnv } from '../../src/env'
 
 const hasInfra = Boolean(process.env.DATABASE_URL && process.env.REDIS_URL)
@@ -40,7 +40,7 @@ describe('separação entre rotas do servidor e do dashboard', () => {
   })
 
   it('não encontra dashboard onde não há build', () => {
-    expect(encontrarDashboard(mkdtempSync(join(tmpdir(), 'awah-vazio-')))).toBeNull()
+    expect(findDashboard(mkdtempSync(join(tmpdir(), 'awah-vazio-')))).toBeNull()
   })
 })
 
@@ -56,10 +56,10 @@ describe.skipIf(!hasInfra)('SPA servida pela API', () => {
     await app?.close()
   })
 
-  const navegador = { accept: 'text/html,application/xhtml+xml' }
+  const browser = { accept: 'text/html,application/xhtml+xml' }
 
   it('entrega o HTML numa rota de cliente', async () => {
-    const resposta = await app.inject({ method: 'GET', url: '/operacao', headers: navegador })
+    const resposta = await app.inject({ method: 'GET', url: '/operacao', headers: browser })
 
     expect(resposta.statusCode).toBe(200)
     expect(resposta.headers['content-type']).toContain('text/html')
@@ -85,7 +85,7 @@ describe.skipIf(!hasInfra)('SPA servida pela API', () => {
     const resposta = await app.inject({
       method: 'GET',
       url: '/v1/sessoes',
-      headers: { ...navegador, authorization: 'Bearer awah_naoexiste_naoexiste' },
+      headers: { ...browser, authorization: 'Bearer awah_naoexiste_naoexiste' },
     })
 
     expect(resposta.statusCode).toBe(404)
@@ -104,16 +104,16 @@ describe.skipIf(!hasInfra)('SPA servida pela API', () => {
   })
 
   it('não devolve HTML para método que não é navegação', async () => {
-    const resposta = await app.inject({ method: 'POST', url: '/operacao', headers: navegador })
+    const resposta = await app.inject({ method: 'POST', url: '/operacao', headers: browser })
 
     expect(resposta.statusCode).toBe(404)
     expect(resposta.json()).toHaveProperty('error.code', 'not_found')
   })
 
   it('as rotas da API continuam respondendo o que sempre responderam', async () => {
-    const semCredencial = await app.inject({ method: 'GET', url: '/v1/sessions' })
-    expect(semCredencial.statusCode).toBe(401)
-    expect(semCredencial.json()).toHaveProperty('error.code')
+    const withoutCredential = await app.inject({ method: 'GET', url: '/v1/sessions' })
+    expect(withoutCredential.statusCode).toBe(401)
+    expect(withoutCredential.json()).toHaveProperty('error.code')
 
     const saude = await app.inject({ method: 'GET', url: '/health' })
     expect(saude.statusCode).toBe(200)
@@ -123,7 +123,7 @@ describe.skipIf(!hasInfra)('SPA servida pela API', () => {
     const resposta = await app.inject({
       method: 'GET',
       url: '/webhooks/meta/00000000-0000-0000-0000-000000000000?hub.mode=subscribe',
-      headers: navegador,
+      headers: browser,
     })
 
     expect(resposta.statusCode).toBe(404)

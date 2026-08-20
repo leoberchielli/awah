@@ -17,7 +17,7 @@ export class HttpConnectorError extends Error {
 }
 
 /** What the gateway posts. Same shape as the `message.received` event. */
-export interface EventoDeMensagem {
+export interface EngineMessageEvent {
   event: 'message.received'
   data: {
     sessionId: string
@@ -42,7 +42,7 @@ export interface RespostaDoConector {
    * diagnosis that replaces the guesswork of someone who has just plugged in a
    * new platform.
    */
-  diagnostico: string | null
+  diagnosis: string | null
 }
 
 /**
@@ -68,8 +68,8 @@ export class HttpConnector {
     this.fetchImpl = options?.fetch ?? fetch
   }
 
-  async enviar(evento: EventoDeMensagem): Promise<RespostaDoConector> {
-    const corpo = JSON.stringify(evento)
+  async send(evento: EngineMessageEvent): Promise<RespostaDoConector> {
+    const body = JSON.stringify(evento)
     const timestamp = Math.floor(Date.now() / 1000)
 
     const controller = new AbortController()
@@ -84,7 +84,7 @@ export class HttpConnector {
           'content-type': 'application/json',
           'user-agent': 'awah-gateway',
           /**
-           * Same signature as the webhooks: HMAC over `timestamp.corpo`.
+           * Same signature as the webhooks: HMAC over `timestamp.body`.
            *
            * Reusing the scheme is not code economy — it is so that anyone who
            * already validates an AWAH webhook validates this with the same
@@ -93,33 +93,33 @@ export class HttpConnector {
            */
           ...(this.config.secret
             ? {
-                'x-awah-signature': sign(corpo, this.config.secret, timestamp),
+                'x-awah-signature': sign(body, this.config.secret, timestamp),
                 'x-awah-timestamp': String(timestamp),
               }
             : {}),
           ...this.config.headers,
         },
-        body: corpo,
+        body: body,
       })
 
       const durationMs = Date.now() - inicio
-      const texto = await resposta.text().catch(() => '')
+      const text = await resposta.text().catch(() => '')
 
       if (!resposta.ok) {
         throw new HttpConnectorError(
           resposta.status,
-          `The platform responded ${resposta.status}: ${texto.slice(0, 200)}`,
+          `The platform responded ${resposta.status}: ${text.slice(0, 200)}`,
         )
       }
 
-      const { replies, diagnostico } = extrairRespostas(texto, this.config.replyPath)
+      const { replies, diagnosis } = extrairRespostas(text, this.config.replyPath)
 
       return {
         status: resposta.status,
         durationMs,
         replies,
-        raw: texto.slice(0, 2000),
-        diagnostico,
+        raw: text.slice(0, 2000),
+        diagnosis: diagnosis,
       }
     } finally {
       clearTimeout(timer)
@@ -136,64 +136,64 @@ export class HttpConnector {
  * **cannot** happen is silence — hence the diagnosis alongside.
  */
 export function extrairRespostas(
-  texto: string,
+  text: string,
   caminho?: string,
-): { replies: string[]; diagnostico: string | null } {
-  const limpo = texto.trim()
+): { replies: string[]; diagnosis: string | null } {
+  const limpo = text.trim()
 
   // An empty body is legitimate: not every event asks for a message back.
-  if (!limpo) return { replies: [], diagnostico: null }
+  if (!limpo) return { replies: [], diagnosis: null }
 
-  let corpo: unknown
+  let body: unknown
   try {
-    corpo = JSON.parse(limpo)
+    body = JSON.parse(limpo)
   } catch {
     return {
       replies: [],
-      diagnostico:
+      diagnosis:
         'The response is not JSON. Return something like {"reply":"text"} — or an empty body, if there is no reply to send.',
     }
   }
 
-  const alvo = caminho ? navegar(corpo, caminho) : corpo
+  const alvo = caminho ? navigate(body, caminho) : body
 
   if (alvo === undefined) {
     return {
       replies: [],
-      diagnostico: `Could not find "${caminho}" in the response. Check the configured path.`,
+      diagnosis: `Could not find "${caminho}" in the response. Check the configured path.`,
     }
   }
 
-  const textos = normalizar(alvo)
-  if (textos.length > 0) return { replies: textos, diagnostico: null }
+  const texts = normalizar(alvo)
+  if (texts.length > 0) return { replies: texts, diagnosis: null }
 
   // An object with no recognised field is almost always a format mistake.
   if (typeof alvo === 'object' && alvo !== null && !Array.isArray(alvo)) {
-    const chaves = Object.keys(alvo as object)
+    const keys = Object.keys(alvo as object)
       .slice(0, 6)
       .join(', ')
     return {
       replies: [],
-      diagnostico: `The response came with ${chaves || 'no fields'} — none of them is recognized as text. Use "reply", "replies" or "text".`,
+      diagnosis: `The response came with ${keys || 'no fields'} — none of them is recognized as text. Use "reply", "replies" or "text".`,
     }
   }
 
-  return { replies: [], diagnostico: null }
+  return { replies: [], diagnosis: null }
 }
 
 /** Accepts `reply`, `replies`, `text`, an array and a bare string. */
-function normalizar(valor: unknown): string[] {
-  if (typeof valor === 'string') {
-    const texto = valor.trim()
-    return texto ? [texto] : []
+function normalizar(value: unknown): string[] {
+  if (typeof value === 'string') {
+    const text = value.trim()
+    return text ? [text] : []
   }
 
-  if (Array.isArray(valor)) return valor.flatMap(normalizar)
+  if (Array.isArray(value)) return value.flatMap(normalizar)
 
-  if (typeof valor === 'object' && valor !== null) {
-    const objeto = valor as Record<string, unknown>
-    for (const chave of ['replies', 'reply', 'messages', 'message', 'text']) {
-      if (chave in objeto) return normalizar(objeto[chave])
+  if (typeof value === 'object' && value !== null) {
+    const objeto = value as Record<string, unknown>
+    for (const key of ['replies', 'reply', 'messages', 'message', 'text']) {
+      if (key in objeto) return normalizar(objeto[key])
     }
   }
 
@@ -201,14 +201,14 @@ function normalizar(valor: unknown): string[] {
 }
 
 /** Dotted path, for anyone who returns the reply nested. */
-function navegar(corpo: unknown, caminho: string): unknown {
+function navigate(body: unknown, caminho: string): unknown {
   return caminho
     .split('.')
     .filter(Boolean)
-    .reduce<unknown>((atual, parte) => {
-      if (typeof atual !== 'object' || atual === null) return undefined
-      return (atual as Record<string, unknown>)[parte]
-    }, corpo)
+    .reduce<unknown>((current, parte) => {
+      if (typeof current !== 'object' || current === null) return undefined
+      return (current as Record<string, unknown>)[parte]
+    }, body)
 }
 
 /**
@@ -219,7 +219,7 @@ function navegar(corpo: unknown, caminho: string): unknown {
  * then just switch it on. The number is the one reserved for documentation, so
  * that nobody ends up answering a stranger.
  */
-export const EVENTO_DE_TESTE: EventoDeMensagem = {
+export const EVENTO_DE_TESTE: EngineMessageEvent = {
   event: 'message.received',
   data: {
     sessionId: '00000000-0000-0000-0000-000000000000',

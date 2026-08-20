@@ -43,15 +43,15 @@ describe.skipIf(!hasInfra)('fila de envio', () => {
   describe('idempotência', () => {
     it('não duplica o mesmo clientMessageId', async () => {
       const id = randomUUID()
-      const primeira = await enqueue('5511900000001@s.whatsapp.net', 'oi', id)
+      const first = await enqueue('5511900000001@s.whatsapp.net', 'oi', id)
       const segunda = await enqueue('5511900000001@s.whatsapp.net', 'oi de novo', id)
 
-      expect(primeira.created).toBe(true)
+      expect(first.created).toBe(true)
       expect(segunda.created).toBe(false)
-      expect(segunda.row.id).toBe(primeira.row.id)
+      expect(segunda.row.id).toBe(first.row.id)
 
-      const todos = await repo.list()
-      expect(todos).toHaveLength(1)
+      const all = await repo.list()
+      expect(all).toHaveLength(1)
     })
 
     /** The client's retry gets back the original row, not the second attempt. */
@@ -72,14 +72,14 @@ describe.skipIf(!hasInfra)('fila de envio', () => {
      */
     it('reserva apenas a cabeça da fila de cada chat', async () => {
       const chat = '5511911111111@s.whatsapp.net'
-      const primeira = await enqueue(chat, 'mensagem 1')
+      const first = await enqueue(chat, 'mensagem 1')
       await enqueue(chat, 'mensagem 2')
       await enqueue(chat, 'mensagem 3')
 
       const reservados = await claimOutbox(db, [sessionId], 10)
 
       expect(reservados).toHaveLength(1)
-      expect(reservados[0]?.id).toBe(primeira.row.id)
+      expect(reservados[0]?.id).toBe(first.row.id)
       expect(reservados[0]?.payload.text).toBe('mensagem 1')
     })
 
@@ -104,9 +104,9 @@ describe.skipIf(!hasInfra)('fila de envio', () => {
       if (!reservada) throw new Error('nada reservado')
       await markSent(db, reservada.id, 'ENGINE-1')
 
-      const proximo = await claimOutbox(db, [sessionId], 10)
-      expect(proximo).toHaveLength(1)
-      expect(proximo[0]?.id).toBe(segunda.row.id)
+      const next = await claimOutbox(db, [sessionId], 10)
+      expect(next).toHaveLength(1)
+      expect(next[0]?.id).toBe(segunda.row.id)
     })
 
     /** Distinct chats do not block each other — this is the §4.2 parallelism. */
@@ -139,8 +139,8 @@ describe.skipIf(!hasInfra)('fila de envio', () => {
       const [job] = await claimOutbox(db, [sessionId], 1)
       if (!job) throw new Error('nada reservado')
 
-      const resultado = await markFailed(db, job.id, 'timeout na engine', 60_000)
-      expect(resultado).toBe('queued')
+      const result = await markFailed(db, job.id, 'timeout na engine', 60_000)
+      expect(result).toBe('queued')
 
       const row = await repo.findById(job.id)
       expect(row?.attempts).toBe(1)
@@ -247,9 +247,9 @@ describe.skipIf(!hasInfra)('fila de envio', () => {
 
     it('ignora envios de sessões que não são deste nó', async () => {
       await enqueue('5511900000014@s.whatsapp.net', 'de outra sessão')
-      const outraSessao = await createSession(db, org.orgId)
+      const otherSession = await createSession(db, org.orgId)
 
-      expect(await claimOutbox(db, [outraSessao], 10)).toHaveLength(0)
+      expect(await claimOutbox(db, [otherSession], 10)).toHaveLength(0)
     })
   })
 })

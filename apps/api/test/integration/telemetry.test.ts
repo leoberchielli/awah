@@ -20,7 +20,7 @@ describe.skipIf(!hasInfra)('telemetria', () => {
   let app: FastifyInstance
 
   /** One hour ago: falls in a closed bucket, not hostage to the clock's edge. */
-  const umaHoraAtras = new Date(Date.now() - 60 * 60 * 1000)
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)
 
   beforeAll(async () => {
     handle = createDb({ url: process.env.DATABASE_URL as string, max: 3 })
@@ -30,7 +30,7 @@ describe.skipIf(!hasInfra)('telemetria', () => {
     token = await createApiKey(db, org.orgId, { role: 'admin' })
 
     // Two outbound and one inbound, with a delivery ACK to yield a latency figure.
-    const enviadas = await db
+    const sent = await db
       .insert(schema.messages)
       .values([
         {
@@ -41,7 +41,7 @@ describe.skipIf(!hasInfra)('telemetria', () => {
           direction: 'outbound',
           type: 'text',
           status: 'delivered',
-          occurredAt: umaHoraAtras,
+          occurredAt: oneHourAgo,
         },
         {
           orgId: org.orgId,
@@ -51,7 +51,7 @@ describe.skipIf(!hasInfra)('telemetria', () => {
           direction: 'outbound',
           type: 'text',
           status: 'sent',
-          occurredAt: umaHoraAtras,
+          occurredAt: oneHourAgo,
         },
         {
           orgId: org.orgId,
@@ -61,19 +61,19 @@ describe.skipIf(!hasInfra)('telemetria', () => {
           direction: 'inbound',
           type: 'text',
           status: 'delivered',
-          occurredAt: new Date(umaHoraAtras.getTime() - 60_000),
+          occurredAt: new Date(oneHourAgo.getTime() - 60_000),
         },
       ])
       .returning({ id: schema.messages.id })
 
-    const primeira = enviadas[0]
-    if (primeira) {
+    const first = sent[0]
+    if (first) {
       await db.insert(schema.messageStatusEvents).values({
         orgId: org.orgId,
-        messageId: primeira.id,
+        messageId: first.id,
         status: 'delivered',
         // Five seconds to delivery.
-        occurredAt: new Date(umaHoraAtras.getTime() + 5000),
+        occurredAt: new Date(oneHourAgo.getTime() + 5000),
       })
     }
 
@@ -83,7 +83,7 @@ describe.skipIf(!hasInfra)('telemetria', () => {
       action: 'held',
       score: 62,
       reason: 'Teto por minuto atingido',
-      createdAt: umaHoraAtras,
+      createdAt: oneHourAgo,
     })
 
     await db.insert(schema.sessionEvents).values({
@@ -92,7 +92,7 @@ describe.skipIf(!hasInfra)('telemetria', () => {
       type: 'disconnected',
       rawCode: 428,
       cause: 'Connection closed',
-      createdAt: umaHoraAtras,
+      createdAt: oneHourAgo,
     })
 
     await new MetricsAggregator({
@@ -112,41 +112,41 @@ describe.skipIf(!hasInfra)('telemetria', () => {
     await handle?.close()
   })
 
-  const metrica = async (nome: string) => {
+  const metric = async (name: string) => {
     const [row] = await db
       .select({ value: schema.metricsHourly.value })
       .from(schema.metricsHourly)
-      .where(and(eq(schema.metricsHourly.orgId, org.orgId), eq(schema.metricsHourly.metric, nome)))
+      .where(and(eq(schema.metricsHourly.orgId, org.orgId), eq(schema.metricsHourly.metric, name)))
     return row?.value ?? null
   }
 
   describe('agregação horária', () => {
     it('conta o volume por direção', async () => {
-      expect(await metrica('messages.outbound')).toBe(2)
-      expect(await metrica('messages.inbound')).toBe(1)
+      expect(await metric('messages.outbound')).toBe(2)
+      expect(await metric('messages.inbound')).toBe(1)
     })
 
     it('conta a trilha de ACK', async () => {
-      expect(await metrica('status.delivered')).toBe(1)
+      expect(await metric('status.delivered')).toBe(1)
     })
 
     it('calcula percentis de latência', async () => {
       // A single ACK, five seconds: every percentile comes out the same.
-      expect(await metrica('latency.delivered.p50')).toBe(5000)
-      expect(await metrica('latency.delivered.p95')).toBe(5000)
+      expect(await metric('latency.delivered.p50')).toBe(5000)
+      expect(await metric('latency.delivered.p95')).toBe(5000)
     })
 
     it('conta decisões de risco e o score médio', async () => {
-      expect(await metrica('risk.held')).toBe(1)
-      expect(await metrica('risk.score.avg')).toBe(62)
+      expect(await metric('risk.held')).toBe(1)
+      expect(await metric('risk.score.avg')).toBe(62)
     })
 
     it('conta quedas de sessão', async () => {
-      expect(await metrica('session.disconnected')).toBe(1)
+      expect(await metric('session.disconnected')).toBe(1)
     })
 
     it('conta contatos novos pela primeira saída de cada conversa', async () => {
-      expect(await metrica('contacts.new')).toBe(2)
+      expect(await metric('contacts.new')).toBe(2)
     })
 
     /**
@@ -161,9 +161,9 @@ describe.skipIf(!hasInfra)('telemetria', () => {
         lookbackHours: 6,
       }).aggregate()
 
-      expect(await metrica('messages.outbound')).toBe(2)
+      expect(await metric('messages.outbound')).toBe(2)
 
-      const linhas = await db
+      const rows = await db
         .select({ id: schema.metricsHourly.id })
         .from(schema.metricsHourly)
         .where(
@@ -172,7 +172,7 @@ describe.skipIf(!hasInfra)('telemetria', () => {
             eq(schema.metricsHourly.metric, 'messages.outbound'),
           ),
         )
-      expect(linhas).toHaveLength(1)
+      expect(rows).toHaveLength(1)
     })
   })
 
@@ -215,12 +215,12 @@ describe.skipIf(!hasInfra)('telemetria', () => {
         headers: auth(),
       })
 
-      const sessao = res
+      const session = res
         .json()
         .sessions.find((s: { sessionId: string }) => s.sessionId === sessionId)
-      expect(sessao.disconnects).toBe(1)
-      expect(sessao.lastCause).toBe('Connection closed')
-      expect(sessao.mtbfMinutes).toBeGreaterThan(0)
+      expect(session.disconnects).toBe(1)
+      expect(session.lastCause).toBe('Connection closed')
+      expect(session.mtbfMinutes).toBeGreaterThan(0)
     })
 
     it('negócio traz conversas ativas e tempo de primeira resposta', async () => {
@@ -239,11 +239,11 @@ describe.skipIf(!hasInfra)('telemetria', () => {
     })
 
     it('exige permissão de leitura de métricas', async () => {
-      const semPermissao = await createApiKey(db, org.orgId, { role: 'viewer' })
+      const withoutPermission = await createApiKey(db, org.orgId, { role: 'viewer' })
       const res = await app.inject({
         method: 'GET',
         url: '/v1/kpi/delivery',
-        headers: { authorization: `Bearer ${semPermissao}` },
+        headers: { authorization: `Bearer ${withoutPermission}` },
       })
       // viewer reaches metrics:read; the route must not be open to the unauthenticated.
       expect(res.statusCode).toBe(200)

@@ -3,47 +3,47 @@ import { Shell } from '../components/Shell'
 import { Card, Empty, Pill, Skeleton } from '../components/ui'
 import { useQuery } from '../hooks/useQuery'
 import { type TranslationKey, useT } from '../i18n'
-import { ApiError, del, type Member, type Papel, patch, post } from '../lib/api'
-import { dataHora } from '../lib/format'
-import { papelAoMenos, useMe } from '../lib/sessao'
+import { ApiError, del, type Member, patch, post, type Role } from '../lib/api'
+import { dateTime } from '../lib/format'
+import { roleAtLeast, useMe } from '../lib/sessao'
 
-const PAPEIS: Array<{ valor: Papel; rotulo: TranslationKey }> = [
-  { valor: 'viewer', rotulo: 'keys.role.viewer' },
-  { valor: 'operator', rotulo: 'keys.role.operator' },
-  { valor: 'admin', rotulo: 'keys.role.admin' },
-  { valor: 'owner', rotulo: 'keys.role.owner' },
+const PAPEIS: Array<{ value: Role; label: TranslationKey }> = [
+  { value: 'viewer', label: 'keys.role.viewer' },
+  { value: 'operator', label: 'keys.role.operator' },
+  { value: 'admin', label: 'keys.role.admin' },
+  { value: 'owner', label: 'keys.role.owner' },
 ]
 
 export function Users() {
   const t = useT()
   const me = useMe()
-  const podeEditar = papelAoMenos(me.role, 'admin')
+  const canEdit = roleAtLeast(me.role, 'admin')
 
-  const membros = useQuery<{ members: Member[] }>('/v1/org/members')
-  const lista = membros.data?.members ?? []
-  const donos = lista.filter((m) => m.role === 'owner').length
+  const members = useQuery<{ members: Member[] }>('/v1/org/members')
+  const list = members.data?.members ?? []
+  const owners = list.filter((m) => m.role === 'owner').length
 
   return (
     <Shell>
       <div className="flex flex-col gap-4">
-        {podeEditar && <Convite papelDoUsuario={me.role} aoConvidar={membros.refetch} />}
+        {canEdit && <Convite viewerRole={me.role} aoConvidar={members.refetch} />}
 
         <Card title={t('users.list.title')} hint={t('users.list.hint')}>
-          {!membros.settled ? (
+          {!members.settled ? (
             <Skeleton className="h-24" />
-          ) : lista.length === 0 ? (
+          ) : list.length === 0 ? (
             <Empty>{t('users.list.empty')}</Empty>
           ) : (
             <ul className="flex flex-col">
-              {lista.map((membro) => (
-                <LinhaDeMembro
-                  key={membro.userId}
-                  membro={membro}
-                  souEu={membro.userId === me.userId}
-                  ultimoDono={membro.role === 'owner' && donos <= 1}
-                  papelDoUsuario={me.role}
-                  podeEditar={podeEditar}
-                  aoMudar={membros.refetch}
+              {list.map((member) => (
+                <MemberRow
+                  key={member.userId}
+                  member={member}
+                  souEu={member.userId === me.userId}
+                  lastOwner={member.role === 'owner' && owners <= 1}
+                  viewerRole={me.role}
+                  canEdit={canEdit}
+                  onChange={members.refetch}
                 />
               ))}
             </ul>
@@ -54,29 +54,23 @@ export function Users() {
   )
 }
 
-function Convite({
-  papelDoUsuario,
-  aoConvidar,
-}: {
-  papelDoUsuario: Papel
-  aoConvidar: () => void
-}) {
+function Convite({ viewerRole, aoConvidar }: { viewerRole: Role; aoConvidar: () => void }) {
   const t = useT()
   const [email, setEmail] = useState('')
   const [name, setName] = useState('')
   const [password, setPassword] = useState('')
-  const [role, setRole] = useState<Papel>('viewer')
-  const [ocupado, setOcupado] = useState(false)
-  const [erro, setErro] = useState<string | null>(null)
+  const [role, setRole] = useState<Role>('viewer')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   /** Nobody promotes above their own role — the server refuses either way. */
-  const disponiveis = PAPEIS.filter((p) => papelAoMenos(papelDoUsuario, p.valor))
-  const senhaCurta = password.length > 0 && password.length < 12
+  const disponiveis = PAPEIS.filter((p) => roleAtLeast(viewerRole, p.value))
+  const passwordTooShort = password.length > 0 && password.length < 12
 
   async function convidar(evento: FormEvent) {
     evento.preventDefault()
-    setOcupado(true)
-    setErro(null)
+    setBusy(true)
+    setError(null)
 
     try {
       await post('/v1/org/members', {
@@ -90,10 +84,10 @@ function Convite({
       setPassword('')
       setRole('viewer')
       aoConvidar()
-    } catch (falha) {
-      setErro(falha instanceof ApiError ? falha.message : t('users.addFailed'))
+    } catch (failure) {
+      setError(failure instanceof ApiError ? failure.message : t('users.addFailed'))
     } finally {
-      setOcupado(false)
+      setBusy(false)
     }
   }
 
@@ -145,76 +139,76 @@ function Convite({
           <span className="eyebrow">{t('keys.field.role')}</span>
           <select
             value={role}
-            onChange={(e) => setRole(e.target.value as Papel)}
+            onChange={(e) => setRole(e.target.value as Role)}
             className="rounded-md border border-line bg-surface-2 px-3 py-2 text-sm text-ink"
           >
             {disponiveis.map((p) => (
-              <option key={p.valor} value={p.valor}>
-                {t(p.rotulo)}
+              <option key={p.value} value={p.value}>
+                {t(p.label)}
               </option>
             ))}
           </select>
         </label>
 
-        {senhaCurta && (
+        {passwordTooShort && (
           <p className="rounded-md bg-warn/10 px-3 py-2 text-xs text-warn">
             {t('setup.passwordShort')}
           </p>
         )}
 
-        {erro && (
+        {error && (
           <p role="alert" className="rounded-md bg-crit/10 px-3 py-2 text-xs text-crit">
-            {erro}
+            {error}
           </p>
         )}
 
         <button
           type="submit"
-          disabled={ocupado || senhaCurta}
+          disabled={busy || passwordTooShort}
           className="mt-1 self-start rounded-md bg-accent px-3 py-2 text-sm font-medium text-on-fill transition-opacity hover:opacity-90 disabled:opacity-50"
         >
-          {ocupado ? t('users.adding') : t('users.add.submit')}
+          {busy ? t('users.adding') : t('users.add.submit')}
         </button>
       </form>
     </Card>
   )
 }
 
-function LinhaDeMembro({
-  membro,
+function MemberRow({
+  member,
   souEu,
-  ultimoDono,
-  papelDoUsuario,
-  podeEditar,
-  aoMudar,
+  lastOwner,
+  viewerRole,
+  canEdit,
+  onChange,
 }: {
-  membro: Member
+  member: Member
   souEu: boolean
   /** The server refuses to demote or remove the last owner; the screen says so first. */
-  ultimoDono: boolean
-  papelDoUsuario: Papel
-  podeEditar: boolean
-  aoMudar: () => void
+  lastOwner: boolean
+  viewerRole: Role
+  canEdit: boolean
+  onChange: () => void
 }) {
   const t = useT()
-  const [confirmando, setConfirmando] = useState(false)
-  const [ocupado, setOcupado] = useState(false)
-  const [erro, setErro] = useState<string | null>(null)
+  const [confirming, setConfirming] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const disponiveis = PAPEIS.filter((p) => papelAoMenos(papelDoUsuario, p.valor))
-  const travado = ultimoDono || !podeEditar
+  const disponiveis = PAPEIS.filter((p) => roleAtLeast(viewerRole, p.value))
+  const locked = lastOwner || !canEdit
 
-  async function agir(acao: () => Promise<unknown>) {
-    setOcupado(true)
-    setErro(null)
+  async function agir(action: () => Promise<unknown>) {
+    setBusy(true)
+    setError(null)
     try {
-      await acao()
-      aoMudar()
-    } catch (falha) {
-      setErro(falha instanceof ApiError ? falha.message : t('users.changeFailed'))
+      await action()
+      onChange()
+    } catch (failure) {
+      setError(failure instanceof ApiError ? failure.message : t('users.changeFailed'))
     } finally {
-      setOcupado(false)
-      setConfirmando(false)
+      setBusy(false)
+      setConfirming(false)
     }
   }
 
@@ -222,52 +216,52 @@ function LinhaDeMembro({
     <li className="flex flex-wrap items-center gap-3 border-b border-line/60 py-3 last:border-0">
       <span className="min-w-0 flex-1">
         <span className="block text-sm font-medium text-ink">
-          {membro.name}
+          {member.name}
           {souEu && <span className="ml-1.5 text-xs font-normal text-muted">{t('users.you')}</span>}
         </span>
         <span className="block truncate text-xs text-muted">
-          {membro.email} · {t('users.joined', { when: dataHora(membro.joinedAt) })}
+          {member.email} · {t('users.joined', { when: dateTime(member.joinedAt) })}
         </span>
       </span>
 
-      {ultimoDono && <Pill tone="hold">{t('users.lastOwner')}</Pill>}
+      {lastOwner && <Pill tone="hold">{t('users.lastOwner')}</Pill>}
 
-      {podeEditar ? (
+      {canEdit ? (
         <select
-          value={membro.role}
-          disabled={ocupado || travado}
+          value={member.role}
+          disabled={busy || locked}
           onChange={(e) =>
-            agir(() => patch(`/v1/org/members/${membro.userId}`, { role: e.target.value }))
+            agir(() => patch(`/v1/org/members/${member.userId}`, { role: e.target.value }))
           }
           className="rounded-md border border-line bg-surface px-2 py-1.5 text-xs text-ink disabled:opacity-50"
         >
           {disponiveis.map((p) => (
-            <option key={p.valor} value={p.valor}>
-              {t(p.rotulo)}
+            <option key={p.value} value={p.value}>
+              {t(p.label)}
             </option>
           ))}
         </select>
       ) : (
         <Pill tone="ok">
-          {t(PAPEIS.find((p) => p.valor === membro.role)?.rotulo ?? 'keys.role.viewer')}
+          {t(PAPEIS.find((p) => p.value === member.role)?.label ?? 'keys.role.viewer')}
         </Pill>
       )}
 
-      {podeEditar &&
-        !ultimoDono &&
-        (confirmando ? (
+      {canEdit &&
+        !lastOwner &&
+        (confirming ? (
           <span className="flex items-center gap-2">
             <button
               type="button"
-              disabled={ocupado}
-              onClick={() => agir(() => del(`/v1/org/members/${membro.userId}`))}
+              disabled={busy}
+              onClick={() => agir(() => del(`/v1/org/members/${member.userId}`))}
               className="rounded-md bg-crit px-2.5 py-1.5 text-xs font-medium text-on-fill disabled:opacity-50"
             >
-              {ocupado ? t('users.removing') : t('common.confirm')}
+              {busy ? t('users.removing') : t('common.confirm')}
             </button>
             <button
               type="button"
-              onClick={() => setConfirmando(false)}
+              onClick={() => setConfirming(false)}
               className="text-xs text-muted hover:text-ink"
             >
               {t('common.cancel')}
@@ -276,14 +270,14 @@ function LinhaDeMembro({
         ) : (
           <button
             type="button"
-            onClick={() => setConfirmando(true)}
+            onClick={() => setConfirming(true)}
             className="rounded-md border border-line bg-surface px-2.5 py-1.5 text-xs font-medium text-muted hover:text-crit"
           >
             {souEu ? t('users.leave') : t('users.remove')}
           </button>
         ))}
 
-      {erro && <p className="w-full text-xs text-crit">{erro}</p>}
+      {error && <p className="w-full text-xs text-crit">{error}</p>}
     </li>
   )
 }

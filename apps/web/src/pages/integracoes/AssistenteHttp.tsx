@@ -15,51 +15,51 @@ import { ApiError, post, put } from '../../lib/api'
  * engine and redelivery.
  */
 export function AssistenteHttp({
-  sessoes,
-  aoSalvar,
+  sessions,
+  onSave,
 }: {
-  sessoes: SessionRow[]
-  aoSalvar: () => void
+  sessions: SessionRow[]
+  onSave: () => void
 }) {
   const t = useT()
   const [sessionId, setSessionId] = useState('')
   const [url, setUrl] = useState('')
   const [label, setLabel] = useState('')
   const [secret, setSecret] = useState('')
-  const [erro, setErro] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const [teste, setTeste] = useState<TesteDoConector | null>(null)
-  const [ocupado, setOcupado] = useState<'teste' | 'salvar' | null>(null)
+  const [busy, setBusy] = useState<'teste' | 'salvar' | null>(null)
   const [pronto, setPronto] = useState<IntegrationSaved | null>(null)
 
-  const corpo = () => ({
+  const body = () => ({
     url,
     ...(secret.trim() ? { secret: secret.trim() } : {}),
     ...(label.trim() ? { label: label.trim() } : {}),
   })
 
-  async function testar() {
-    setOcupado('teste')
-    setErro(null)
+  async function test() {
+    setBusy('teste')
+    setError(null)
     try {
-      setTeste(await post<TesteDoConector>('/v1/integrations/http/test', corpo()))
-    } catch (falha) {
-      setErro(falha instanceof ApiError ? falha.message : t('http.apiUnreachable'))
+      setTeste(await post<TesteDoConector>('/v1/integrations/http/test', body()))
+    } catch (failure) {
+      setError(failure instanceof ApiError ? failure.message : t('http.apiUnreachable'))
     } finally {
-      setOcupado(null)
+      setBusy(null)
     }
   }
 
-  async function conectar(evento: FormEvent) {
+  async function connect(evento: FormEvent) {
     evento.preventDefault()
-    setOcupado('salvar')
-    setErro(null)
+    setBusy('salvar')
+    setError(null)
     try {
-      setPronto(await put<IntegrationSaved>(`/v1/sessions/${sessionId}/integrations/http`, corpo()))
-      aoSalvar()
-    } catch (falha) {
-      setErro(falha instanceof ApiError ? falha.message : t('http.apiUnreachable'))
+      setPronto(await put<IntegrationSaved>(`/v1/sessions/${sessionId}/integrations/http`, body()))
+      onSave()
+    } catch (failure) {
+      setError(failure instanceof ApiError ? failure.message : t('http.apiUnreachable'))
     } finally {
-      setOcupado(null)
+      setBusy(null)
     }
   }
 
@@ -82,7 +82,7 @@ export function AssistenteHttp({
 
   return (
     <Card title={t('http.title')} hint={t('http.hint')}>
-      <form onSubmit={conectar} className="flex flex-col gap-3">
+      <form onSubmit={connect} className="flex flex-col gap-3">
         <label className="flex flex-col gap-1.5">
           <span className="eyebrow">{t('wizard.pickSession')}</span>
           <select
@@ -92,7 +92,7 @@ export function AssistenteHttp({
             className="rounded-md border border-line bg-surface-2 px-3 py-2 text-sm text-ink"
           >
             <option value="">{t('wizard.pickSessionPlaceholder')}</option>
-            {sessoes.map((s) => (
+            {sessions.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.name}
               </option>
@@ -143,29 +143,29 @@ export function AssistenteHttp({
           <span className="text-xs text-muted">{t('http.secretHint')}</span>
         </label>
 
-        {erro && (
+        {error && (
           <p role="alert" className="rounded-md bg-crit/10 px-3 py-2 text-xs text-crit">
-            {erro}
+            {error}
           </p>
         )}
 
-        {teste && <Resultado teste={teste} />}
+        {teste && <Outcome teste={teste} />}
 
         <div className="mt-1 flex flex-wrap gap-2">
           <button
             type="button"
-            disabled={!url || ocupado !== null}
-            onClick={testar}
+            disabled={!url || busy !== null}
+            onClick={test}
             className="rounded-md border border-line bg-surface px-3 py-2 text-sm font-medium text-ink hover:bg-surface-2 disabled:opacity-50"
           >
-            {ocupado === 'teste' ? t('http.testing') : t('http.test')}
+            {busy === 'teste' ? t('http.testing') : t('http.test')}
           </button>
           <button
             type="submit"
-            disabled={ocupado !== null}
+            disabled={busy !== null}
             className="flex-1 rounded-md bg-accent px-3 py-2 text-sm font-medium text-on-fill transition-opacity hover:opacity-90 disabled:opacity-50"
           >
-            {ocupado === 'salvar' ? t('http.connecting') : t('http.connect')}
+            {busy === 'salvar' ? t('http.connecting') : t('http.connect')}
           </button>
         </div>
       </form>
@@ -179,9 +179,9 @@ export function AssistenteHttp({
  * Status, timing, raw body and the diagnosis. This is what replaces guesswork
  * when someone has just plugged in a platform nobody here has heard of.
  */
-function Resultado({ teste }: { teste: TesteDoConector }) {
+function Outcome({ teste }: { teste: TesteDoConector }) {
   const t = useT()
-  const [mostrarEnviado, setMostrarEnviado] = useState(false)
+  const [showSent, setShowSent] = useState(false)
 
   return (
     <div
@@ -202,18 +202,18 @@ function Resultado({ teste }: { teste: TesteDoConector }) {
 
       {teste.replies.length > 0 && (
         <ul className="flex flex-col gap-1">
-          {teste.replies.map((texto) => (
+          {teste.replies.map((text) => (
             <li
-              key={texto}
+              key={text}
               className="rounded border border-line bg-surface px-2 py-1.5 text-xs text-ink"
             >
-              {texto}
+              {text}
             </li>
           ))}
         </ul>
       )}
 
-      {teste.diagnostico && <p className="text-xs text-warn">{teste.diagnostico}</p>}
+      {teste.diagnosis && <p className="text-xs text-warn">{teste.diagnosis}</p>}
 
       {teste.ok && teste.replies.length === 0 && (
         <p className="text-xs text-muted">
@@ -232,13 +232,13 @@ function Resultado({ teste }: { teste: TesteDoConector }) {
 
       <button
         type="button"
-        onClick={() => setMostrarEnviado((v) => !v)}
+        onClick={() => setShowSent((v) => !v)}
         className="self-start text-xs text-muted underline underline-offset-2 hover:text-ink"
       >
-        {mostrarEnviado ? t('http.hidePayload') : t('http.showPayload')}
+        {showSent ? t('http.hidePayload') : t('http.showPayload')}
       </button>
 
-      {mostrarEnviado && (
+      {showSent && (
         <pre className="max-h-52 overflow-auto rounded border border-line bg-surface p-2 font-mono text-[11px] text-ink">
           {JSON.stringify(teste.sentPayload, null, 2)}
         </pre>

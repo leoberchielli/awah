@@ -14,7 +14,7 @@ interface Aviso {
  * only wants to run this on a laptop. What must not happen is finding out after
  * being exposed.
  */
-function avisarSobreExposicao(log: Aviso, env: Env): void {
+function warnAboutExposure(log: Aviso, env: Env): void {
   if (!env.METRICS_TOKEN) {
     log.warn(
       { rota: '/metrics' },
@@ -69,7 +69,7 @@ async function main() {
     app.log.error({ err: reason }, 'unhandled promise rejection')
   })
 
-  avisarSobreExposicao(app.log, env)
+  warnAboutExposure(app.log, env)
 
   try {
     await app.listen({ port: env.PORT, host: env.HOST })

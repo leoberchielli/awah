@@ -16,8 +16,8 @@ describe('cifra do auth state', () => {
   })
 
   it('preserva unicode', () => {
-    const texto = 'sessão ativa · 中文 · emoji 🔐'
-    expect(decrypt(encrypt(texto, key), key)).toBe(texto)
+    const text = 'sessão ativa · 中文 · emoji 🔐'
+    expect(decrypt(encrypt(text, key), key)).toBe(text)
   })
 
   it('recusa a chave errada', () => {

@@ -1,15 +1,15 @@
 import { AreaSerie, BarrasHorizontais } from '../components/charts'
-import { FiltroDeSessao, Shell, useFiltro } from '../components/Shell'
+import { SessionFilter, Shell, useFilter } from '../components/Shell'
 import { Card, Empty, Skeleton, Stat } from '../components/ui'
 import { useQuery } from '../hooks/useQuery'
 import { type Translate, type TranslationKey, useT } from '../i18n'
 import type { KpiBusiness, SessionRow } from '../lib/api'
-import { chat, dataHora, num, pct } from '../lib/format'
+import { chat, dateTime, num, pct } from '../lib/format'
 
 /** Business moves in minutes, not seconds. Half a minute is enough and costs less. */
 const POLL_MS = 30_000
 
-const CHAVE_POR_TIPO: Record<string, TranslationKey> = {
+const KEY_BY_KIND: Record<string, TranslationKey> = {
   text: 'type.text',
   image: 'type.image',
   video: 'type.video',
@@ -23,20 +23,20 @@ const CHAVE_POR_TIPO: Record<string, TranslationKey> = {
 }
 
 /** An unknown type shows raw: better the protocol's name than a wrong label. */
-function rotuloDoTipo(t: Translate, tipo: string): string {
-  const chave = CHAVE_POR_TIPO[tipo]
-  return chave ? t(chave) : tipo
+function kindLabel(t: Translate, tipo: string): string {
+  const key = KEY_BY_KIND[tipo]
+  return key ? t(key) : tipo
 }
 
 export function Negocio() {
   const t = useT()
-  const { query } = useFiltro()
+  const { query } = useFilter()
 
-  const sessoes = useQuery<{ sessions: SessionRow[] }>('/v1/sessions', 0)
+  const sessions = useQuery<{ sessions: SessionRow[] }>('/v1/sessions', 0)
   const negocio = useQuery<KpiBusiness>(`/v1/kpi/business?${query}`, POLL_MS)
 
   return (
-    <Shell acoes={<FiltroDeSessao sessoes={sessoes.data?.sessions ?? []} />}>
+    <Shell acoes={<SessionFilter sessions={sessions.data?.sessions ?? []} />}>
       <div className="flex flex-col gap-4">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="card p-4">
@@ -96,7 +96,7 @@ export function Negocio() {
                     color: 'var(--accent)',
                   },
                 ]}
-                altura={240}
+                height={240}
               />
             ) : (
               <Skeleton className="h-60" />
@@ -106,10 +106,10 @@ export function Negocio() {
           <Card title={t('business.messageTypes')} hint={t('business.messageTypesHint')}>
             {negocio.data ? (
               <BarrasHorizontais
-                altura={240}
-                dados={negocio.data.byType.slice(0, 8).map((item) => ({
-                  rotulo: rotuloDoTipo(t, item.type),
-                  valor: item.count,
+                height={240}
+                dados={negocio.data.byType.slice(0, 8).map((entry) => ({
+                  label: kindLabel(t, entry.type),
+                  value: entry.count,
                 }))}
               />
             ) : (
@@ -120,7 +120,7 @@ export function Negocio() {
 
         <Card title={t('business.busiestChats')} hint={t('business.busiestChatsHint')}>
           {negocio.data ? (
-            <TabelaDeChats linhas={negocio.data.topChats} />
+            <TabelaDeChats rows={negocio.data.topChats} />
           ) : (
             <Skeleton className="h-40" />
           )}
@@ -130,36 +130,36 @@ export function Negocio() {
   )
 }
 
-function TabelaDeChats({ linhas }: { linhas: KpiBusiness['topChats'] }) {
+function TabelaDeChats({ rows }: { rows: KpiBusiness['topChats'] }) {
   const t = useT()
 
-  if (linhas.length === 0) {
+  if (rows.length === 0) {
     return <Empty>{t('business.noChats')}</Empty>
   }
 
-  const maior = Math.max(...linhas.map((l) => l.messages), 1)
+  const maior = Math.max(...rows.map((l) => l.messages), 1)
 
   return (
     <ul className="flex flex-col">
-      {linhas.map((linha) => (
+      {rows.map((row) => (
         <li
-          key={linha.chatId}
+          key={row.chatId}
           className="flex items-center gap-3 border-b border-line/60 py-2.5 last:border-0"
         >
-          <span className="w-40 shrink-0 truncate font-mono text-xs text-ink" title={linha.chatId}>
-            {chat(linha.chatId, (id) => t('common.group', { id }))}
+          <span className="w-40 shrink-0 truncate font-mono text-xs text-ink" title={row.chatId}>
+            {chat(row.chatId, (id) => t('common.group', { id }))}
           </span>
           <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-2">
             <span
               className="block h-full rounded-full bg-accent"
-              style={{ width: `${(linha.messages / maior) * 100}%` }}
+              style={{ width: `${(row.messages / maior) * 100}%` }}
             />
           </span>
           <span className="w-14 shrink-0 text-right font-mono text-sm text-ink tnum">
-            {num(linha.messages)}
+            {num(row.messages)}
           </span>
           <span className="w-28 shrink-0 text-right text-xs text-muted">
-            {dataHora(linha.lastAt)}
+            {dateTime(row.lastAt)}
           </span>
         </li>
       ))}
@@ -168,10 +168,10 @@ function TabelaDeChats({ linhas }: { linhas: KpiBusiness['topChats'] }) {
 }
 
 /** The p50 arrives in seconds and is almost never readable that way. */
-function segundos(valor: number | null): string {
-  if (valor === null) return '—'
-  if (valor < 60) return `${Math.round(valor)} s`
-  if (valor < 3600) return `${(valor / 60).toFixed(1)} min`
-  if (valor < 86_400) return `${(valor / 3600).toFixed(1)} h`
-  return `${(valor / 86_400).toFixed(1)} d`
+function segundos(value: number | null): string {
+  if (value === null) return '—'
+  if (value < 60) return `${Math.round(value)} s`
+  if (value < 3600) return `${(value / 60).toFixed(1)} min`
+  if (value < 86_400) return `${(value / 3600).toFixed(1)} h`
+  return `${(value / 86_400).toFixed(1)} d`
 }

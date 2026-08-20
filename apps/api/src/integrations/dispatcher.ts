@@ -20,7 +20,7 @@ export interface DispatcherLogger {
   error(obj: object, msg?: string): void
 }
 
-export interface MensagemRecebida {
+export interface IncomingMessage {
   orgId: string
   sessionId: string
   chatId: string
@@ -42,7 +42,7 @@ export interface IntegrationDispatcherDeps {
 }
 
 /** Three attempts over ~7 s cover a container restart on the other side. */
-const TENTATIVAS = 3
+const MAX_ATTEMPTS = 3
 const ESPERA_BASE_MS = 500
 
 /**
@@ -66,97 +66,97 @@ export class IntegrationDispatcher {
    * WhatsApp connection. An external tool being down is its problem, not the
    * session's.
    */
-  async aoReceber(mensagem: MensagemRecebida): Promise<void> {
-    if (!mensagem.body?.trim()) return
+  async onReceive(message: IncomingMessage): Promise<void> {
+    if (!message.body?.trim()) return
 
-    let integracoes: LoadedIntegration[]
+    let integrations: LoadedIntegration[]
     try {
-      integracoes = await loadActiveIntegrations(
+      integrations = await loadActiveIntegrations(
         this.deps.db,
-        mensagem.sessionId,
+        message.sessionId,
         this.deps.encryptionKey,
       )
-    } catch (erro) {
+    } catch (error) {
       this.deps.logger.error(
-        { err: erro, sessionId: mensagem.sessionId },
+        { err: error, sessionId: message.sessionId },
         'failed to load integrations',
       )
       return
     }
 
-    for (const integracao of integracoes) {
+    for (const integration of integrations) {
       try {
-        if (integracao.row.kind === 'chatwoot') {
-          await this.paraChatwoot(integracao as LoadedIntegration<'chatwoot'>, mensagem)
-        } else if (integracao.row.kind === 'typebot') {
-          await this.paraTypebot(integracao as LoadedIntegration<'typebot'>, mensagem)
+        if (integration.row.kind === 'chatwoot') {
+          await this.toChatwoot(integration as LoadedIntegration<'chatwoot'>, message)
+        } else if (integration.row.kind === 'typebot') {
+          await this.toTypebot(integration as LoadedIntegration<'typebot'>, message)
         } else {
-          await this.paraHttp(integracao as LoadedIntegration<'http'>, mensagem)
+          await this.toHttp(integration as LoadedIntegration<'http'>, message)
         }
 
-        if (integracao.row.lastError) {
-          await clearIntegrationError(this.deps.db, integracao.row.id)
+        if (integration.row.lastError) {
+          await clearIntegrationError(this.deps.db, integration.row.id)
         }
-      } catch (erro) {
-        const texto = erro instanceof Error ? erro.message : 'unknown failure'
+      } catch (error) {
+        const text = error instanceof Error ? error.message : 'unknown failure'
 
         this.deps.logger.error(
-          { err: erro, integrationId: integracao.row.id, kind: integracao.row.kind },
+          { err: error, integrationId: integration.row.id, kind: integration.row.kind },
           'integration failed to process incoming message',
         )
 
-        await recordIntegrationError(this.deps.db, integracao.row.id, texto).catch(() => undefined)
+        await recordIntegrationError(this.deps.db, integration.row.id, text).catch(() => undefined)
       }
     }
   }
 
-  private async paraChatwoot(
-    integracao: LoadedIntegration<'chatwoot'>,
-    mensagem: MensagemRecebida,
+  private async toChatwoot(
+    integration: LoadedIntegration<'chatwoot'>,
+    message: IncomingMessage,
   ): Promise<void> {
-    const cliente = this.criarChatwoot(integracao.config)
-    const numero = somenteDigitos(mensagem.chatId)
+    const cliente = this.criarChatwoot(integration.config)
+    const number = digitsOnly(message.chatId)
 
-    const vinculo = await tentar(TENTATIVAS, async () => {
-      const existente = await findLink(this.deps.db, integracao.row.id, mensagem.chatId)
+    const vinculo = await tentar(MAX_ATTEMPTS, async () => {
+      const existente = await findLink(this.deps.db, integration.row.id, message.chatId)
       if (existente) return existente
 
-      const contato = await cliente.garantirContato({
-        identifier: numero,
-        phoneNumber: `+${numero}`,
-        name: integracao.config.fallbackName,
+      const contact = await cliente.ensureContact({
+        identifier: number,
+        phoneNumber: `+${number}`,
+        name: integration.config.fallbackName,
       })
 
       const conversationId = await cliente.criarConversa({
-        sourceId: contato.sourceId,
-        contactId: contato.contactId,
+        sourceId: contact.sourceId,
+        contactId: contact.contactId,
       })
 
       return upsertLink(this.deps.db, {
-        integrationId: integracao.row.id,
-        chatId: mensagem.chatId,
+        integrationId: integration.row.id,
+        chatId: message.chatId,
         externalConversationId: conversationId,
-        externalContactId: String(contato.contactId),
+        externalContactId: String(contact.contactId),
       })
     })
 
-    await tentar(TENTATIVAS, () =>
-      cliente.criarMensagemRecebida({
+    await tentar(MAX_ATTEMPTS, () =>
+      cliente.buildIncomingMessage({
         conversationId: vinculo.externalConversationId,
-        content: mensagem.body ?? '',
+        content: message.body ?? '',
         // The WhatsApp id travels along: it is what the webhook coming back
         // uses to recognise what came from here and not echo it straight back.
-        sourceId: mensagem.engineMessageId,
+        sourceId: message.engineMessageId,
       }),
     )
   }
 
-  private async paraTypebot(
-    integracao: LoadedIntegration<'typebot'>,
-    mensagem: MensagemRecebida,
+  private async toTypebot(
+    integration: LoadedIntegration<'typebot'>,
+    message: IncomingMessage,
   ): Promise<void> {
-    const texto = (mensagem.body ?? '').trim()
-    const { humanHandoffKeyword, humanHandoffReply, sessionTtlMinutes } = integracao.config
+    const text = (message.body ?? '').trim()
+    const { humanHandoffKeyword, humanHandoffReply, sessionTtlMinutes } = integration.config
 
     /**
      * The escape to a human comes before any call to the flow.
@@ -165,44 +165,44 @@ export class IntegrationDispatcher {
      * message to the flow first would produce one more automated reply for
      * exactly the person who asked to stop receiving them.
      */
-    if (humanHandoffKeyword && texto.toLowerCase() === humanHandoffKeyword.toLowerCase()) {
-      await expireLink(this.deps.db, integracao.row.id, mensagem.chatId)
+    if (humanHandoffKeyword && text.toLowerCase() === humanHandoffKeyword.toLowerCase()) {
+      await expireLink(this.deps.db, integration.row.id, message.chatId)
       if (humanHandoffReply) {
-        await this.enfileirar(mensagem, integracao.row.id, [humanHandoffReply])
+        await this.enfileirar(message, integration.row.id, [humanHandoffReply])
       }
       return
     }
 
-    const cliente = this.criarTypebot(integracao.config)
-    const vinculo = await findLink(this.deps.db, integracao.row.id, mensagem.chatId)
+    const cliente = this.criarTypebot(integration.config)
+    const vinculo = await findLink(this.deps.db, integration.row.id, message.chatId)
 
     let turno: Awaited<ReturnType<TypebotClient['iniciar']>>
 
     if (vinculo) {
       try {
-        turno = await cliente.continuar(vinculo.externalConversationId, texto)
-      } catch (erro) {
+        turno = await cliente.continuar(vinculo.externalConversationId, text)
+      } catch (error) {
         // A dead session over there restarts, instead of stranding the contact.
-        if (!(erro instanceof TypebotError) || !erro.sessaoExpirada) throw erro
-        turno = await cliente.iniciar(texto)
+        if (!(error instanceof TypebotError) || !error.sessaoExpirada) throw error
+        turno = await cliente.iniciar(text)
       }
     } else {
-      turno = await cliente.iniciar(texto)
+      turno = await cliente.iniciar(text)
     }
 
     if (turno.sessionId) {
       await upsertLink(this.deps.db, {
-        integrationId: integracao.row.id,
-        chatId: mensagem.chatId,
+        integrationId: integration.row.id,
+        chatId: message.chatId,
         externalConversationId: turno.sessionId,
         // A finished flow keeps no session: the next message starts over.
-        expiresAt: turno.aguardandoResposta
+        expiresAt: turno.awaitingReply
           ? new Date(Date.now() + sessionTtlMinutes * 60_000)
           : new Date(),
       })
     }
 
-    await this.enfileirar(mensagem, integracao.row.id, turno.textos)
+    await this.enfileirar(message, integration.row.id, turno.texts)
   }
 
   /**
@@ -213,23 +213,23 @@ export class IntegrationDispatcher {
    * message, and that is what lets an n8n flow or a serverless function be the
    * bot without anyone writing a dedicated connector in here.
    */
-  private async paraHttp(
-    integracao: LoadedIntegration<'http'>,
-    mensagem: MensagemRecebida,
+  private async toHttp(
+    integration: LoadedIntegration<'http'>,
+    message: IncomingMessage,
   ): Promise<void> {
-    const conector = this.criarHttp(integracao.config)
+    const conector = this.criarHttp(integration.config)
 
-    const resultado = await tentar(TENTATIVAS, () =>
-      conector.enviar({
+    const result = await tentar(MAX_ATTEMPTS, () =>
+      conector.send({
         event: 'message.received',
         data: {
-          sessionId: mensagem.sessionId,
-          messageId: mensagem.engineMessageId,
-          chatId: mensagem.chatId,
-          from: mensagem.fromJid,
+          sessionId: message.sessionId,
+          messageId: message.engineMessageId,
+          chatId: message.chatId,
+          from: message.fromJid,
           type: 'text',
-          body: mensagem.body,
-          timestamp: mensagem.occurredAt.toISOString(),
+          body: message.body,
+          timestamp: message.occurredAt.toISOString(),
         },
       }),
     )
@@ -242,11 +242,11 @@ export class IntegrationDispatcher {
      * in a new platform would be staring at a stalled conversation with no clue
      * that the response format was wrong.
      */
-    if (resultado.diagnostico) {
-      throw new Error(resultado.diagnostico)
+    if (result.diagnosis) {
+      throw new Error(result.diagnosis)
     }
 
-    await this.enfileirar(mensagem, integracao.row.id, resultado.replies)
+    await this.enfileirar(message, integration.row.id, result.replies)
   }
 
   /**
@@ -257,18 +257,18 @@ export class IntegrationDispatcher {
    * straight into Meta has none of that — it fires and hopes.
    */
   private async enfileirar(
-    mensagem: MensagemRecebida,
+    message: IncomingMessage,
     integrationId: string,
-    textos: string[],
+    texts: string[],
   ): Promise<void> {
-    if (textos.length === 0) return
+    if (texts.length === 0) return
 
-    const repo = new OutboxRepository(this.deps.db, mensagem.orgId)
+    const repo = new OutboxRepository(this.deps.db, message.orgId)
 
-    for (const [indice, texto] of textos.entries()) {
+    for (const [indice, text] of texts.entries()) {
       await repo.enqueue({
-        sessionId: mensagem.sessionId,
-        chatId: mensagem.chatId,
+        sessionId: message.sessionId,
+        chatId: message.chatId,
         /**
          * The key ties the reply to the message that provoked it.
          *
@@ -276,9 +276,9 @@ export class IntegrationDispatcher {
          * halfway through — the outbox recognises the duplicate and the
          * customer does not get the reply twice.
          */
-        clientMessageId: `${integrationId}:${mensagem.engineMessageId}:${indice}`,
+        clientMessageId: `${integrationId}:${message.engineMessageId}:${indice}`,
         type: 'text',
-        payload: { text: texto },
+        payload: { text: text },
         maxAttempts: this.deps.maxAttempts,
       })
     }
@@ -304,29 +304,29 @@ export class IntegrationDispatcher {
  * that does not exist. Retrying produces the same refusal three times and
  * delays recording the error the operator needs to see.
  */
-async function tentar<T>(vezes: number, acao: () => Promise<T>): Promise<T> {
-  let ultimo: unknown
+async function tentar<T>(vezes: number, action: () => Promise<T>): Promise<T> {
+  let last: unknown
 
   for (let i = 0; i < vezes; i++) {
     try {
-      return await acao()
-    } catch (erro) {
-      ultimo = erro
+      return await action()
+    } catch (error) {
+      last = error
 
       const permanente =
-        (erro instanceof ChatwootError ||
-          erro instanceof TypebotError ||
-          erro instanceof HttpConnectorError) &&
-        erro.isPermanente
+        (error instanceof ChatwootError ||
+          error instanceof TypebotError ||
+          error instanceof HttpConnectorError) &&
+        error.isPermanente
       if (permanente || i === vezes - 1) break
 
       await new Promise((resolve) => setTimeout(resolve, ESPERA_BASE_MS * 2 ** i))
     }
   }
 
-  throw ultimo
+  throw last
 }
 
-function somenteDigitos(chatId: string): string {
+function digitsOnly(chatId: string): string {
   return chatId.replace(/@.*$/, '').replace(/\D/g, '')
 }

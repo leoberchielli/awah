@@ -73,8 +73,8 @@ export class OutboxDispatcher {
       this.timer = null
     }
 
-    const limite = Date.now() + timeoutMs
-    while (this.inFlight.size > 0 && Date.now() < limite) {
+    const limit = Date.now() + timeoutMs
+    while (this.inFlight.size > 0 && Date.now() < limit) {
       await sleep(100)
     }
 
@@ -106,8 +106,8 @@ export class OutboxDispatcher {
         }
       }
 
-      const capacidade = this.deps.maxConcurrent - this.inFlight.size
-      if (capacidade <= 0) return
+      const capability = this.deps.maxConcurrent - this.inFlight.size
+      if (capability <= 0) return
 
       const sessionIds = this.deps.sessions.activeSessionIds()
       if (sessionIds.length === 0) return
@@ -115,7 +115,7 @@ export class OutboxDispatcher {
       const jobs = await claimOutbox(
         this.deps.db,
         sessionIds,
-        Math.min(this.deps.batchSize, capacidade),
+        Math.min(this.deps.batchSize, capability),
       )
 
       for (const job of jobs) {
@@ -148,7 +148,7 @@ export class OutboxDispatcher {
 
   private async doDeliver(job: ClaimedJob): Promise<void> {
     const iniciadoEm = Date.now()
-    const decorrido = () => (Date.now() - iniciadoEm) / 1000
+    const elapsed = () => (Date.now() - iniciadoEm) / 1000
     const adapter = this.deps.sessions.adapterFor(job.sessionId)
 
     /**
@@ -190,7 +190,7 @@ export class OutboxDispatcher {
     if (decision.action === 'held') {
       const until = decision.availableAt ?? new Date(Date.now() + 60_000)
       await hold(this.deps.db, job.id, until, decision.reason)
-      this.deps.observeSend?.('held', decorrido())
+      this.deps.observeSend?.('held', elapsed())
       this.deps.logger.info(
         { outboxId: job.id, until: until.toISOString(), reason: decision.reason },
         'send held by the risk engine',
@@ -221,9 +221,9 @@ export class OutboxDispatcher {
       await markSent(this.deps.db, job.id, result.engineMessageId)
       await this.deps.risk.recordSent(job.sessionId, job.chatId, decision.isNewContact)
       await this.deps.onDelivered(job, result.engineMessageId, result.timestamp)
-      this.deps.observeSend?.('sent', decorrido())
+      this.deps.observeSend?.('sent', elapsed())
     } catch (error) {
-      this.deps.observeSend?.('failed', decorrido())
+      this.deps.observeSend?.('failed', elapsed())
       const message = error instanceof Error ? error.message : String(error)
       const delay = exponentialBackoff({
         attempt: job.attempts + 1,

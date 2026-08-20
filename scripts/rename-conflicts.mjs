@@ -32,7 +32,12 @@ if (!mapaPath) {
   console.error('usage: rename-conflicts.mjs <map.json>')
   process.exit(2)
 }
-const mapa = JSON.parse(readFileSync(mapaPath, 'utf8'))
+/**
+ * Null-prototype, for the same reason `rename-symbols.mjs` uses one: on a plain
+ * object `mapa['toString']` resolves to `Object.prototype.toString` and reads
+ * as a rename target that was never in the map.
+ */
+const mapa = Object.assign(Object.create(null), JSON.parse(readFileSync(mapaPath, 'utf8')))
 
 const ROOTS = [
   'apps/api/src',

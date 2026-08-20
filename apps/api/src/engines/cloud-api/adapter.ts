@@ -119,8 +119,8 @@ export class CloudApiAdapter implements EngineAdapter {
 
     this.ready = true
 
-    const numero = (body as { display_phone_number?: string })?.display_phone_number ?? null
-    this.deps.onEvent({ type: 'paired', phoneNumber: numero?.replace(/\D/g, '') ?? null })
+    const number = (body as { display_phone_number?: string })?.display_phone_number ?? null
+    this.deps.onEvent({ type: 'paired', phoneNumber: number?.replace(/\D/g, '') ?? null })
     this.deps.onEvent({ type: 'status', status: 'connected' })
   }
 
@@ -167,19 +167,19 @@ export class CloudApiAdapter implements EngineAdapter {
     })
 
     if (!ok) {
-      const erro = (body as GraphError)?.error
+      const error = (body as GraphError)?.error
       /**
        * Code 131047 is the one most worth translating: it means the 24 h window
        * has closed and the message would need an approved template. Without
        * that translation, an integrator sees a generic error and concludes the
        * credential broke.
        */
-      if (erro?.code === 131047) {
+      if (error?.code === 131047) {
         throw new Error(
           'The 24 h window has closed: outside it the Cloud API only accepts a template approved by Meta.',
         )
       }
-      throw new Error(erro?.message ?? `Meta rejected the send (HTTP ${status}).`)
+      throw new Error(error?.message ?? `Meta rejected the send (HTTP ${status}).`)
     }
 
     const id = (body as { messages?: Array<{ id?: string }> })?.messages?.[0]?.id

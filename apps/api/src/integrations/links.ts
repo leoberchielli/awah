@@ -30,7 +30,7 @@ export async function findLink(
   integrationId: string,
   chatId: string,
 ): Promise<ConversationLink | null> {
-  const [linha] = await db
+  const [row] = await db
     .select(COLUMNS)
     .from(schema.integrationLinks)
     .where(
@@ -45,7 +45,7 @@ export async function findLink(
     )
     .limit(1)
 
-  return linha ?? null
+  return row ?? null
 }
 
 /** Reverse path: the Chatwoot webhook arrives with their conversation id. */
@@ -54,7 +54,7 @@ export async function findLinkByExternal(
   integrationId: string,
   externalConversationId: string,
 ): Promise<ConversationLink | null> {
-  const [linha] = await db
+  const [row] = await db
     .select(COLUMNS)
     .from(schema.integrationLinks)
     .where(
@@ -65,7 +65,7 @@ export async function findLinkByExternal(
     )
     .limit(1)
 
-  return linha ?? null
+  return row ?? null
 }
 
 export async function upsertLink(
@@ -79,7 +79,7 @@ export async function upsertLink(
     expiresAt?: Date | null
   },
 ): Promise<ConversationLink> {
-  const [linha] = await db
+  const [row] = await db
     .insert(schema.integrationLinks)
     .values({
       integrationId: input.integrationId,
@@ -101,8 +101,8 @@ export async function upsertLink(
     })
     .returning(COLUMNS)
 
-  if (!linha) throw new Error('failed to write the conversation link')
-  return linha
+  if (!row) throw new Error('failed to write the conversation link')
+  return row
 }
 
 /** Ends a contact's flow session — the escape to a human agent. */

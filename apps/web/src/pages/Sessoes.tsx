@@ -5,23 +5,23 @@ import { useQuery } from '../hooks/useQuery'
 import { Rich, type TranslationKey, useT } from '../i18n'
 import type { QrResponse, RiskSnapshot, SessionEvent, SessionRow } from '../lib/api'
 import { ApiError, post } from '../lib/api'
-import { dataHora, desde, num, pct, telefone } from '../lib/format'
+import { dateTime, num, pct, since, telefone } from '../lib/format'
 import { statusLabel, statusTone } from '../lib/sessionStatus'
 
-const ENGINES: Array<{ valor: string; rotulo: TranslationKey }> = [
-  { valor: 'baileys', rotulo: 'engine.baileys' },
-  { valor: 'cloud_api', rotulo: 'engine.cloudApi' },
+const ENGINES: Array<{ value: string; label: TranslationKey }> = [
+  { value: 'baileys', label: 'engine.baileys' },
+  { value: 'cloud_api', label: 'engine.cloudApi' },
 ]
 
 const PAREANDO = ['pairing', 'connecting']
 
-export function Sessoes() {
+export function Sessions() {
   const t = useT()
-  const [selecionada, setSelecionada] = useState<string | null>(null)
-  const sessoes = useQuery<{ sessions: SessionRow[] }>('/v1/sessions', 4000)
-  const lista = sessoes.data?.sessions ?? []
+  const [selected, setSelected] = useState<string | null>(null)
+  const sessions = useQuery<{ sessions: SessionRow[] }>('/v1/sessions', 4000)
+  const list = sessions.data?.sessions ?? []
 
-  const alvo = lista.find((s) => s.id === selecionada) ?? null
+  const alvo = list.find((s) => s.id === selected) ?? null
 
   /**
    * A session waiting for a QR takes the whole screen, with nobody having to
@@ -32,38 +32,36 @@ export function Sessoes() {
    * hidden behind a selection — as it was — makes the most important step in
    * the product invisible to whoever just pressed "Start".
    */
-  const pareando = lista.find((s) => PAREANDO.includes(s.status)) ?? null
+  const pareando = list.find((s) => PAREANDO.includes(s.status)) ?? null
 
   return (
     <Shell>
       <div className="flex flex-col gap-4">
-        {pareando && <Pareamento sessao={pareando} aoMudar={sessoes.refetch} />}
+        {pareando && <Pareamento session={pareando} onChange={sessions.refetch} />}
 
         <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
           <div className="flex min-w-0 flex-col gap-4">
             <Card
               title={t('sessions.title')}
               hint={t('sessions.hint')}
-              action={<NovaSessao aoCriar={sessoes.refetch} />}
+              action={<NewSession aoCriar={sessions.refetch} />}
             >
-              {!sessoes.settled ? (
+              {!sessions.settled ? (
                 <Skeleton className="h-32" />
-              ) : lista.length === 0 ? (
+              ) : list.length === 0 ? (
                 <Empty>
                   <Rich text={t('sessions.empty')} />
                 </Empty>
               ) : (
                 <ul className="flex flex-col">
-                  {lista.map((sessao) => (
-                    <LinhaDeSessao
-                      key={sessao.id}
-                      sessao={sessao}
-                      selecionada={sessao.id === selecionada}
-                      aoSelecionar={() =>
-                        setSelecionada(sessao.id === selecionada ? null : sessao.id)
-                      }
-                      aoIniciar={() => setSelecionada(sessao.id)}
-                      aoMudar={sessoes.refetch}
+                  {list.map((session) => (
+                    <SessionCard
+                      key={session.id}
+                      session={session}
+                      selected={session.id === selected}
+                      onSelect={() => setSelected(session.id === selected ? null : session.id)}
+                      aoIniciar={() => setSelected(session.id)}
+                      onChange={sessions.refetch}
                     />
                   ))}
                 </ul>
@@ -75,7 +73,7 @@ export function Sessoes() {
 
           <div className="flex flex-col gap-4">
             {alvo ? (
-              <PainelDeRisco sessionId={alvo.id} />
+              <RiskPanel sessionId={alvo.id} />
             ) : (
               <Card title={t('sessions.detail')}>
                 <Empty>{t('sessions.detailEmpty')}</Empty>
@@ -89,26 +87,26 @@ export function Sessoes() {
 }
 
 /** The pairing step, with the QR and what to do on the phone side by side. */
-function Pareamento({ sessao, aoMudar }: { sessao: SessionRow; aoMudar: () => void }) {
+function Pareamento({ session, onChange }: { session: SessionRow; onChange: () => void }) {
   const t = useT()
 
   return (
     <Card
-      title={t('pairing.title', { name: sessao.name })}
+      title={t('pairing.title', { name: session.name })}
       hint={t('pairing.hint')}
-      action={<Pill tone="warn">{statusLabel(t, sessao.status)}</Pill>}
+      action={<Pill tone="warn">{statusLabel(t, session.status)}</Pill>}
     >
       <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
-        <PainelDeQr sessionId={sessao.id} />
+        <PainelDeQr sessionId={session.id} />
 
         <ol className="flex flex-1 flex-col gap-3 text-sm text-muted">
-          <Passo n={1} texto={t('pairing.step1')} />
-          <Passo n={2} texto={t('pairing.step2')} />
-          <Passo n={3} texto={t('pairing.step3')} />
-          <Passo n={4} texto={t('pairing.step4')} />
+          <Passo n={1} text={t('pairing.step1')} />
+          <Passo n={2} text={t('pairing.step2')} />
+          <Passo n={3} text={t('pairing.step3')} />
+          <Passo n={4} text={t('pairing.step4')} />
 
           <li className="mt-1">
-            <CancelarPareamento sessionId={sessao.id} aoMudar={aoMudar} />
+            <CancelarPareamento sessionId={session.id} onChange={onChange} />
           </li>
         </ol>
       </div>
@@ -116,7 +114,7 @@ function Pareamento({ sessao, aoMudar }: { sessao: SessionRow; aoMudar: () => vo
   )
 }
 
-function Passo({ n, texto }: { n: number; texto: string }) {
+function Passo({ n, text }: { n: number; text: string }) {
   return (
     <li className="flex gap-3">
       <span
@@ -126,61 +124,61 @@ function Passo({ n, texto }: { n: number; texto: string }) {
         {n}
       </span>
       <span className="text-ink/80">
-        <Rich text={texto} />
+        <Rich text={text} />
       </span>
     </li>
   )
 }
 
-function CancelarPareamento({ sessionId, aoMudar }: { sessionId: string; aoMudar: () => void }) {
+function CancelarPareamento({ sessionId, onChange }: { sessionId: string; onChange: () => void }) {
   const t = useT()
-  const [ocupado, setOcupado] = useState(false)
+  const [busy, setBusy] = useState(false)
 
   return (
-    <Botao
+    <Button
       tom="neutro"
-      disabled={ocupado}
+      disabled={busy}
       onClick={async () => {
-        setOcupado(true)
+        setBusy(true)
         await post(`/v1/sessions/${sessionId}/stop`).catch(() => undefined)
-        aoMudar()
-        setOcupado(false)
+        onChange()
+        setBusy(false)
       }}
     >
       {t('pairing.cancel')}
-    </Botao>
+    </Button>
   )
 }
 
-function LinhaDeSessao({
-  sessao,
-  selecionada,
-  aoSelecionar,
+function SessionCard({
+  session,
+  selected,
+  onSelect,
   aoIniciar,
-  aoMudar,
+  onChange,
 }: {
-  sessao: SessionRow
-  selecionada: boolean
-  aoSelecionar: () => void
+  session: SessionRow
+  selected: boolean
+  onSelect: () => void
   aoIniciar: () => void
-  aoMudar: () => void
+  onChange: () => void
 }) {
   const t = useT()
-  const [ocupado, setOcupado] = useState(false)
-  const [erro, setErro] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  async function comandar(acao: 'start' | 'stop' | 'logout') {
-    setOcupado(true)
-    setErro(null)
+  async function sendCommand(action: 'start' | 'stop' | 'logout') {
+    setBusy(true)
+    setError(null)
     try {
-      await post(`/v1/sessions/${sessao.id}/${acao}`)
+      await post(`/v1/sessions/${session.id}/${action}`)
       // Whoever pressed Start wants to see what happened to this session.
-      if (acao === 'start') aoIniciar()
-      aoMudar()
-    } catch (falha) {
-      setErro(falha instanceof ApiError ? falha.message : t('sessions.commandFailed'))
+      if (action === 'start') aoIniciar()
+      onChange()
+    } catch (failure) {
+      setError(failure instanceof ApiError ? failure.message : t('sessions.commandFailed'))
     } finally {
-      setOcupado(false)
+      setBusy(false)
     }
   }
 
@@ -191,60 +189,60 @@ function LinhaDeSessao({
    * queue keeps accepting messages and nothing goes out. It gets its own
    * highlight.
    */
-  const divergente = sessao.desiredState === 'running' && !sessao.running
+  const divergente = session.desiredState === 'running' && !session.running
 
   return (
     <li className="border-b border-line/60 last:border-0">
       <div className="flex flex-wrap items-center gap-3 py-3">
         <button
           type="button"
-          onClick={aoSelecionar}
+          onClick={onSelect}
           className={cx(
             'flex min-w-0 flex-1 items-center gap-3 text-left',
-            selecionada && 'text-accent',
+            selected && 'text-accent',
           )}
         >
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-sm font-medium text-ink">{sessao.name}</span>
+            <span className="block truncate text-sm font-medium text-ink">{session.name}</span>
             <span className="block truncate font-mono text-xs text-muted">
-              {telefone(sessao.phoneNumber)} · {sessao.engine}
-              {sessao.ownerNodeId && ` · nó ${sessao.ownerNodeId.slice(0, 8)}`}
+              {telefone(session.phoneNumber)} · {session.engine}
+              {session.ownerNodeId && ` · nó ${session.ownerNodeId.slice(0, 8)}`}
             </span>
           </span>
         </button>
 
         <div className="flex items-center gap-2">
-          <Pill tone={statusTone(sessao.status)}>{statusLabel(t, sessao.status)}</Pill>
+          <Pill tone={statusTone(session.status)}>{statusLabel(t, session.status)}</Pill>
 
           {divergente && <Pill tone="crit">{t('sessions.shouldBeRunning')}</Pill>}
 
-          {sessao.running ? (
+          {session.running ? (
             <>
-              <Botao onClick={() => comandar('stop')} disabled={ocupado}>
+              <Button onClick={() => sendCommand('stop')} disabled={busy}>
                 {t('sessions.stop')}
-              </Botao>
-              <Botao onClick={() => comandar('logout')} disabled={ocupado} tom="perigo">
+              </Button>
+              <Button onClick={() => sendCommand('logout')} disabled={busy} tom="perigo">
                 {t('sessions.logout')}
-              </Botao>
+              </Button>
             </>
           ) : (
-            <Botao onClick={() => comandar('start')} disabled={ocupado} tom="primario">
+            <Button onClick={() => sendCommand('start')} disabled={busy} tom="primario">
               {t('sessions.start')}
-            </Botao>
+            </Button>
           )}
         </div>
       </div>
 
-      {erro && (
+      {error && (
         <p role="alert" className="pb-2 text-xs text-crit">
-          {erro}
+          {error}
         </p>
       )}
     </li>
   )
 }
 
-function Botao({
+function Button({
   children,
   onClick,
   disabled,
@@ -278,31 +276,31 @@ function Botao({
   )
 }
 
-function NovaSessao({ aoCriar }: { aoCriar: () => void }) {
+function NewSession({ aoCriar }: { aoCriar: () => void }) {
   const t = useT()
   const [aberto, setAberto] = useState(false)
-  const [nome, setNome] = useState('')
+  const [name, setName] = useState('')
   const [engine, setEngine] = useState('baileys')
-  const [erro, setErro] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   async function criar(evento: FormEvent) {
     evento.preventDefault()
-    setErro(null)
+    setError(null)
     try {
-      await post('/v1/sessions', { name: nome, engine })
-      setNome('')
+      await post('/v1/sessions', { name: name, engine })
+      setName('')
       setAberto(false)
       aoCriar()
-    } catch (falha) {
-      setErro(falha instanceof ApiError ? falha.message : t('sessions.createFailed'))
+    } catch (failure) {
+      setError(failure instanceof ApiError ? failure.message : t('sessions.createFailed'))
     }
   }
 
   if (!aberto) {
     return (
-      <Botao onClick={() => setAberto(true)} tom="primario">
+      <Button onClick={() => setAberto(true)} tom="primario">
         {t('sessions.new')}
-      </Botao>
+      </Button>
     )
   }
 
@@ -312,8 +310,8 @@ function NovaSessao({ aoCriar }: { aoCriar: () => void }) {
         // biome-ignore lint/a11y/noAutofocus: the form only exists after an explicit click
         autoFocus
         required
-        value={nome}
-        onChange={(e) => setNome(e.target.value)}
+        value={name}
+        onChange={(e) => setName(e.target.value)}
         placeholder={t('sessions.namePlaceholder')}
         className="w-40 rounded-md border border-line bg-surface-2 px-2 py-1.5 text-xs text-ink"
       />
@@ -322,19 +320,19 @@ function NovaSessao({ aoCriar }: { aoCriar: () => void }) {
         onChange={(e) => setEngine(e.target.value)}
         className="rounded-md border border-line bg-surface-2 px-2 py-1.5 text-xs text-ink"
       >
-        {ENGINES.map((item) => (
-          <option key={item.valor} value={item.valor}>
-            {t(item.rotulo)}
+        {ENGINES.map((entry) => (
+          <option key={entry.value} value={entry.value}>
+            {t(entry.label)}
           </option>
         ))}
       </select>
-      <Botao type="submit" tom="primario">
+      <Button type="submit" tom="primario">
         {t('sessions.create')}
-      </Botao>
-      <Botao onClick={() => setAberto(false)}>{t('common.cancel')}</Botao>
-      {erro && (
+      </Button>
+      <Button onClick={() => setAberto(false)}>{t('common.cancel')}</Button>
+      {error && (
         <span role="alert" className="w-full text-xs text-crit">
-          {erro}
+          {error}
         </span>
       )}
     </form>
@@ -379,11 +377,11 @@ function PainelDeQr({ sessionId }: { sessionId: string }) {
   )
 }
 
-function PainelDeRisco({ sessionId }: { sessionId: string }) {
+function RiskPanel({ sessionId }: { sessionId: string }) {
   const t = useT()
-  const risco = useQuery<RiskSnapshot>(`/v1/sessions/${sessionId}/risk`, 5000)
+  const risk = useQuery<RiskSnapshot>(`/v1/sessions/${sessionId}/risk`, 5000)
 
-  if (!risco.settled) {
+  if (!risk.settled) {
     return (
       <Card title={t('risk.title')}>
         <Skeleton className="h-52" />
@@ -391,7 +389,7 @@ function PainelDeRisco({ sessionId }: { sessionId: string }) {
     )
   }
 
-  if (!risco.data) {
+  if (!risk.data) {
     return (
       <Card title={t('risk.title')}>
         <Empty>{t('risk.none')}</Empty>
@@ -399,7 +397,7 @@ function PainelDeRisco({ sessionId }: { sessionId: string }) {
     )
   }
 
-  const { score, usage, limits, warmup, throttleFactor } = risco.data
+  const { score, usage, limits, warmup, throttleFactor } = risk.data
   const tom: Tone = score.value < 40 ? 'ok' : score.value < 70 ? 'warn' : 'crit'
   const pontuando = score.factors.filter((fator) => fator.points > 0)
 
@@ -430,13 +428,13 @@ function PainelDeRisco({ sessionId }: { sessionId: string }) {
 
         <div className="flex flex-col gap-2">
           <span className="eyebrow">{t('risk.windows')}</span>
-          <Barra rotulo={t('risk.perMinute')} usado={usage.minute} limite={limits.perMinute} />
-          <Barra rotulo={t('risk.perHour')} usado={usage.hour} limite={limits.perHour} />
-          <Barra rotulo={t('risk.perDay')} usado={usage.day} limite={limits.perDay} />
+          <Barra label={t('risk.perMinute')} used={usage.minute} limit={limits.perMinute} />
+          <Barra label={t('risk.perHour')} used={usage.hour} limit={limits.perHour} />
+          <Barra label={t('risk.perDay')} used={usage.day} limit={limits.perDay} />
           <Barra
-            rotulo={t('risk.newContactsToday')}
-            usado={usage.newContactsToday}
-            limite={limits.newContactsPerDay}
+            label={t('risk.newContactsToday')}
+            used={usage.newContactsToday}
+            limit={limits.newContactsPerDay}
           />
         </div>
 
@@ -462,30 +460,30 @@ function PainelDeRisco({ sessionId }: { sessionId: string }) {
   )
 }
 
-function Barra({ rotulo, usado, limite }: { rotulo: string; usado: number; limite: number }) {
-  const fracao = limite > 0 ? Math.min(usado / limite, 1) : 0
-  const cor = fracao > 0.9 ? 'var(--crit)' : fracao > 0.7 ? 'var(--warn)' : 'var(--ok)'
+function Barra({ label, used, limit }: { label: string; used: number; limit: number }) {
+  const fraction = limit > 0 ? Math.min(used / limit, 1) : 0
+  const color = fraction > 0.9 ? 'var(--crit)' : fraction > 0.7 ? 'var(--warn)' : 'var(--ok)'
 
   return (
     <div className="flex flex-col gap-1">
       <div className="flex items-baseline justify-between gap-2 text-xs">
-        <span className="text-muted">{rotulo}</span>
+        <span className="text-muted">{label}</span>
         <span className="font-mono text-ink tnum">
-          {num(usado)}
-          <span className="text-muted">/{num(limite)}</span>
+          {num(used)}
+          <span className="text-muted">/{num(limit)}</span>
         </span>
       </div>
       <div className="h-1.5 overflow-hidden rounded-full bg-surface-2">
         <div
           className="h-full rounded-full transition-[width] duration-500"
-          style={{ width: `${fracao * 100}%`, background: cor }}
+          style={{ width: `${fraction * 100}%`, background: color }}
         />
       </div>
     </div>
   )
 }
 
-const TOM_POR_EVENTO: Record<string, Tone> = {
+const TONE_BY_EVENT: Record<string, Tone> = {
   connected: 'ok',
   paired: 'ok',
   connecting: 'warn',
@@ -515,7 +513,7 @@ function Timeline({ sessionId }: { sessionId: string }) {
               key={evento.id}
               className="flex flex-wrap items-center gap-3 border-b border-line/60 py-2 last:border-0"
             >
-              <Pill tone={TOM_POR_EVENTO[evento.type] ?? 'hold'}>{evento.type}</Pill>
+              <Pill tone={TONE_BY_EVENT[evento.type] ?? 'hold'}>{evento.type}</Pill>
               <span className="min-w-0 flex-1 truncate text-xs text-muted">
                 {evento.cause ?? '—'}
                 {evento.rawCode !== null && (
@@ -524,9 +522,9 @@ function Timeline({ sessionId }: { sessionId: string }) {
               </span>
               <span
                 className="font-mono text-xs text-muted tnum"
-                title={dataHora(evento.createdAt)}
+                title={dateTime(evento.createdAt)}
               >
-                {desde(evento.createdAt)}
+                {since(evento.createdAt)}
               </span>
             </li>
           ))}

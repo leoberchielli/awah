@@ -28,7 +28,14 @@ if (!mapaPath) {
   process.exit(2)
 }
 const dry = flags.includes('--dry')
-const mapa = JSON.parse(readFileSync(mapaPath, 'utf8'))
+/**
+ * Null-prototype on purpose. With a plain object, `mapa['toString']` is not
+ * `undefined` — it is `Object.prototype.toString`, which is truthy, and the
+ * rename below happily writes `function toString() { [native code] }` where a
+ * property name used to be. `constructor`, `valueOf` and `hasOwnProperty` are
+ * the same trap.
+ */
+const mapa = Object.assign(Object.create(null), JSON.parse(readFileSync(mapaPath, 'utf8')))
 
 /** Every project in the monorepo, so a rename crosses package boundaries. */
 const PROJETOS = [

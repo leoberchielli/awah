@@ -1,7 +1,7 @@
 export const SIGNATURE_HEADER = 'x-awah-signature'
 export const TIMESTAMP_HEADER = 'x-awah-timestamp'
 
-export interface VerificarEntrega {
+export interface CheckDelivery {
   /**
    * The **raw** body, exactly as it arrived. Re-serializing the parsed object
    * produces similar bytes, not identical ones — key order and spacing can
@@ -30,7 +30,7 @@ export interface VerificarEntrega {
  * Uses WebCrypto, so it runs the same in Node, Deno, Bun, Cloudflare Workers and
  * the browser. That is why it is async.
  */
-export async function verifyWebhook(options: VerificarEntrega): Promise<boolean> {
+export async function verifyWebhook(options: CheckDelivery): Promise<boolean> {
   const { payload, secret, signature, toleranceSeconds = 300, now = Date.now } = options
 
   const timestamp = Number(options.timestamp)
@@ -39,8 +39,8 @@ export async function verifyWebhook(options: VerificarEntrega): Promise<boolean>
   const idadeSegundos = Math.abs(Math.floor(now() / 1000) - timestamp)
   if (idadeSegundos > toleranceSeconds) return false
 
-  const esperada = await signWebhook(payload, secret, timestamp)
-  return comparacaoConstante(esperada, signature)
+  const expected = await signWebhook(payload, secret, timestamp)
+  return constantTimeEqual(expected, signature)
 }
 
 /** The same signature the server produces. Exported so integrations can test. */
@@ -49,23 +49,19 @@ export async function signWebhook(
   secret: string,
   timestamp: number,
 ): Promise<string> {
-  const codificador = new TextEncoder()
+  const encoder = new TextEncoder()
 
-  const chave = await crypto.subtle.importKey(
+  const key = await crypto.subtle.importKey(
     'raw',
-    codificador.encode(secret),
+    encoder.encode(secret),
     { name: 'HMAC', hash: 'SHA-256' },
     false,
     ['sign'],
   )
 
-  const assinatura = await crypto.subtle.sign(
-    'HMAC',
-    chave,
-    codificador.encode(`${timestamp}.${payload}`),
-  )
+  const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(`${timestamp}.${payload}`))
 
-  const hex = [...new Uint8Array(assinatura)]
+  const hex = [...new Uint8Array(signature)]
     .map((byte) => byte.toString(16).padStart(2, '0'))
     .join('')
 
@@ -80,7 +76,7 @@ export async function signWebhook(
  * a theoretical attack: it is why every webhook library ships a function like
  * this one.
  */
-function comparacaoConstante(a: string, b: string): boolean {
+function constantTimeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false
 
   let diferenca = 0

@@ -16,7 +16,7 @@ export const chatwootConfigSchema = z.object({
     .string()
     .url()
     .describe('Address of the instance. https://app.chatwoot.com on the hosted version.')
-    .transform((valor) => valor.replace(/\/+$/, '')),
+    .transform((value) => value.replace(/\/+$/, '')),
   accountId: z.coerce.number().int().positive(),
   /** Must be an API-type inbox — the others carry their own transport. */
   inboxId: z.coerce.number().int().positive(),
@@ -39,7 +39,7 @@ export const typebotConfigSchema = z.object({
     .string()
     .url()
     .describe('https://typebot.io on the hosted version, or your own domain.')
-    .transform((valor) => valor.replace(/\/+$/, '')),
+    .transform((value) => value.replace(/\/+$/, '')),
   /** The flow's `publicId` — the same one that appears in the share URL. */
   typebotId: z.string().min(1),
   /** API token. Only needed when the flow is not public. */
@@ -134,16 +134,16 @@ const COLUMNS = {
   createdAt: schema.integrations.createdAt,
 }
 
-export function parseConfig(kind: IntegrationKind, valor: unknown): AnyIntegrationConfig {
-  const resultado = SCHEMAS[kind].safeParse(valor)
+export function parseConfig(kind: IntegrationKind, value: unknown): AnyIntegrationConfig {
+  const result = SCHEMAS[kind].safeParse(value)
 
-  if (!resultado.success) {
+  if (!result.success) {
     throw badRequest(`Invalid configuration for ${kind}.`, {
-      issues: resultado.error.issues.map((i) => ({ path: i.path.join('.'), message: i.message })),
+      issues: result.error.issues.map((i) => ({ path: i.path.join('.'), message: i.message })),
     })
   }
 
-  return resultado.data
+  return result.data
 }
 
 export async function saveIntegration(
@@ -165,22 +165,22 @@ export async function saveIntegration(
     id?: string
   },
 ): Promise<IntegrationRow> {
-  const cifrada = encrypt(JSON.stringify(input.config), encryptionKey)
+  const encrypted = encrypt(JSON.stringify(input.config), encryptionKey)
 
-  const [linha] = await db
+  const [row] = await db
     .insert(schema.integrations)
     .values({
       ...(input.id ? { id: input.id } : {}),
       orgId: input.orgId,
       sessionId: input.sessionId,
       kind: input.kind,
-      config: cifrada,
+      config: encrypted,
       active: input.active ?? true,
     })
     .onConflictDoUpdate({
       target: [schema.integrations.sessionId, schema.integrations.kind],
       set: {
-        config: cifrada,
+        config: encrypted,
         active: input.active ?? true,
         // New configuration clears the old error: it was about what changed.
         lastError: null,
@@ -190,8 +190,8 @@ export async function saveIntegration(
     })
     .returning(COLUMNS)
 
-  if (!linha) throw new Error('failed to write the integration')
-  return linha
+  if (!row) throw new Error('failed to write the integration')
+  return row
 }
 
 /** A session's active integrations. This is the message-path query. */
@@ -200,16 +200,16 @@ export async function loadActiveIntegrations(
   sessionId: string,
   encryptionKey: Buffer,
 ): Promise<LoadedIntegration[]> {
-  const linhas = await db
+  const rows = await db
     .select({ ...COLUMNS, config: schema.integrations.config })
     .from(schema.integrations)
     .where(and(eq(schema.integrations.sessionId, sessionId), eq(schema.integrations.active, true)))
 
-  const carregadas: LoadedIntegration[] = []
+  const loaded: LoadedIntegration[] = []
 
-  for (const { config, ...row } of linhas) {
+  for (const { config, ...row } of rows) {
     try {
-      carregadas.push({
+      loaded.push({
         row,
         config: SCHEMAS[row.kind].parse(JSON.parse(decrypt(config, encryptionKey))) as never,
       })
@@ -232,7 +232,7 @@ export async function loadActiveIntegrations(
     }
   }
 
-  return carregadas
+  return loaded
 }
 
 export async function listIntegrations(db: Database, orgId: string): Promise<IntegrationRow[]> {

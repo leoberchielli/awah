@@ -87,13 +87,13 @@ export async function metaRoutes(app: FastifyInstance) {
     async (request, reply) => {
       const { sessionId } = request.params
 
-      const [sessao] = await app.db
+      const [session] = await app.db
         .select({ id: schema.sessions.id, orgId: schema.sessions.orgId })
         .from(schema.sessions)
         .where(eq(schema.sessions.id, sessionId))
         .limit(1)
 
-      if (!sessao) throw notFound('Session not found.')
+      if (!session) throw notFound('Session not found.')
 
       const credenciais = await loadCloudApiCredentials(app.db, sessionId, encryptionKey).catch(
         () => null,
@@ -108,19 +108,17 @@ export async function metaRoutes(app: FastifyInstance) {
        * and the HMAC would fail intermittently and inexplicably. The parser in
        * `app.ts` keeps the original buffer for this use.
        */
-      const corpo = request.rawBody
-      if (!corpo) {
+      const body = request.rawBody
+      if (!body) {
         throw forbidden('Raw body unavailable to check the signature.')
       }
 
-      if (
-        !verificarAssinatura(corpo, credenciais.appSecret, request.headers['x-hub-signature-256'])
-      ) {
+      if (!verifySignature(body, credenciais.appSecret, request.headers['x-hub-signature-256'])) {
         throw forbidden('Invalid event signature.')
       }
 
       // Answer first, process after. Our error must not become a Meta redelivery.
-      void processarEvento(app, sessao.orgId, sessionId, request.body).catch((error) => {
+      void processarEvento(app, session.orgId, sessionId, request.body).catch((error) => {
         app.log.error({ err: error, sessionId }, 'failed to process Meta event')
       })
 
@@ -129,16 +127,16 @@ export async function metaRoutes(app: FastifyInstance) {
   )
 }
 
-function verificarAssinatura(
-  corpo: Buffer,
+function verifySignature(
+  body: Buffer,
   appSecret: string,
-  assinatura: string | string[] | undefined,
+  signature: string | string[] | undefined,
 ): boolean {
-  const recebida = Array.isArray(assinatura) ? assinatura[0] : assinatura
+  const recebida = Array.isArray(signature) ? signature[0] : signature
   if (!recebida) return false
 
-  const esperada = `sha256=${createHmac('sha256', appSecret).update(corpo).digest('hex')}`
-  const a = Buffer.from(esperada)
+  const expected = `sha256=${createHmac('sha256', appSecret).update(body).digest('hex')}`
+  const a = Buffer.from(expected)
   const b = Buffer.from(recebida)
 
   if (a.length !== b.length) return false
@@ -185,32 +183,32 @@ async function processarEvento(
 ): Promise<void> {
   const envelope = payload as MetaEnvelope
 
-  for (const entrada of envelope?.entry ?? []) {
-    for (const mudanca of entrada.changes ?? []) {
-      const valor = mudanca.value
-      if (!valor) continue
+  for (const input of envelope?.entry ?? []) {
+    for (const change of input.changes ?? []) {
+      const value = change.value
+      if (!value) continue
 
-      for (const mensagem of valor.messages ?? []) {
-        if (!mensagem.id || !mensagem.from) continue
+      for (const message of value.messages ?? []) {
+        if (!message.id || !message.from) continue
 
         const conteudo =
-          mensagem.text?.body ??
-          mensagem.image?.caption ??
-          mensagem.video?.caption ??
-          mensagem.document?.filename ??
+          message.text?.body ??
+          message.image?.caption ??
+          message.video?.caption ??
+          message.document?.filename ??
           null
 
         await recordMessage(app.db, app.retention, {
           orgId,
           sessionId,
-          chatId: mensagem.from,
-          engineMessageId: mensagem.id,
+          chatId: message.from,
+          engineMessageId: message.id,
           direction: 'inbound',
-          type: traduzirTipo(mensagem.type),
+          type: traduzirTipo(message.type),
           body: conteudo,
-          fromJid: mensagem.from,
+          fromJid: message.from,
           status: 'delivered',
-          occurredAt: mensagem.timestamp ? new Date(Number(mensagem.timestamp) * 1000) : new Date(),
+          occurredAt: message.timestamp ? new Date(Number(message.timestamp) * 1000) : new Date(),
         })
 
         app.metrics.messagesReceived.inc({ session: sessionId })
@@ -221,27 +219,27 @@ async function processarEvento(
           event: 'message.received',
           data: {
             sessionId,
-            messageId: mensagem.id,
-            chatId: mensagem.from,
-            from: mensagem.from,
-            type: traduzirTipo(mensagem.type),
+            messageId: message.id,
+            chatId: message.from,
+            from: message.from,
+            type: traduzirTipo(message.type),
             body: conteudo,
             timestamp: new Date().toISOString(),
           },
         })
       }
 
-      for (const status of valor.statuses ?? []) {
+      for (const status of value.statuses ?? []) {
         if (!status.id || !status.status) continue
 
-        const mapeado = mapStatus(STATUS_META[status.status])
-        if (!mapeado) continue
+        const mapped = mapStatus(STATUS_META[status.status])
+        if (!mapped) continue
 
         const avancou = await recordStatus(app.db, {
           orgId,
           sessionId,
           engineMessageId: status.id,
-          status: mapeado,
+          status: mapped,
           occurredAt: status.timestamp ? new Date(Number(status.timestamp) * 1000) : new Date(),
         })
 
@@ -255,7 +253,7 @@ async function processarEvento(
             sessionId,
             messageId: status.id,
             chatId: status.recipient_id ?? '',
-            status: mapeado,
+            status: mapped,
             timestamp: new Date().toISOString(),
           },
         })

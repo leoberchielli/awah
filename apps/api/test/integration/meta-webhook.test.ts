@@ -22,18 +22,18 @@ describe.skipIf(!hasInfra)('webhook da Cloud API', () => {
   let org: SeededOrg
   let sessionId: string
 
-  function assinar(corpo: string): string {
-    return `sha256=${createHmac('sha256', APP_SECRET).update(corpo).digest('hex')}`
+  function assinar(body: string): string {
+    return `sha256=${createHmac('sha256', APP_SECRET).update(body).digest('hex')}`
   }
 
-  async function enviar(corpo: unknown, assinatura?: string) {
-    const payload = JSON.stringify(corpo)
+  async function send(body: unknown, signature?: string) {
+    const payload = JSON.stringify(body)
     return app.inject({
       method: 'POST',
       url: `/webhooks/meta/${sessionId}`,
       headers: {
         'content-type': 'application/json',
-        ...(assinatura ? { 'x-hub-signature-256': assinatura } : {}),
+        ...(signature ? { 'x-hub-signature-256': signature } : {}),
       },
       payload,
     })
@@ -103,21 +103,21 @@ describe.skipIf(!hasInfra)('webhook da Cloud API', () => {
 
   describe('recebimento de eventos', () => {
     it('recusa evento sem assinatura', async () => {
-      const resposta = await enviar({ entry: [] })
+      const resposta = await send({ entry: [] })
       expect(resposta.statusCode).toBe(403)
     })
 
     it('recusa assinatura de outro segredo', async () => {
-      const corpo = { entry: [] }
-      const forjada = `sha256=${createHmac('sha256', 'outro-segredo').update(JSON.stringify(corpo)).digest('hex')}`
+      const body = { entry: [] }
+      const forjada = `sha256=${createHmac('sha256', 'outro-segredo').update(JSON.stringify(body)).digest('hex')}`
 
-      const resposta = await enviar(corpo, forjada)
+      const resposta = await send(body, forjada)
       expect(resposta.statusCode).toBe(403)
     })
 
     it('persiste a mensagem recebida e responde 200', async () => {
       const messageId = `wamid.${randomUUID()}`
-      const corpo = {
+      const body = {
         entry: [
           {
             changes: [
@@ -139,12 +139,12 @@ describe.skipIf(!hasInfra)('webhook da Cloud API', () => {
         ],
       }
 
-      const resposta = await enviar(corpo, assinar(JSON.stringify(corpo)))
+      const resposta = await send(body, assinar(JSON.stringify(body)))
       expect(resposta.statusCode).toBe(200)
 
       // Processing is asynchronous on purpose: Meta does not wait for it.
-      const gravada = await aguardar(async () => {
-        const [linha] = await app.db
+      const gravada = await wait(async () => {
+        const [row] = await app.db
           .select({ body: schema.messages.body, direction: schema.messages.direction })
           .from(schema.messages)
           .where(
@@ -154,7 +154,7 @@ describe.skipIf(!hasInfra)('webhook da Cloud API', () => {
             ),
           )
           .limit(1)
-        return linha ?? null
+        return row ?? null
       })
 
       expect(gravada?.body).toBe('olá pela oficial')
@@ -186,10 +186,10 @@ describe.skipIf(!hasInfra)('webhook da Cloud API', () => {
 })
 
 /** Waits for an async condition without pinning the test to a fixed sleep. */
-async function aguardar<T>(consulta: () => Promise<T | null>, tentativas = 40): Promise<T | null> {
-  for (let i = 0; i < tentativas; i++) {
-    const resultado = await consulta()
-    if (resultado) return resultado
+async function wait<T>(consulta: () => Promise<T | null>, attempts = 40): Promise<T | null> {
+  for (let i = 0; i < attempts; i++) {
+    const result = await consulta()
+    if (result) return result
     await new Promise((resolve) => setTimeout(resolve, 50))
   }
   return null

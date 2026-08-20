@@ -12,20 +12,20 @@ const UUID_DE_EXEMPLO = '3fa85f64-5717-4562-b3fc-2c963f66afa6'
 describe.skipIf(!hasInfra)('criação de chave de API', () => {
   let app: FastifyInstance
   let org: SeededOrg
-  let sessao: string
+  let session: string
   /**
    * A user session cookie, not an API key: issuing a key is identity
    * administration, and an API key does not do that, by design.
    */
-  let sessaoDoUsuario: string
+  let viewerSession: string
 
-  const auth = () => ({ cookie: sessaoDoUsuario })
+  const auth = () => ({ cookie: viewerSession })
 
   beforeAll(async () => {
     app = await buildApp(loadEnv())
     await app.ready()
     org = await seedOrg(app.db)
-    sessao = await createSession(app.db, org.orgId)
+    session = await createSession(app.db, org.orgId)
 
     const usuario = await seedUser(app.db, org.orgId)
     const login = await app.inject({
@@ -36,7 +36,7 @@ describe.skipIf(!hasInfra)('criação de chave de API', () => {
     if (login.statusCode !== 200) {
       throw new Error(`login falhou no setup: ${login.statusCode} ${login.body}`)
     }
-    sessaoDoUsuario = login.cookies.map((c) => `${c.name}=${c.value}`).join('; ')
+    viewerSession = login.cookies.map((c) => `${c.name}=${c.value}`).join('; ')
   })
 
   afterAll(async () => {
@@ -62,11 +62,11 @@ describe.skipIf(!hasInfra)('criação de chave de API', () => {
       method: 'POST',
       url: '/v1/keys',
       headers: auth(),
-      payload: { name: 'com escopo', role: 'operator', sessionScope: [sessao] },
+      payload: { name: 'com escopo', role: 'operator', sessionScope: [session] },
     })
 
     expect(resposta.statusCode).toBe(201)
-    expect(resposta.json().key.sessionScope).toEqual([sessao])
+    expect(resposta.json().key.sessionScope).toEqual([session])
   })
 
   /**

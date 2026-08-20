@@ -39,8 +39,8 @@ describe('validação de ambiente', () => {
   })
 
   it('reclama de dependência ausente', () => {
-    const { DATABASE_URL: _omitido, ...semBanco } = valid
-    expect(() => loadEnv(semBanco)).toThrow('DATABASE_URL')
+    const { DATABASE_URL: _omitido, ...withoutDatabase } = valid
+    expect(() => loadEnv(withoutDatabase)).toThrow('DATABASE_URL')
   })
 
   /**
@@ -77,8 +77,8 @@ describe('validação de ambiente', () => {
    */
   it.each(['PUBLIC_URL', 'METRICS_TOKEN', 'DASHBOARD_DIR'] as const)(
     'trata %s vazio como não configurado',
-    (chave) => {
-      expect(loadEnv({ ...valid, [chave]: '' })[chave]).toBeUndefined()
+    (key) => {
+      expect(loadEnv({ ...valid, [key]: '' })[key]).toBeUndefined()
     },
   )
 

@@ -88,12 +88,12 @@ describe.skipIf(!hasInfra)('motor de risco', () => {
     })
 
     it('segura quando a janela do minuto enche', async () => {
-      const limites = { ...DEFAULT_LIMITS, perMinute: 3 }
+      const limits = { ...DEFAULT_LIMITS, perMinute: 3 }
       for (let i = 0; i < 3; i++) {
         await budget.record(sessionId, `c${i}@s.whatsapp.net`, false)
       }
 
-      const verdict = await budget.check(sessionId, limites, false)
+      const verdict = await budget.check(sessionId, limits, false)
       expect(verdict.exceeded).toBe('minute')
       expect(verdict.availableAt).not.toBeNull()
     })
@@ -104,27 +104,27 @@ describe.skipIf(!hasInfra)('motor de risco', () => {
      * instead of "try again later".
      */
     it('calcula a ETA a partir do envio mais antigo da janela', async () => {
-      const limites = { ...DEFAULT_LIMITS, perMinute: 2 }
+      const limits = { ...DEFAULT_LIMITS, perMinute: 2 }
       await budget.record(sessionId, 'a@s.whatsapp.net', false)
       agora += 20_000
       await budget.record(sessionId, 'b@s.whatsapp.net', false)
 
-      const verdict = await budget.check(sessionId, limites, false)
+      const verdict = await budget.check(sessionId, limits, false)
       // The first landed 20 s ago: the slot opens 40 s from now.
-      const esperado = agora + 40_000
-      expect(verdict.availableAt?.getTime()).toBe(esperado)
+      const expected = agora + 40_000
+      expect(verdict.availableAt?.getTime()).toBe(expected)
     })
 
     it('segura por contato novo sem bloquear conversa existente', async () => {
-      const limites = { ...DEFAULT_LIMITS, newContactsPerDay: 1 }
+      const limits = { ...DEFAULT_LIMITS, newContactsPerDay: 1 }
       await budget.record(sessionId, 'primeiro@s.whatsapp.net', true)
 
-      const paraNovo = await budget.check(sessionId, limites, true)
-      const paraConhecido = await budget.check(sessionId, limites, false)
+      const toNew = await budget.check(sessionId, limits, true)
+      const toKnown = await budget.check(sessionId, limits, false)
 
-      expect(paraNovo.exceeded).toBe('newContactsToday')
+      expect(toNew.exceeded).toBe('newContactsToday')
       // Anyone already in a conversation with the session keeps being served.
-      expect(paraConhecido.exceeded).toBeNull()
+      expect(toKnown.exceeded).toBeNull()
     })
   })
 

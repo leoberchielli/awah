@@ -6,7 +6,7 @@ import { useQuery } from '../hooks/useQuery'
 import { useT } from '../i18n'
 import type { Bootstrap } from '../lib/api'
 import { ApiError, post } from '../lib/api'
-import { PrimeiroAcesso } from './PrimeiroAcesso'
+import { FirstRun } from './PrimeiroAcesso'
 
 /**
  * The dashboard's front door.
@@ -16,32 +16,32 @@ import { PrimeiroAcesso } from './PrimeiroAcesso'
  * credential that sends messages on behalf of every session in the
  * organization.
  */
-export function Entrar() {
+export function SignIn() {
   const t = useT()
   const [params] = useSearchParams()
   // Whoever opens /entrar on an empty instance needs the setup screen, not login.
   const bootstrap = useQuery<Bootstrap>('/v1/auth/bootstrap')
   const [email, setEmail] = useState('')
-  const [senha, setSenha] = useState('')
-  const [erro, setErro] = useState<string | null>(null)
-  const [enviando, setEnviando] = useState(false)
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [sending, setSending] = useState(false)
 
-  async function enviar(evento: FormEvent) {
+  async function send(evento: FormEvent) {
     evento.preventDefault()
-    setEnviando(true)
-    setErro(null)
+    setSending(true)
+    setError(null)
 
     try {
-      await post('/v1/auth/login', { email, password: senha })
-      const voltar = params.get('voltar')
-      window.location.assign(voltar?.startsWith('/') ? voltar : '/operacao')
-    } catch (falha) {
-      setErro(falha instanceof ApiError ? falha.message : t('login.failed'))
-      setEnviando(false)
+      await post('/v1/auth/login', { email, password: password })
+      const goBack = params.get('voltar')
+      window.location.assign(goBack?.startsWith('/') ? goBack : '/operacao')
+    } catch (failure) {
+      setError(failure instanceof ApiError ? failure.message : t('login.failed'))
+      setSending(false)
     }
   }
 
-  if (bootstrap.data?.needsSetup) return <PrimeiroAcesso />
+  if (bootstrap.data?.needsSetup) return <FirstRun />
 
   return (
     <div className="grid min-h-dvh place-items-center bg-ground px-4">
@@ -56,36 +56,36 @@ export function Entrar() {
           <p className="text-sm text-muted">{t('app.tagline')}</p>
         </div>
 
-        <form onSubmit={enviar} className="card flex flex-col gap-4 p-5">
-          <Campo
+        <form onSubmit={send} className="card flex flex-col gap-4 p-5">
+          <Field
             id="email"
-            rotulo={t('login.email')}
+            label={t('login.email')}
             type="email"
             autoComplete="username"
             value={email}
             onChange={setEmail}
           />
-          <Campo
+          <Field
             id="senha"
-            rotulo={t('login.password')}
+            label={t('login.password')}
             type="password"
             autoComplete="current-password"
-            value={senha}
-            onChange={setSenha}
+            value={password}
+            onChange={setPassword}
           />
 
-          {erro && (
+          {error && (
             <p role="alert" className="rounded-md bg-crit/10 px-3 py-2 text-xs text-crit">
-              {erro}
+              {error}
             </p>
           )}
 
           <button
             type="submit"
-            disabled={enviando}
+            disabled={sending}
             className="rounded-md bg-accent px-3 py-2 text-sm font-medium text-on-fill transition-opacity hover:opacity-90 disabled:opacity-50"
           >
-            {enviando ? t('login.submitting') : t('login.submit')}
+            {sending ? t('login.submitting') : t('login.submit')}
           </button>
         </form>
 
@@ -95,21 +95,21 @@ export function Entrar() {
   )
 }
 
-function Campo({
+function Field({
   id,
-  rotulo,
+  label,
   value,
   onChange,
   ...resto
 }: {
   id: string
-  rotulo: string
+  label: string
   value: string
-  onChange: (valor: string) => void
+  onChange: (value: string) => void
 } & Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'value' | 'id'>) {
   return (
     <label htmlFor={id} className="flex flex-col gap-1.5">
-      <span className="eyebrow">{rotulo}</span>
+      <span className="eyebrow">{label}</span>
       <input
         id={id}
         required

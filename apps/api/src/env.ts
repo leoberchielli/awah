@@ -57,7 +57,7 @@ const envSchema = z.object({
    * API assumes `http://localhost:PORT` — right on a laptop, wrong behind any
    * proxy.
    */
-  PUBLIC_URL: opcional(z.string().url()).transform((valor) => valor?.replace(/\/+$/, '')),
+  PUBLIC_URL: opcional(z.string().url()).transform((value) => value?.replace(/\/+$/, '')),
 
   /**
    * Whether the `X-Forwarded-*` headers can be trusted.
@@ -71,13 +71,13 @@ const envSchema = z.object({
   TRUST_PROXY: z
     .union([z.boolean(), z.string()])
     .default(false)
-    .transform((valor): boolean | number | string => {
-      if (typeof valor === 'boolean') return valor
-      const texto = valor.trim()
-      if (['1', 'true', 'yes', 'on'].includes(texto.toLowerCase())) return true
-      if (['', '0', 'false', 'no', 'off'].includes(texto.toLowerCase())) return false
-      const saltos = Number(texto)
-      return Number.isInteger(saltos) && saltos > 0 ? saltos : texto
+    .transform((value): boolean | number | string => {
+      if (typeof value === 'boolean') return value
+      const text = value.trim()
+      if (['1', 'true', 'yes', 'on'].includes(text.toLowerCase())) return true
+      if (['', '0', 'false', 'no', 'off'].includes(text.toLowerCase())) return false
+      const saltos = Number(text)
+      return Number.isInteger(saltos) && saltos > 0 ? saltos : text
     }),
 
   /**
@@ -209,8 +209,8 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
         ['COOKIE_SECRET', env.COOKIE_SECRET],
       ] as const
     )
-      .filter(([, valor]) => SEGREDOS_DE_DESENVOLVIMENTO.has(valor))
-      .map(([nome]) => nome)
+      .filter(([, value]) => SEGREDOS_DE_DESENVOLVIMENTO.has(value))
+      .map(([name]) => name)
 
     if (fracos.length > 0) {
       throw new Error(

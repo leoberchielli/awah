@@ -37,7 +37,7 @@ export function ehRotaDoServidor(url: string): boolean {
  * development has `apps/web/dist`; and anyone who packages it some other way
  * points DASHBOARD_DIR at it. That is the order — explicit beats convention.
  */
-export function encontrarDashboard(dirExplicito?: string): string | null {
+export function findDashboard(dirExplicito?: string): string | null {
   const candidatos = dirExplicito
     ? [isAbsolute(dirExplicito) ? dirExplicito : resolve(process.cwd(), dirExplicito)]
     : [
@@ -68,7 +68,7 @@ export function encontrarDashboard(dirExplicito?: string): string | null {
  * needs one owner.
  */
 export const dashboardPlugin = fp(async (app: FastifyInstance) => {
-  const raiz = encontrarDashboard(app.env.DASHBOARD_DIR)
+  const raiz = findDashboard(app.env.DASHBOARD_DIR)
 
   if (!raiz) {
     app.decorate('spaIndex', null)

@@ -135,14 +135,14 @@ export class SessionRepository extends TenantRepository {
       .where(and(eq(schema.sessions.id, id), eq(schema.sessions.orgId, this.orgId)))
       .limit(1)
 
-    const atual =
+    const current =
       typeof session?.config === 'object' && session.config !== null
         ? (session.config as Record<string, unknown>)
         : {}
 
     await this.db
       .update(schema.sessions)
-      .set({ config: { ...atual, ...patch }, updatedAt: new Date() })
+      .set({ config: { ...current, ...patch }, updatedAt: new Date() })
       .where(and(eq(schema.sessions.id, id), eq(schema.sessions.orgId, this.orgId)))
   }
 

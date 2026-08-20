@@ -1,5 +1,5 @@
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from 'react'
-import { usarIdioma } from '../lib/format'
+import { setFormatLocale } from '../lib/format'
 import { type Catalog, en, type TranslationKey } from './locales/en'
 import { detectLocale, FALLBACK, findLocale, LOCALES } from './registry'
 
@@ -17,7 +17,7 @@ interface I18nState {
   setLocale: (code: string) => void
 }
 
-const Context = createContext<I18nState | null>(null)
+const I18nContext = createContext<I18nState | null>(null)
 
 /**
  * Replaces `{name}` with the given values.
@@ -50,7 +50,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     document.documentElement.dir = target.dir
     // Numbers, dates and durations do not go through the catalog: `Intl` is
     // what localises them, and it needs to know what language the panel is in.
-    usarIdioma(target.code)
+    setFormatLocale(target.code)
 
     if (target.code === FALLBACK) {
       setCatalog(en)
@@ -84,11 +84,11 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     setLocaleState(code)
   }, [])
 
-  return <Context.Provider value={{ locale, t, setLocale }}>{children}</Context.Provider>
+  return <I18nContext.Provider value={{ locale, t, setLocale }}>{children}</I18nContext.Provider>
 }
 
 export function useI18n(): I18nState {
-  const state = useContext(Context)
+  const state = useContext(I18nContext)
   if (!state) throw new Error('useI18n used outside I18nProvider')
   return state
 }

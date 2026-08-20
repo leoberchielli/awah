@@ -3,31 +3,31 @@ import { NavLink, useLocation, useSearchParams } from 'react-router-dom'
 import { useTheme } from '../hooks/useTheme'
 import { type TranslationKey, useT } from '../i18n'
 import { post } from '../lib/api'
-import { janela } from '../lib/format'
-import { papelAoMenos, useMe } from '../lib/sessao'
+import { windowLabel } from '../lib/format'
+import { roleAtLeast, useMe } from '../lib/sessao'
 import {
-  IconeChave,
-  IconeLigacao,
   IconeLua,
   IconeMonitor,
   IconeNegocio,
   IconePessoas,
   IconePulso,
-  IconeSair,
-  IconeSessao,
   IconeSol,
+  KeyIcon,
+  PlugIcon,
+  SessionIcon,
+  SignOutIcon,
 } from './icons'
 import { LanguagePicker } from './LanguagePicker'
 import { cx } from './ui'
 
 /** The windows on offer. More than this is a menu; fewer is a limitation. */
-export const JANELAS = [
-  { horas: 1, valor: 1, unidade: 'hour' },
-  { horas: 6, valor: 6, unidade: 'hour' },
-  { horas: 24, valor: 24, unidade: 'hour' },
-  { horas: 168, valor: 7, unidade: 'day' },
-  { horas: 720, valor: 30, unidade: 'day' },
-] as const satisfies ReadonlyArray<{ horas: number; valor: number; unidade: 'hour' | 'day' }>
+export const WINDOWS = [
+  { hours: 1, value: 1, unit: 'hour' },
+  { hours: 6, value: 6, unit: 'hour' },
+  { hours: 24, value: 24, unit: 'hour' },
+  { hours: 168, value: 7, unit: 'day' },
+  { hours: 720, value: 30, unit: 'day' },
+] as const satisfies ReadonlyArray<{ hours: number; value: number; unit: 'hour' | 'day' }>
 
 /**
  * The window and the session filter live in the URL.
@@ -37,46 +37,46 @@ export const JANELAS = [
  * would turn every conversation about an incident into "click 7 days, then
  * filter by...".
  */
-export function useFiltro() {
+export function useFilter() {
   const [params, setParams] = useSearchParams()
   const bruto = Number(params.get('horas') ?? 24)
-  const horas = JANELAS.some((j) => j.horas === bruto) ? bruto : 24
-  const sessao = params.get('sessao')
+  const hours = WINDOWS.some((j) => j.hours === bruto) ? bruto : 24
+  const session = params.get('sessao')
 
   return {
-    horas,
-    sessao,
-    definirHoras: (valor: number) => {
-      const proximo = new URLSearchParams(params)
-      proximo.set('horas', String(valor))
-      setParams(proximo, { replace: true })
+    hours: hours,
+    session: session,
+    setHours: (value: number) => {
+      const next = new URLSearchParams(params)
+      next.set('horas', String(value))
+      setParams(next, { replace: true })
     },
-    definirSessao: (valor: string | null) => {
-      const proximo = new URLSearchParams(params)
-      if (valor) proximo.set('sessao', valor)
-      else proximo.delete('sessao')
-      setParams(proximo, { replace: true })
+    setSession: (value: string | null) => {
+      const next = new URLSearchParams(params)
+      if (value) next.set('sessao', value)
+      else next.delete('sessao')
+      setParams(next, { replace: true })
     },
     /** Suffix ready to append to the endpoint URL. */
-    query: `hours=${horas}${sessao ? `&sessionId=${sessao}` : ''}`,
+    query: `hours=${hours}${session ? `&sessionId=${session}` : ''}`,
   }
 }
 
 interface Aba {
-  para: string
-  chave: TranslationKey
+  to: string
+  key: TranslationKey
   Icone: (props: { width?: number; height?: number }) => ReactNode
   /** Minimum role for the tab to exist. Absent, it applies to everyone. */
-  minimo?: 'admin'
+  floor?: 'admin'
 }
 
 const ABAS: Aba[] = [
-  { para: '/operations', chave: 'nav.operation', Icone: IconePulso },
-  { para: '/business', chave: 'nav.business', Icone: IconeNegocio },
-  { para: '/sessions', chave: 'nav.sessions', Icone: IconeSessao },
-  { para: '/integrations', chave: 'nav.integrations', Icone: IconeLigacao },
-  { para: '/keys', chave: 'nav.keys', Icone: IconeChave, minimo: 'admin' },
-  { para: '/users', chave: 'nav.users', Icone: IconePessoas },
+  { to: '/operations', key: 'nav.operation', Icone: IconePulso },
+  { to: '/business', key: 'nav.business', Icone: IconeNegocio },
+  { to: '/sessions', key: 'nav.sessions', Icone: SessionIcon },
+  { to: '/integrations', key: 'nav.integrations', Icone: PlugIcon },
+  { to: '/keys', key: 'nav.keys', Icone: KeyIcon, floor: 'admin' },
+  { to: '/users', key: 'nav.users', Icone: IconePessoas },
 ]
 
 /**
@@ -88,7 +88,7 @@ const ABAS: Aba[] = [
  */
 function useAbas() {
   const me = useMe()
-  return ABAS.filter((aba) => !aba.minimo || papelAoMenos(me.role, aba.minimo))
+  return ABAS.filter((aba) => !aba.floor || roleAtLeast(me.role, aba.floor))
 }
 
 export function Shell({ children, acoes }: { children: ReactNode; acoes?: ReactNode }) {
@@ -131,16 +131,16 @@ function CabecalhoMovel() {
           }}
           className="flex items-center gap-1.5 text-xs text-muted"
         >
-          <IconeSair width={14} height={14} />
+          <SignOutIcon width={14} height={14} />
           {t('common.signOut')}
         </button>
       </div>
 
       <nav aria-label={t('common.sections')} className="flex gap-1 overflow-x-auto">
-        {abas.map(({ para, chave, Icone }) => (
+        {abas.map(({ to, key, Icone }) => (
           <NavLink
-            key={para}
-            to={{ pathname: para, search }}
+            key={to}
+            to={{ pathname: to, search }}
             className={({ isActive }) =>
               cx(
                 'flex shrink-0 items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors',
@@ -151,7 +151,7 @@ function CabecalhoMovel() {
             }
           >
             <Icone width={15} height={15} />
-            {t(chave)}
+            {t(key)}
           </NavLink>
         ))}
       </nav>
@@ -173,10 +173,10 @@ function Rail() {
         <Marca />
       </div>
 
-      {abas.map(({ para, chave, Icone }) => (
+      {abas.map(({ to, key, Icone }) => (
         <NavLink
-          key={para}
-          to={{ pathname: para, search }}
+          key={to}
+          to={{ pathname: to, search }}
           className={({ isActive }) =>
             cx(
               'flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors',
@@ -187,7 +187,7 @@ function Rail() {
           }
         >
           <Icone />
-          {t(chave)}
+          {t(key)}
         </NavLink>
       ))}
 
@@ -203,7 +203,7 @@ function Rail() {
           }}
           className="flex items-center gap-2 py-1.5 text-xs text-muted hover:text-ink"
         >
-          <IconeSair width={14} height={14} />
+          <SignOutIcon width={14} height={14} />
           {t('common.signOut')}
         </button>
       </div>
@@ -226,7 +226,7 @@ export function Marca() {
 }
 
 function TopBar({ acoes }: { acoes?: ReactNode }) {
-  const { horas, definirHoras } = useFiltro()
+  const { hours, setHours } = useFilter()
   const t = useT()
 
   /*
@@ -244,20 +244,20 @@ function TopBar({ acoes }: { acoes?: ReactNode }) {
           aria-label={t('common.timeWindow')}
           className="flex overflow-hidden rounded-lg border border-line/70 bg-surface/60 backdrop-blur-sm"
         >
-          {JANELAS.map((opcao) => (
+          {WINDOWS.map((opcao) => (
             <button
-              key={opcao.horas}
+              key={opcao.hours}
               type="button"
-              onClick={() => definirHoras(opcao.horas)}
-              aria-pressed={horas === opcao.horas}
+              onClick={() => setHours(opcao.hours)}
+              aria-pressed={hours === opcao.hours}
               className={cx(
                 'px-2.5 py-1.5 font-mono text-xs transition-colors',
-                horas === opcao.horas
+                hours === opcao.hours
                   ? 'bg-accent-soft font-medium text-accent'
                   : 'text-muted hover:text-ink',
               )}
             >
-              {janela(opcao.valor, opcao.unidade)}
+              {windowLabel(opcao.value, opcao.unit)}
             </button>
           ))}
         </div>
@@ -266,20 +266,20 @@ function TopBar({ acoes }: { acoes?: ReactNode }) {
 
       <div className="flex items-center gap-2">
         <LanguagePicker />
-        <AlternadorDeTema />
+        <ThemeToggle />
       </div>
     </div>
   )
 }
 
-function AlternadorDeTema() {
-  const [tema, setTema] = useTheme()
+function ThemeToggle() {
+  const [theme, setTheme] = useTheme()
   const t = useT()
 
-  const opcoes = [
-    { valor: 'light' as const, Icone: IconeSol, chave: 'common.themeLight' as const },
-    { valor: 'system' as const, Icone: IconeMonitor, chave: 'common.themeSystem' as const },
-    { valor: 'dark' as const, Icone: IconeLua, chave: 'common.themeDark' as const },
+  const options = [
+    { value: 'light' as const, Icone: IconeSol, key: 'common.themeLight' as const },
+    { value: 'system' as const, Icone: IconeMonitor, key: 'common.themeSystem' as const },
+    { value: 'dark' as const, Icone: IconeLua, key: 'common.themeDark' as const },
   ]
 
   return (
@@ -289,17 +289,17 @@ function AlternadorDeTema() {
       aria-label={t('common.theme')}
       className="flex overflow-hidden rounded-lg border border-line/70 bg-surface/60 backdrop-blur-sm"
     >
-      {opcoes.map(({ valor, Icone, chave }) => (
+      {options.map(({ value, Icone, key }) => (
         <button
-          key={valor}
+          key={value}
           type="button"
-          title={t(chave)}
-          aria-label={t(chave)}
-          aria-pressed={tema === valor}
-          onClick={() => setTema(valor)}
+          title={t(key)}
+          aria-label={t(key)}
+          aria-pressed={theme === value}
+          onClick={() => setTheme(value)}
           className={cx(
             'px-2 py-1.5 transition-colors',
-            tema === valor ? 'bg-accent-soft text-accent' : 'text-muted hover:text-ink',
+            theme === value ? 'bg-accent-soft text-accent' : 'text-muted hover:text-ink',
           )}
         >
           <Icone width={15} height={15} />
@@ -310,20 +310,20 @@ function AlternadorDeTema() {
 }
 
 /** Session picker, mounted by the screens that already have the list loaded. */
-export function FiltroDeSessao({ sessoes }: { sessoes: Array<{ id: string; name: string }> }) {
-  const { sessao, definirSessao } = useFiltro()
+export function SessionFilter({ sessions }: { sessions: Array<{ id: string; name: string }> }) {
+  const { session, setSession } = useFilter()
   const t = useT()
 
   return (
     <label className="flex items-center gap-2 text-xs text-muted">
       <span className="sr-only">{t('common.filterBySession')}</span>
       <select
-        value={sessao ?? ''}
-        onChange={(evento) => definirSessao(evento.target.value || null)}
+        value={session ?? ''}
+        onChange={(evento) => setSession(evento.target.value || null)}
         className="rounded-lg border border-line/70 bg-surface/60 px-2 py-[7px] text-xs text-ink backdrop-blur-sm"
       >
         <option value="">{t('common.allSessions')}</option>
-        {sessoes.map((s) => (
+        {sessions.map((s) => (
           <option key={s.id} value={s.id}>
             {s.name}
           </option>

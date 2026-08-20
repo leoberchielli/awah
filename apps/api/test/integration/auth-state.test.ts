@@ -41,13 +41,13 @@ describe.skipIf(!hasInfra)('auth state no Postgres', () => {
    * the first `creds.update` — leaving a ghost device on their phone.
    */
   it('deixa de ser nova depois de persistida', async () => {
-    const outraSessao = await createSession(db, org.orgId)
-    const primeira = await usePostgresAuthState({ db, sessionId: outraSessao, encryptionKey })
-    expect(primeira.isNew).toBe(true)
+    const otherSession = await createSession(db, org.orgId)
+    const first = await usePostgresAuthState({ db, sessionId: otherSession, encryptionKey })
+    expect(first.isNew).toBe(true)
 
-    await primeira.saveCreds()
+    await first.saveCreds()
 
-    const segunda = await usePostgresAuthState({ db, sessionId: outraSessao, encryptionKey })
+    const segunda = await usePostgresAuthState({ db, sessionId: otherSession, encryptionKey })
     expect(segunda.isNew).toBe(false)
   })
 
@@ -171,10 +171,8 @@ describe.skipIf(!hasInfra)('auth state no Postgres', () => {
     const auth = await usePostgresAuthState({ db, sessionId, encryptionKey })
     await auth.saveCreds()
 
-    const outraChave = Buffer.alloc(32, 7)
-    await expect(
-      usePostgresAuthState({ db, sessionId, encryptionKey: outraChave }),
-    ).rejects.toThrow()
+    const otherKey = Buffer.alloc(32, 7)
+    await expect(usePostgresAuthState({ db, sessionId, encryptionKey: otherKey })).rejects.toThrow()
   })
 })
 

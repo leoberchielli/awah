@@ -124,7 +124,7 @@ export class BudgetTracker {
     const agora = this.now()
 
     // The oldest entry still inside the window; when it leaves, a slot opens.
-    const maisAntigo = await this.redis.zrangebyscore(
+    const oldest = await this.redis.zrangebyscore(
       key,
       agora - windowMs,
       '+inf',
@@ -134,7 +134,7 @@ export class BudgetTracker {
       1,
     )
 
-    const score = maisAntigo[1]
+    const score = oldest[1]
     if (!score) return new Date(agora + 1000)
 
     const expira = Number(score) + windowMs
@@ -154,10 +154,10 @@ export class BudgetTracker {
     pipeline.expire(sent, KEY_TTL_SECONDS)
 
     if (isNewContact) {
-      const novos = this.newContactsKey(sessionId)
-      pipeline.zadd(novos, agora, chatId)
-      pipeline.zremrangebyscore(novos, '-inf', agora - DAY)
-      pipeline.expire(novos, KEY_TTL_SECONDS)
+      const fresh = this.newContactsKey(sessionId)
+      pipeline.zadd(fresh, agora, chatId)
+      pipeline.zremrangebyscore(fresh, '-inf', agora - DAY)
+      pipeline.expire(fresh, KEY_TTL_SECONDS)
     }
 
     pipeline.sadd(this.contactsKey(sessionId), chatId)

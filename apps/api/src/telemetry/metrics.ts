@@ -133,21 +133,21 @@ export class AwahMetrics {
   async collect(db: Database, ownedSessions: number): Promise<void> {
     this.sessionsOwned.set(ownedSessions)
 
-    const sessoes = await db.execute(sql`
+    const sessions = await db.execute(sql`
       SELECT status, count(*)::int AS total FROM sessions GROUP BY status
     `)
     this.sessionsByStatus.reset()
-    for (const row of sessoes) {
+    for (const row of sessions) {
       const r = row as Record<string, unknown>
       this.sessionsByStatus.set({ status: String(r.status) }, Number(r.total))
     }
 
-    const fila = await db.execute(sql`
+    const queue = await db.execute(sql`
       SELECT status, count(*)::int AS total FROM outbox_messages
       WHERE status IN ('queued', 'sending', 'dead') GROUP BY status
     `)
     this.outboxDepth.reset()
-    for (const row of fila) {
+    for (const row of queue) {
       const r = row as Record<string, unknown>
       this.outboxDepth.set({ status: String(r.status) }, Number(r.total))
     }

@@ -56,9 +56,9 @@ describe.skipIf(!hasInfra)('fluxo do Typebot', () => {
     })
   }
 
-  async function receber(body: string, fetchImpl?: typeof fetch) {
+  async function receive(body: string, fetchImpl?: typeof fetch) {
     const engineMessageId = `wamid.${randomUUID()}`
-    await dispatcher(fetchImpl).aoReceber({
+    await dispatcher(fetchImpl).onReceive({
       orgId: org.orgId,
       sessionId,
       chatId: CHAT_ID,
@@ -70,7 +70,7 @@ describe.skipIf(!hasInfra)('fluxo do Typebot', () => {
     return engineMessageId
   }
 
-  async function fila() {
+  async function queue() {
     return app.db
       .select({
         clientMessageId: schema.outboxMessages.clientMessageId,
@@ -86,14 +86,14 @@ describe.skipIf(!hasInfra)('fluxo do Typebot', () => {
     encryptionKey = Buffer.from(app.env.ENCRYPTION_KEY, 'base64')
     org = await seedOrg(app.db)
 
-    const [linha] = await app.db
+    const [row] = await app.db
       .insert(schema.sessions)
       .values({ orgId: org.orgId, name: `fluxo-${randomUUID().slice(0, 8)}`, engine: 'baileys' })
       .returning({ id: schema.sessions.id })
-    if (!linha) throw new Error('falha ao criar sessão')
-    sessionId = linha.id
+    if (!row) throw new Error('falha ao criar sessão')
+    sessionId = row.id
 
-    const integracao = await saveIntegration(app.db, encryptionKey, {
+    const integration = await saveIntegration(app.db, encryptionKey, {
       orgId: org.orgId,
       sessionId,
       kind: 'typebot',
@@ -102,7 +102,7 @@ describe.skipIf(!hasInfra)('fluxo do Typebot', () => {
         typebotId: 'meu-fluxo',
       }),
     })
-    integrationId = integracao.id
+    integrationId = integration.id
   })
 
   beforeEach(() => {
@@ -115,14 +115,14 @@ describe.skipIf(!hasInfra)('fluxo do Typebot', () => {
   })
 
   it('inicia o fluxo na primeira mensagem e continua na segunda', async () => {
-    await receber('oi')
+    await receive('oi')
     expect(caminhos[0]).toContain('/startChat')
 
     const vinculo = await findLink(app.db, integrationId, CHAT_ID)
     expect(vinculo?.externalConversationId).toBe('sess-do-fluxo')
 
     caminhos = []
-    await receber('quero saber o preço')
+    await receive('quero saber o preço')
 
     /**
      * Restarting the flow on every message would erase everything the customer
@@ -132,9 +132,9 @@ describe.skipIf(!hasInfra)('fluxo do Typebot', () => {
   })
 
   it('a resposta do fluxo entra pela mesma fila de qualquer envio', async () => {
-    const id = await receber('oi de novo')
+    const id = await receive('oi de novo')
 
-    const enfileirada = (await fila()).find((l) => l.clientMessageId.includes(id))
+    const enfileirada = (await queue()).find((l) => l.clientMessageId.includes(id))
     expect((enfileirada?.payload as { text?: string })?.text).toBe('Oi! Sou o robô.')
   })
 
@@ -155,19 +155,19 @@ describe.skipIf(!hasInfra)('fluxo do Typebot', () => {
       occurredAt: new Date(),
     }
 
-    await dispatcher().aoReceber(evento)
-    await dispatcher().aoReceber(evento)
+    await dispatcher().onReceive(evento)
+    await dispatcher().onReceive(evento)
 
-    const iguais = (await fila()).filter((l) => l.clientMessageId.includes(engineMessageId))
+    const iguais = (await queue()).filter((l) => l.clientMessageId.includes(engineMessageId))
     expect(iguais).toHaveLength(1)
   })
 
   describe('escape para atendimento humano', () => {
     it('encerra a sessão de fluxo sem chamar o Typebot', async () => {
-      await receber('oi')
+      await receive('oi')
       caminhos = []
 
-      await receber('agent')
+      await receive('agent')
 
       // Sending it on to the flow would produce one more automated reply for
       // the very person who asked to stop getting them.
@@ -176,9 +176,9 @@ describe.skipIf(!hasInfra)('fluxo do Typebot', () => {
     })
 
     it('reconhece a palavra em qualquer caixa e avisa o cliente', async () => {
-      const id = await receber('AGENT')
+      const id = await receive('AGENT')
 
-      const aviso = (await fila()).find((l) => l.clientMessageId.includes(id))
+      const aviso = (await queue()).find((l) => l.clientMessageId.includes(id))
       expect((aviso?.payload as { text?: string })?.text).toMatch(/team/i)
     })
   })
@@ -189,7 +189,7 @@ describe.skipIf(!hasInfra)('fluxo do Typebot', () => {
       messages: [{ type: 'text', content: { richText: [{ children: [{ text: 'Até mais!' }] }] } }],
     })
 
-    await receber('quero encerrar', encerrado)
+    await receive('quero encerrar', encerrado)
 
     /**
      * With no `input`, Typebot has said the flow is over. The link is born
@@ -200,15 +200,15 @@ describe.skipIf(!hasInfra)('fluxo do Typebot', () => {
   })
 
   it('sessão morta do outro lado recomeça em vez de calar o contato', async () => {
-    await receber('oi')
+    await receive('oi')
 
-    let chamada = 0
+    let call = 0
     const expirando = vi.fn(async (url: string | URL) => {
       caminhos.push(String(url))
-      chamada++
+      call++
 
       // continueChat answers 404: the session died over in Typebot.
-      if (chamada === 1) {
+      if (call === 1) {
         return new Response(JSON.stringify({ message: 'session not found' }), { status: 404 })
       }
 
@@ -225,12 +225,12 @@ describe.skipIf(!hasInfra)('fluxo do Typebot', () => {
     }) as unknown as typeof fetch
 
     caminhos = []
-    const id = await receber('e agora?', expirando)
+    const id = await receive('e agora?', expirando)
 
     expect(caminhos[0]).toContain('/continueChat')
     expect(caminhos[1]).toContain('/startChat')
 
-    const resposta = (await fila()).find((l) => l.clientMessageId.includes(id))
+    const resposta = (await queue()).find((l) => l.clientMessageId.includes(id))
     expect((resposta?.payload as { text?: string })?.text).toBe('Recomeçando')
   })
 })

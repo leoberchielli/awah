@@ -53,7 +53,7 @@ export function Stat({
   hint?: string
   tone?: 'neutral' | 'ok' | 'warn' | 'crit'
 }) {
-  const cor = {
+  const color = {
     neutral: 'text-ink',
     ok: 'text-ok',
     warn: 'text-warn',
@@ -63,7 +63,9 @@ export function Stat({
   return (
     <div className="flex flex-col gap-1">
       <span className="eyebrow">{label}</span>
-      <span className={cx('stat-glow font-mono text-[26px] leading-none font-semibold tnum', cor)}>
+      <span
+        className={cx('stat-glow font-mono text-[26px] leading-none font-semibold tnum', color)}
+      >
         {value}
         {unit && <span className="ml-1 text-sm text-muted">{unit}</span>}
       </span>

@@ -5,7 +5,7 @@ import { I18nProvider } from './i18n'
 import './styles.css'
 
 const raiz = document.getElementById('root')
-if (!raiz) throw new Error('elemento #root não encontrado')
+if (!raiz) throw new Error('#root element not found')
 
 createRoot(raiz).render(
   <StrictMode>

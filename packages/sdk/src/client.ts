@@ -4,11 +4,11 @@ import type {
   Engine,
   EngineInfo,
   EnqueuedMessage,
-  JanelaKpi,
   KpiBusiness,
   KpiDelivery,
   KpiRisk,
   KpiSessions,
+  KpiWindow,
   OutboxMessage,
   OutboxStatus,
   RiskSnapshot,
@@ -17,7 +17,7 @@ import type {
   WebhookEndpoint,
 } from './types'
 
-export interface EnviarTexto {
+export interface SendText {
   chatId: string
   text: string
   /**
@@ -118,13 +118,13 @@ class MessagesResource {
    * Answers **202**: the message was persisted, not delivered. The real state
    * lives in `outbox.get()` and in the webhooks.
    */
-  sendText(sessionId: string, input: EnviarTexto): Promise<EnqueuedMessage> {
+  sendText(sessionId: string, input: SendText): Promise<EnqueuedMessage> {
     const { bypassRisk, clientMessageId, ...resto } = input
 
     return this.http.request({
       method: 'POST',
       path: `/v1/sessions/${sessionId}/messages`,
-      body: { ...resto, clientMessageId: clientMessageId ?? novaChave() },
+      body: { ...resto, clientMessageId: clientMessageId ?? newKey() },
       // Safe to repeat precisely because the body carries an idempotency key.
       idempotente: true,
       headers: bypassRisk ? { 'x-awah-bypass-risk': 'true' } : undefined,
@@ -241,20 +241,20 @@ class RiskResource {
 class KpiResource {
   constructor(private readonly http: HttpClient) {}
 
-  sessions(janela?: JanelaKpi): Promise<KpiSessions> {
-    return this.http.request({ method: 'GET', path: '/v1/kpi/sessions', query: { ...janela } })
+  sessions(windowLabel?: KpiWindow): Promise<KpiSessions> {
+    return this.http.request({ method: 'GET', path: '/v1/kpi/sessions', query: { ...windowLabel } })
   }
 
-  delivery(janela?: JanelaKpi): Promise<KpiDelivery> {
-    return this.http.request({ method: 'GET', path: '/v1/kpi/delivery', query: { ...janela } })
+  delivery(windowLabel?: KpiWindow): Promise<KpiDelivery> {
+    return this.http.request({ method: 'GET', path: '/v1/kpi/delivery', query: { ...windowLabel } })
   }
 
-  risk(janela?: JanelaKpi): Promise<KpiRisk> {
-    return this.http.request({ method: 'GET', path: '/v1/kpi/risk', query: { ...janela } })
+  risk(windowLabel?: KpiWindow): Promise<KpiRisk> {
+    return this.http.request({ method: 'GET', path: '/v1/kpi/risk', query: { ...windowLabel } })
   }
 
-  business(janela?: JanelaKpi): Promise<KpiBusiness> {
-    return this.http.request({ method: 'GET', path: '/v1/kpi/business', query: { ...janela } })
+  business(windowLabel?: KpiWindow): Promise<KpiBusiness> {
+    return this.http.request({ method: 'GET', path: '/v1/kpi/business', query: { ...windowLabel } })
   }
 }
 
@@ -312,7 +312,7 @@ export class Awah {
   }
 }
 
-function novaChave(): string {
+function newKey(): string {
   if (typeof globalThis.crypto?.randomUUID === 'function') return globalThis.crypto.randomUUID()
 
   // Old runtime with no WebCrypto: entropy enough for one send key.

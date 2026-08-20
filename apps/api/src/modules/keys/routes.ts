@@ -103,7 +103,7 @@ export async function apiKeyRoutes(app: FastifyInstance) {
         }
 
         const existentes = await new SessionRepository(app.db, auth.orgId).list(sessionScope)
-        const conhecidas = new Set(existentes.map((sessao) => sessao.id))
+        const conhecidas = new Set(existentes.map((session) => session.id))
         const ausentes = sessionScope.filter((id) => !conhecidas.has(id))
 
         if (ausentes.length > 0) {

@@ -87,7 +87,7 @@ export const workersPlugin = fp(
          * is down; the dispatcher swallows its own failures precisely so that one
          * of them cannot bring down the rest of the handling.
          */
-        await app.integrations.aoReceber({
+        await app.integrations.onReceive({
           orgId: context.orgId,
           sessionId: context.sessionId,
           chatId: event.chatId,

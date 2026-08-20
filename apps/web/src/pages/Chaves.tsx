@@ -4,34 +4,34 @@ import { Card, Empty, Pill, Skeleton, type Tone } from '../components/ui'
 import { useQuery } from '../hooks/useQuery'
 import { type TranslationKey, useT } from '../i18n'
 import type { SessionRow } from '../lib/api'
-import { ApiError, type ApiKeyCreated, type ApiKeyRow, del, type Papel, post } from '../lib/api'
-import { dataHora, desde } from '../lib/format'
-import { papelAoMenos, useMe } from '../lib/sessao'
+import { ApiError, type ApiKeyCreated, type ApiKeyRow, del, post, type Role } from '../lib/api'
+import { dateTime, since } from '../lib/format'
+import { roleAtLeast, useMe } from '../lib/sessao'
 import { statusLabel } from '../lib/sessionStatus'
 
-const PAPEIS: Array<{ valor: Papel; rotulo: TranslationKey; resumo: TranslationKey }> = [
-  { valor: 'viewer', rotulo: 'keys.role.viewer', resumo: 'keys.role.viewerSummary' },
-  { valor: 'operator', rotulo: 'keys.role.operator', resumo: 'keys.role.operatorSummary' },
-  { valor: 'admin', rotulo: 'keys.role.admin', resumo: 'keys.role.adminSummary' },
-  { valor: 'owner', rotulo: 'keys.role.owner', resumo: 'keys.role.ownerSummary' },
+const PAPEIS: Array<{ value: Role; label: TranslationKey; resumo: TranslationKey }> = [
+  { value: 'viewer', label: 'keys.role.viewer', resumo: 'keys.role.viewerSummary' },
+  { value: 'operator', label: 'keys.role.operator', resumo: 'keys.role.operatorSummary' },
+  { value: 'admin', label: 'keys.role.admin', resumo: 'keys.role.adminSummary' },
+  { value: 'owner', label: 'keys.role.owner', resumo: 'keys.role.ownerSummary' },
 ]
 
-const VALIDADES: Array<{ valor: string; chave: TranslationKey; n?: number }> = [
-  { valor: '', chave: 'keys.expiry.never' },
-  { valor: '30', chave: 'keys.expiry.days', n: 30 },
-  { valor: '90', chave: 'keys.expiry.days', n: 90 },
-  { valor: '365', chave: 'keys.expiry.year' },
+const VALIDADES: Array<{ value: string; key: TranslationKey; n?: number }> = [
+  { value: '', key: 'keys.expiry.never' },
+  { value: '30', key: 'keys.expiry.days', n: 30 },
+  { value: '90', key: 'keys.expiry.days', n: 90 },
+  { value: '365', key: 'keys.expiry.year' },
 ]
 
-export function Chaves() {
+export function Keys() {
   const t = useT()
   const me = useMe()
-  const podeAdministrar = papelAoMenos(me.role, 'admin')
+  const canAdminister = roleAtLeast(me.role, 'admin')
 
-  const chaves = useQuery<{ keys: ApiKeyRow[] }>(podeAdministrar ? '/v1/keys' : null)
-  const sessoes = useQuery<{ sessions: SessionRow[] }>(podeAdministrar ? '/v1/sessions' : null)
+  const keys = useQuery<{ keys: ApiKeyRow[] }>(canAdminister ? '/v1/keys' : null)
+  const sessions = useQuery<{ sessions: SessionRow[] }>(canAdminister ? '/v1/sessions' : null)
 
-  if (!podeAdministrar) {
+  if (!canAdminister) {
     return (
       <Shell>
         <Card title={t('nav.keys')}>
@@ -45,24 +45,24 @@ export function Chaves() {
     <Shell>
       <div className="flex flex-col gap-4">
         <Emissor
-          sessoes={sessoes.data?.sessions ?? []}
-          papelDoUsuario={me.role}
-          aoEmitir={chaves.refetch}
+          sessions={sessions.data?.sessions ?? []}
+          viewerRole={me.role}
+          aoEmitir={keys.refetch}
         />
 
         <Card title={t('keys.list.title')} hint={t('keys.list.hint')}>
-          {!chaves.settled ? (
+          {!keys.settled ? (
             <Skeleton className="h-24" />
-          ) : (chaves.data?.keys.length ?? 0) === 0 ? (
+          ) : (keys.data?.keys.length ?? 0) === 0 ? (
             <Empty>{t('keys.list.empty')}</Empty>
           ) : (
             <ul className="flex flex-col">
-              {chaves.data?.keys.map((chave) => (
-                <LinhaDeChave
-                  key={chave.id}
-                  chave={chave}
-                  sessoes={sessoes.data?.sessions ?? []}
-                  aoRevogar={chaves.refetch}
+              {keys.data?.keys.map((apiKey) => (
+                <KeyRow
+                  key={apiKey.id}
+                  apiKey={apiKey}
+                  sessions={sessions.data?.sessions ?? []}
+                  aoRevogar={keys.refetch}
                 />
               ))}
             </ul>
@@ -74,62 +74,64 @@ export function Chaves() {
 }
 
 function Emissor({
-  sessoes,
-  papelDoUsuario,
+  sessions,
+  viewerRole,
   aoEmitir,
 }: {
-  sessoes: SessionRow[]
-  papelDoUsuario: Papel
+  sessions: SessionRow[]
+  viewerRole: Role
   aoEmitir: () => void
 }) {
   const t = useT()
-  const [nome, setNome] = useState('')
-  const [papel, setPapel] = useState<Papel>('operator')
-  const [limitarSessoes, setLimitarSessoes] = useState(false)
+  const [name, setName] = useState('')
+  const [role, setRole] = useState<Role>('operator')
+  const [limitToSessions, setLimitToSessions] = useState(false)
   const [escolhidas, setEscolhidas] = useState<string[]>([])
   const [validade, setValidade] = useState('')
-  const [ocupado, setOcupado] = useState(false)
-  const [erro, setErro] = useState<string | null>(null)
-  const [emitida, setEmitida] = useState<ApiKeyCreated | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [emitida, setIssued] = useState<ApiKeyCreated | null>(null)
 
   /** Nobody issues a key more powerful than their own role — the server refuses. */
-  const disponiveis = PAPEIS.filter((p) => papelAoMenos(papelDoUsuario, p.valor))
-  const escopoVazio = limitarSessoes && escolhidas.length === 0
+  const disponiveis = PAPEIS.filter((p) => roleAtLeast(viewerRole, p.value))
+  const emptyScope = limitToSessions && escolhidas.length === 0
 
   function alternar(id: string) {
-    setEscolhidas((atual) => (atual.includes(id) ? atual.filter((x) => x !== id) : [...atual, id]))
+    setEscolhidas((current) =>
+      current.includes(id) ? current.filter((x) => x !== id) : [...current, id],
+    )
   }
 
   async function emitir(evento: FormEvent) {
     evento.preventDefault()
-    setOcupado(true)
-    setErro(null)
+    setBusy(true)
+    setError(null)
 
     try {
       const resposta = await post<ApiKeyCreated>('/v1/keys', {
-        name: nome.trim(),
-        role: papel,
+        name: name.trim(),
+        role: role,
         // Left out on purpose when the key covers the whole organization: an
         // empty list would mean "reaches nothing", which is a different thing.
-        ...(limitarSessoes ? { sessionScope: escolhidas } : {}),
+        ...(limitToSessions ? { sessionScope: escolhidas } : {}),
         ...(validade ? { expiresInDays: Number(validade) } : {}),
       })
 
-      setEmitida(resposta)
-      setNome('')
+      setIssued(resposta)
+      setName('')
       setEscolhidas([])
-      setLimitarSessoes(false)
+      setLimitToSessions(false)
       setValidade('')
       aoEmitir()
-    } catch (falha) {
-      setErro(falha instanceof ApiError ? falha.message : t('keys.failed'))
+    } catch (failure) {
+      setError(failure instanceof ApiError ? failure.message : t('keys.failed'))
     } finally {
-      setOcupado(false)
+      setBusy(false)
     }
   }
 
   if (emitida) {
-    return <TokenRecemNascido emitida={emitida} aoFechar={() => setEmitida(null)} />
+    return <TokenRecemNascido emitida={emitida} onClose={() => setIssued(null)} />
   }
 
   return (
@@ -141,8 +143,8 @@ function Emissor({
             required
             minLength={2}
             maxLength={120}
-            value={nome}
-            onChange={(e) => setNome(e.target.value)}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
             placeholder={t('keys.field.namePlaceholder')}
             className="rounded-md border border-line bg-surface-2 px-3 py-2 text-sm text-ink placeholder:text-muted"
           />
@@ -152,13 +154,13 @@ function Emissor({
         <label className="flex flex-col gap-1.5">
           <span className="eyebrow">{t('keys.field.role')}</span>
           <select
-            value={papel}
-            onChange={(e) => setPapel(e.target.value as Papel)}
+            value={role}
+            onChange={(e) => setRole(e.target.value as Role)}
             className="rounded-md border border-line bg-surface-2 px-3 py-2 text-sm text-ink"
           >
             {disponiveis.map((p) => (
-              <option key={p.valor} value={p.valor}>
-                {t(p.rotulo)} — {t(p.resumo)}
+              <option key={p.value} value={p.value}>
+                {t(p.label)} — {t(p.resumo)}
               </option>
             ))}
           </select>
@@ -173,8 +175,8 @@ function Emissor({
             <input
               type="radio"
               name="alcance"
-              checked={!limitarSessoes}
-              onChange={() => setLimitarSessoes(false)}
+              checked={!limitToSessions}
+              onChange={() => setLimitToSessions(false)}
               className="mt-0.5"
             />
             <span>
@@ -187,8 +189,8 @@ function Emissor({
             <input
               type="radio"
               name="alcance"
-              checked={limitarSessoes}
-              onChange={() => setLimitarSessoes(true)}
+              checked={limitToSessions}
+              onChange={() => setLimitToSessions(true)}
               className="mt-0.5"
             />
             <span>
@@ -197,20 +199,20 @@ function Emissor({
             </span>
           </label>
 
-          {limitarSessoes && (
+          {limitToSessions && (
             <div className="ml-6 flex flex-col gap-1.5 rounded-md border border-line bg-surface-2 p-3">
-              {sessoes.length === 0 ? (
+              {sessions.length === 0 ? (
                 <span className="text-xs text-warn">{t('keys.scope.noSessions')}</span>
               ) : (
-                sessoes.map((sessao) => (
-                  <label key={sessao.id} className="flex items-center gap-2 text-sm text-ink">
+                sessions.map((session) => (
+                  <label key={session.id} className="flex items-center gap-2 text-sm text-ink">
                     <input
                       type="checkbox"
-                      checked={escolhidas.includes(sessao.id)}
-                      onChange={() => alternar(sessao.id)}
+                      checked={escolhidas.includes(session.id)}
+                      onChange={() => alternar(session.id)}
                     />
-                    <span>{sessao.name}</span>
-                    <span className="text-xs text-muted">{statusLabel(t, sessao.status)}</span>
+                    <span>{session.name}</span>
+                    <span className="text-xs text-muted">{statusLabel(t, session.status)}</span>
                   </label>
                 ))
               )}
@@ -226,31 +228,31 @@ function Emissor({
             className="rounded-md border border-line bg-surface-2 px-3 py-2 text-sm text-ink"
           >
             {VALIDADES.map((v) => (
-              <option key={v.valor} value={v.valor}>
-                {t(v.chave, v.n ? { n: v.n } : undefined)}
+              <option key={v.value} value={v.value}>
+                {t(v.key, v.n ? { n: v.n } : undefined)}
               </option>
             ))}
           </select>
         </label>
 
-        {escopoVazio && (
+        {emptyScope && (
           <p className="rounded-md bg-warn/10 px-3 py-2 text-xs text-warn">
             {t('keys.scope.empty')}
           </p>
         )}
 
-        {erro && (
+        {error && (
           <p role="alert" className="rounded-md bg-crit/10 px-3 py-2 text-xs text-crit">
-            {erro}
+            {error}
           </p>
         )}
 
         <button
           type="submit"
-          disabled={ocupado || escopoVazio}
+          disabled={busy || emptyScope}
           className="mt-1 self-start rounded-md bg-accent px-3 py-2 text-sm font-medium text-on-fill transition-opacity hover:opacity-90 disabled:opacity-50"
         >
-          {ocupado ? t('keys.submitting') : t('keys.submit')}
+          {busy ? t('keys.submitting') : t('keys.submit')}
         </button>
       </form>
     </Card>
@@ -265,13 +267,7 @@ function Emissor({
  * becoming a discreet notice in the corner — and why it does not disappear on
  * its own.
  */
-function TokenRecemNascido({
-  emitida,
-  aoFechar,
-}: {
-  emitida: ApiKeyCreated
-  aoFechar: () => void
-}) {
+function TokenRecemNascido({ emitida, onClose }: { emitida: ApiKeyCreated; onClose: () => void }) {
   const t = useT()
   const [copia, setCopia] = useState<'parado' | 'copiado' | 'falhou'>('parado')
 
@@ -306,7 +302,7 @@ function TokenRecemNascido({
 
           <button
             type="button"
-            onClick={aoFechar}
+            onClick={onClose}
             className="rounded-md border border-line bg-surface px-3 py-2 text-sm font-medium text-ink hover:bg-surface-2"
           >
             {t('keys.created.done')}
@@ -325,30 +321,30 @@ function TokenRecemNascido({
   )
 }
 
-function LinhaDeChave({
-  chave,
-  sessoes,
+function KeyRow({
+  apiKey,
+  sessions,
   aoRevogar,
 }: {
-  chave: ApiKeyRow
-  sessoes: SessionRow[]
+  apiKey: ApiKeyRow
+  sessions: SessionRow[]
   aoRevogar: () => void
 }) {
   const t = useT()
-  const [confirmando, setConfirmando] = useState(false)
-  const [ocupado, setOcupado] = useState(false)
+  const [confirming, setConfirming] = useState(false)
+  const [busy, setBusy] = useState(false)
 
-  const expirada = Boolean(chave.expiresAt && new Date(chave.expiresAt) < new Date())
-  const morta = Boolean(chave.revokedAt) || expirada
+  const expirada = Boolean(apiKey.expiresAt && new Date(apiKey.expiresAt) < new Date())
+  const morta = Boolean(apiKey.revokedAt) || expirada
 
-  const estado: { tone: Tone; chave: TranslationKey } = chave.revokedAt
-    ? { tone: 'hold', chave: 'keys.state.revoked' }
+  const estado: { tone: Tone; key: TranslationKey } = apiKey.revokedAt
+    ? { tone: 'hold', key: 'keys.state.revoked' }
     : expirada
-      ? { tone: 'warn', chave: 'keys.state.expired' }
-      : { tone: 'ok', chave: 'keys.state.active' }
+      ? { tone: 'warn', key: 'keys.state.expired' }
+      : { tone: 'ok', key: 'keys.state.active' }
 
-  const alcance = chave.sessionScope
-    ? chave.sessionScope.map((id) => sessoes.find((s) => s.id === id)?.name ?? id).join(', ')
+  const alcance = apiKey.sessionScope
+    ? apiKey.sessionScope.map((id) => sessions.find((s) => s.id === id)?.name ?? id).join(', ')
     : t('keys.scope.whole')
 
   return (
@@ -359,39 +355,39 @@ function LinhaDeChave({
             morta ? 'block text-sm text-muted line-through' : 'block text-sm font-medium text-ink'
           }
         >
-          {chave.name}
+          {apiKey.name}
         </span>
         <span className="block truncate text-xs text-muted">
-          <code className="font-mono">{chave.prefix}</code> · {alcance} ·{' '}
-          {chave.lastUsedAt
-            ? t('keys.usedAgo', { when: desde(chave.lastUsedAt) })
+          <code className="font-mono">{apiKey.prefix}</code> · {alcance} ·{' '}
+          {apiKey.lastUsedAt
+            ? t('keys.usedAgo', { when: since(apiKey.lastUsedAt) })
             : t('keys.neverUsed')}
-          {chave.expiresAt &&
-            !chave.revokedAt &&
-            ` · ${t('keys.expiresOn', { when: dataHora(chave.expiresAt) })}`}
+          {apiKey.expiresAt &&
+            !apiKey.revokedAt &&
+            ` · ${t('keys.expiresOn', { when: dateTime(apiKey.expiresAt) })}`}
         </span>
       </span>
 
-      <Pill tone={estado.tone}>{t(estado.chave)}</Pill>
+      <Pill tone={estado.tone}>{t(estado.key)}</Pill>
 
-      {!chave.revokedAt &&
-        (confirmando ? (
+      {!apiKey.revokedAt &&
+        (confirming ? (
           <span className="flex items-center gap-2">
             <button
               type="button"
-              disabled={ocupado}
+              disabled={busy}
               onClick={async () => {
-                setOcupado(true)
-                await del(`/v1/keys/${chave.id}`).catch(() => undefined)
+                setBusy(true)
+                await del(`/v1/keys/${apiKey.id}`).catch(() => undefined)
                 aoRevogar()
               }}
               className="rounded-md bg-crit px-2.5 py-1.5 text-xs font-medium text-on-fill disabled:opacity-50"
             >
-              {ocupado ? t('keys.revoking') : t('common.confirm')}
+              {busy ? t('keys.revoking') : t('common.confirm')}
             </button>
             <button
               type="button"
-              onClick={() => setConfirmando(false)}
+              onClick={() => setConfirming(false)}
               className="text-xs text-muted hover:text-ink"
             >
               {t('common.cancel')}
@@ -401,7 +397,7 @@ function LinhaDeChave({
           /* Revoking has no undo, and the next request with it takes a 401 on the spot. */
           <button
             type="button"
-            onClick={() => setConfirmando(true)}
+            onClick={() => setConfirming(true)}
             className="rounded-md border border-line bg-surface px-2.5 py-1.5 text-xs font-medium text-muted hover:text-crit"
           >
             {t('keys.revoke')}

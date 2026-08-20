@@ -26,23 +26,23 @@ export function useQuery<T>(path: string | null, intervalMs = 0): QueryState<T> 
   const [settled, setSettled] = useState(false)
 
   // Only the response from the most recent request may write to state.
-  const geracao = useRef(0)
+  const generation = useRef(0)
 
   const executar = useCallback(async () => {
     if (!path) return
-    const minha = ++geracao.current
+    const minha = ++generation.current
 
     setLoading(true)
     try {
       const resposta = await get<T>(path)
-      if (minha !== geracao.current) return
+      if (minha !== generation.current) return
       setData(resposta)
       setError(null)
-    } catch (falha) {
-      if (minha !== geracao.current) return
-      setError(falha as Error)
+    } catch (failure) {
+      if (minha !== generation.current) return
+      setError(failure as Error)
     } finally {
-      if (minha === geracao.current) {
+      if (minha === generation.current) {
         setLoading(false)
         setSettled(true)
       }

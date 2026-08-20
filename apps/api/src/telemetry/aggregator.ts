@@ -75,7 +75,7 @@ export class MetricsAggregator {
     if (this.running) return
     this.running = true
 
-    const horas = this.deps.lookbackHours
+    const hours = this.deps.lookbackHours
 
     /**
      * Each aggregation isolated in its own error handling.
@@ -87,21 +87,21 @@ export class MetricsAggregator {
      * know which".
      */
     const etapas: Array<[string, () => Promise<void>]> = [
-      ['volume', () => this.volumeDeMensagens(horas)],
-      ['status', () => this.trilhaDeStatus(horas)],
-      ['latencia', () => this.latenciaDeEntrega(horas)],
-      ['sessoes', () => this.eventosDeSessao(horas)],
-      ['risco', () => this.decisoesDeRisco(horas)],
-      ['webhooks', () => this.entregaDeWebhooks(horas)],
-      ['contatos', () => this.contatosNovos(horas)],
+      ['volume', () => this.messageVolume(hours)],
+      ['status', () => this.statusTrail(hours)],
+      ['latencia', () => this.deliveryLatency(hours)],
+      ['sessoes', () => this.sessionEvents(hours)],
+      ['risco', () => this.riskDecisions(hours)],
+      ['webhooks', () => this.entregaDeWebhooks(hours)],
+      ['contatos', () => this.newContacts(hours)],
     ]
 
     try {
-      for (const [nome, executar] of etapas) {
+      for (const [name, executar] of etapas) {
         try {
           await executar()
         } catch (error) {
-          this.deps.logger.error({ err: error, etapa: nome }, 'failed to aggregate metric')
+          this.deps.logger.error({ err: error, etapa: name }, 'failed to aggregate metric')
         }
       }
     } finally {
@@ -110,13 +110,13 @@ export class MetricsAggregator {
   }
 
   /** Sent and received, per hour. */
-  private async volumeDeMensagens(horas: number): Promise<void> {
+  private async messageVolume(hours: number): Promise<void> {
     await this.deps.db.execute(sql`
       INSERT INTO metrics_hourly (org_id, session_id, bucket, metric, value)
       SELECT org_id, session_id, date_trunc('hour', occurred_at),
              'messages.' || direction, count(*)::double precision
       FROM messages
-      WHERE occurred_at >= now() - (${horas} || ' hours')::interval
+      WHERE occurred_at >= now() - (${hours} || ' hours')::interval
       GROUP BY 1, 2, 3, 4
       ON CONFLICT (org_id, session_id, bucket, metric)
       DO UPDATE SET value = EXCLUDED.value, updated_at = now()
@@ -128,14 +128,14 @@ export class MetricsAggregator {
    * message: a read today on yesterday's message belongs to the hour of the
    * read.
    */
-  private async trilhaDeStatus(horas: number): Promise<void> {
+  private async statusTrail(hours: number): Promise<void> {
     await this.deps.db.execute(sql`
       INSERT INTO metrics_hourly (org_id, session_id, bucket, metric, value)
       SELECT e.org_id, m.session_id, date_trunc('hour', e.occurred_at),
              'status.' || e.status, count(*)::double precision
       FROM message_status_events e
       JOIN messages m ON m.id = e.message_id
-      WHERE e.occurred_at >= now() - (${horas} || ' hours')::interval
+      WHERE e.occurred_at >= now() - (${hours} || ' hours')::interval
       GROUP BY 1, 2, 3, 4
       ON CONFLICT (org_id, session_id, bucket, metric)
       DO UPDATE SET value = EXCLUDED.value, updated_at = now()
@@ -149,7 +149,7 @@ export class MetricsAggregator {
    * arrive in seconds and a few take minutes because the recipient had no
    * network. The average hides that behavior; the p95 shows it.
    */
-  private async latenciaDeEntrega(horas: number): Promise<void> {
+  private async deliveryLatency(hours: number): Promise<void> {
     await this.deps.db.execute(sql`
       WITH latencias AS (
         SELECT m.org_id, m.session_id,
@@ -159,7 +159,7 @@ export class MetricsAggregator {
         JOIN message_status_events e
           ON e.message_id = m.id AND e.status = 'delivered'
         WHERE m.direction = 'outbound'
-          AND m.occurred_at >= now() - (${horas} || ' hours')::interval
+          AND m.occurred_at >= now() - (${hours} || ' hours')::interval
           AND e.occurred_at >= m.occurred_at
       )
       INSERT INTO metrics_hourly (org_id, session_id, bucket, metric, value)
@@ -183,13 +183,13 @@ export class MetricsAggregator {
   }
 
   /** Connects and drops — the basis of uptime and MTBF per session. */
-  private async eventosDeSessao(horas: number): Promise<void> {
+  private async sessionEvents(hours: number): Promise<void> {
     await this.deps.db.execute(sql`
       INSERT INTO metrics_hourly (org_id, session_id, bucket, metric, value)
       SELECT org_id, session_id, date_trunc('hour', created_at),
              'session.' || type, count(*)::double precision
       FROM session_events
-      WHERE created_at >= now() - (${horas} || ' hours')::interval
+      WHERE created_at >= now() - (${hours} || ' hours')::interval
       GROUP BY 1, 2, 3, 4
       ON CONFLICT (org_id, session_id, bucket, metric)
       DO UPDATE SET value = EXCLUDED.value, updated_at = now()
@@ -197,13 +197,13 @@ export class MetricsAggregator {
   }
 
   /** How much the risk engine held, delayed or let through. */
-  private async decisoesDeRisco(horas: number): Promise<void> {
+  private async riskDecisions(hours: number): Promise<void> {
     await this.deps.db.execute(sql`
       INSERT INTO metrics_hourly (org_id, session_id, bucket, metric, value)
       SELECT org_id, session_id, date_trunc('hour', created_at),
              'risk.' || action, count(*)::double precision
       FROM risk_events
-      WHERE created_at >= now() - (${horas} || ' hours')::interval
+      WHERE created_at >= now() - (${hours} || ' hours')::interval
       GROUP BY 1, 2, 3, 4
       ON CONFLICT (org_id, session_id, bucket, metric)
       DO UPDATE SET value = EXCLUDED.value, updated_at = now()
@@ -214,7 +214,7 @@ export class MetricsAggregator {
       SELECT org_id, session_id, date_trunc('hour', created_at),
              'risk.score.avg', avg(score)::double precision
       FROM risk_events
-      WHERE created_at >= now() - (${horas} || ' hours')::interval
+      WHERE created_at >= now() - (${hours} || ' hours')::interval
       GROUP BY 1, 2, 3
       ON CONFLICT (org_id, session_id, bucket, metric)
       DO UPDATE SET value = EXCLUDED.value, updated_at = now()
@@ -222,13 +222,13 @@ export class MetricsAggregator {
   }
 
   /** Webhook deliveries by outcome. `session_id` stays null: it is an org metric. */
-  private async entregaDeWebhooks(horas: number): Promise<void> {
+  private async entregaDeWebhooks(hours: number): Promise<void> {
     await this.deps.db.execute(sql`
       INSERT INTO metrics_hourly (org_id, session_id, bucket, metric, value)
       SELECT org_id, NULL::uuid, date_trunc('hour', created_at),
              'webhook.' || status, count(*)::double precision
       FROM webhook_deliveries
-      WHERE created_at >= now() - (${horas} || ' hours')::interval
+      WHERE created_at >= now() - (${hours} || ' hours')::interval
       GROUP BY 1, 2, 3, 4
       ON CONFLICT (org_id, session_id, bucket, metric)
       DO UPDATE SET value = EXCLUDED.value, updated_at = now()
@@ -242,7 +242,7 @@ export class MetricsAggregator {
    * — having it in the history makes it possible to compare behavior before and
    * after a limit is adjusted.
    */
-  private async contatosNovos(horas: number): Promise<void> {
+  private async newContacts(hours: number): Promise<void> {
     await this.deps.db.execute(sql`
       WITH primeiro_contato AS (
         SELECT org_id, session_id, chat_id, min(occurred_at) AS iniciado_em
@@ -254,7 +254,7 @@ export class MetricsAggregator {
       SELECT org_id, session_id, date_trunc('hour', iniciado_em),
              'contacts.new', count(*)::double precision
       FROM primeiro_contato
-      WHERE iniciado_em >= now() - (${horas} || ' hours')::interval
+      WHERE iniciado_em >= now() - (${hours} || ' hours')::interval
       GROUP BY 1, 2, 3
       ON CONFLICT (org_id, session_id, bucket, metric)
       DO UPDATE SET value = EXCLUDED.value, updated_at = now()

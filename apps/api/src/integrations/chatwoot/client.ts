@@ -15,7 +15,7 @@ export class ChatwootError extends Error {
   }
 }
 
-export interface ContatoChatwoot {
+export interface ChatwootContact {
   contactId: number
   /**
    * The contact's identifier **inside the inbox**.
@@ -27,7 +27,7 @@ export interface ContatoChatwoot {
   sourceId: string
 }
 
-interface RespostaContato {
+interface ContactResponse {
   payload?: {
     contact?: {
       id?: number
@@ -77,21 +77,21 @@ export class ChatwootClient {
         },
       })
 
-      const texto = await resposta.text()
-      const corpo = texto ? safeJson(texto) : null
+      const text = await resposta.text()
+      const body = text ? safeJson(text) : null
 
       if (!resposta.ok) {
         const detalhe =
-          (corpo as { message?: string; error?: string })?.message ??
-          (corpo as { error?: string })?.error ??
-          texto.slice(0, 200)
+          (body as { message?: string; error?: string })?.message ??
+          (body as { error?: string })?.error ??
+          text.slice(0, 200)
         throw new ChatwootError(
           resposta.status,
           `Chatwoot responded ${resposta.status}: ${detalhe}`,
         )
       }
 
-      return corpo as T
+      return body as T
     } finally {
       clearTimeout(timer)
     }
@@ -104,7 +104,7 @@ export class ChatwootClient {
    * out of there is the first thing that stalls adoption. The token already
    * knows the answer — you just have to ask.
    */
-  async contas(): Promise<Array<{ id: number; name: string; role: string }>> {
+  async accounts(): Promise<Array<{ id: number; name: string; role: string }>> {
     const perfil = await this.absoluto<{
       accounts?: Array<{ id?: number; name?: string; role?: string }>
     }>('/api/v1/profile')
@@ -115,7 +115,7 @@ export class ChatwootClient {
   }
 
   /** Existing inboxes, so one can be reused instead of creating another. */
-  async caixas(): Promise<Array<{ id: number; name: string; channelType: string }>> {
+  async inboxes(): Promise<Array<{ id: number; name: string; channelType: string }>> {
     const resposta = await this.request<{
       payload?: Array<{ id?: number; name?: string; channel_type?: string }>
     }>('/inboxes')
@@ -138,17 +138,17 @@ export class ChatwootClient {
    * inbox and then coming back to paste the URL — settled in one call. It needs
    * an admin token; a plain agent gets a 403, and the message says so.
    */
-  async criarCaixa(nome: string, webhookUrl: string): Promise<{ id: number; name: string }> {
-    const caixa = await this.request<{ id?: number; name?: string }>('/inboxes', {
+  async createInboxFor(name: string, webhookUrl: string): Promise<{ id: number; name: string }> {
+    const inbox = await this.request<{ id?: number; name?: string }>('/inboxes', {
       method: 'POST',
       body: JSON.stringify({
-        name: nome,
+        name: name,
         channel: { type: 'api', webhook_url: webhookUrl },
       }),
     })
 
-    if (!caixa?.id) throw new ChatwootError(500, 'Chatwoot did not return the created inbox id')
-    return { id: caixa.id, name: caixa.name ?? nome }
+    if (!inbox?.id) throw new ChatwootError(500, 'Chatwoot did not return the created inbox id')
+    return { id: inbox.id, name: inbox.name ?? name }
   }
 
   /** Points the webhook of an inbox that already existed. */
@@ -160,7 +160,7 @@ export class ChatwootClient {
   }
 
   /** Checks the credentials and the inbox before saving anything. */
-  async verificar(): Promise<{ inboxName: string; channelType: string }> {
+  async verify(): Promise<{ inboxName: string; channelType: string }> {
     const inbox = await this.request<{ name?: string; channel_type?: string }>(
       `/inboxes/${this.config.inboxId}`,
     )
@@ -179,16 +179,16 @@ export class ChatwootClient {
    * in digits: the only stable piece of data WhatsApp hands over on every
    * message.
    */
-  async garantirContato(input: {
+  async ensureContact(input: {
     identifier: string
     phoneNumber: string
     name: string
-  }): Promise<ContatoChatwoot> {
-    const encontrado = await this.buscarContato(input.identifier)
-    if (encontrado) return encontrado
+  }): Promise<ChatwootContact> {
+    const found = await this.findContact(input.identifier)
+    if (found) return found
 
     try {
-      const criado = await this.request<RespostaContato>('/contacts', {
+      const created = await this.request<ContactResponse>('/contacts', {
         method: 'POST',
         body: JSON.stringify({
           inbox_id: this.config.inboxId,
@@ -198,25 +198,25 @@ export class ChatwootClient {
         }),
       })
 
-      const extraido = this.extrairContato(criado)
+      const extraido = this.extractContact(created)
       if (extraido) return extraido
-    } catch (erro) {
+    } catch (error) {
       // A 422 here is a race: another process created it since the search.
-      if (!(erro instanceof ChatwootError) || erro.status !== 422) throw erro
+      if (!(error instanceof ChatwootError) || error.status !== 422) throw error
     }
 
-    const depois = await this.buscarContato(input.identifier)
+    const depois = await this.findContact(input.identifier)
     if (!depois) throw new ChatwootError(500, 'contact created but not found in Chatwoot')
     return depois
   }
 
-  private async buscarContato(identifier: string): Promise<ContatoChatwoot | null> {
-    const resultado = await this.request<{ payload?: RespostaContato['payload'][] }>(
+  private async findContact(identifier: string): Promise<ChatwootContact | null> {
+    const result = await this.request<{ payload?: ContactResponse['payload'][] }>(
       `/contacts/search?q=${encodeURIComponent(identifier)}`,
     )
 
-    for (const candidato of resultado?.payload ?? []) {
-      const extraido = this.extrairContato({ payload: candidato })
+    for (const candidato of result?.payload ?? []) {
+      const extraido = this.extractContact({ payload: candidato })
       if (extraido) return extraido
     }
 
@@ -230,17 +230,17 @@ export class ChatwootClient {
    * `contact_inbox` for each. Taking the first from the list would open the
    * conversation in the wrong inbox.
    */
-  private extrairContato(resposta: RespostaContato): ContatoChatwoot | null {
-    const contato = resposta.payload?.contact ?? resposta.payload
-    const contactId = contato?.id
+  private extractContact(resposta: ContactResponse): ChatwootContact | null {
+    const contact = resposta.payload?.contact ?? resposta.payload
+    const contactId = contact?.id
     if (!contactId) return null
 
-    const daCaixa = contato?.contact_inboxes?.find(
+    const fromInbox = contact?.contact_inboxes?.find(
       (ci) => ci.inbox?.id === this.config.inboxId && ci.source_id,
     )
-    if (!daCaixa?.source_id) return null
+    if (!fromInbox?.source_id) return null
 
-    return { contactId, sourceId: daCaixa.source_id }
+    return { contactId, sourceId: fromInbox.source_id }
   }
 
   async criarConversa(input: { sourceId: string; contactId: number }): Promise<string> {
@@ -264,12 +264,12 @@ export class ChatwootClient {
    * coming back recognise what came from here and not resend it — the echo that
    * turns a conversation into an infinite loop.
    */
-  async criarMensagemRecebida(input: {
+  async buildIncomingMessage(input: {
     conversationId: string
     content: string
     sourceId: string
   }): Promise<string> {
-    const mensagem = await this.request<{ id?: number }>(
+    const message = await this.request<{ id?: number }>(
       `/conversations/${input.conversationId}/messages`,
       {
         method: 'POST',
@@ -281,13 +281,13 @@ export class ChatwootClient {
       },
     )
 
-    return String(mensagem?.id ?? '')
+    return String(message?.id ?? '')
   }
 }
 
-function safeJson(texto: string): unknown {
+function safeJson(text: string): unknown {
   try {
-    return JSON.parse(texto)
+    return JSON.parse(text)
   } catch {
     return null
   }

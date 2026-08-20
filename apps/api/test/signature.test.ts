@@ -28,12 +28,12 @@ describe('assinatura de webhook', () => {
    * to escape the window invalidates the signature.
    */
   it('rejeita entrega antiga, mesmo com assinatura correta', () => {
-    const antigo = agora - 3600
-    const signature = sign(payload, secret, antigo)
+    const oldest = agora - 3600
+    const signature = sign(payload, secret, oldest)
 
-    expect(verify({ payload, secret, signature, timestamp: antigo })).toBe(false)
+    expect(verify({ payload, secret, signature, timestamp: oldest })).toBe(false)
     // Inside the configured window, the same signature passes.
-    expect(verify({ payload, secret, signature, timestamp: antigo, toleranceSeconds: 7200 })).toBe(
+    expect(verify({ payload, secret, signature, timestamp: oldest, toleranceSeconds: 7200 })).toBe(
       true,
     )
   })

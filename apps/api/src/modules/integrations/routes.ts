@@ -53,7 +53,7 @@ export async function integrationRoutes(app: FastifyInstance) {
    * to keep the session up, the conversation would simply never reach the tool,
    * with nobody knowing why.
    */
-  async function verificar(kind: IntegrationKind, config: AnyIntegrationConfig) {
+  async function verify(kind: IntegrationKind, config: AnyIntegrationConfig) {
     /**
      * The generic connector gets a real workout: it sends a sample event and
      * reports what came back. Accepting it untested would leave the platform
@@ -61,25 +61,25 @@ export async function integrationRoutes(app: FastifyInstance) {
      * the wrong moment to find out the URL was wrong.
      */
     if (kind === 'http') {
-      const resultado = await new HttpConnector(config as HttpConfig).enviar(EVENTO_DE_TESTE)
+      const result = await new HttpConnector(config as HttpConfig).send(EVENTO_DE_TESTE)
 
-      if (resultado.diagnostico) {
+      if (result.diagnosis) {
         return {
-          detail: `The platform answered ${resultado.status} in ${resultado.durationMs} ms, but nothing became a message: ${resultado.diagnostico}`,
+          detail: `The platform answered ${result.status} in ${result.durationMs} ms, but nothing became a message: ${result.diagnosis}`,
         }
       }
 
       return {
         detail:
-          resultado.replies.length > 0
-            ? `Answered ${resultado.status} in ${resultado.durationMs} ms with ${resultado.replies.length} message(s).`
-            : `Answered ${resultado.status} in ${resultado.durationMs} ms, with no message back — valid if you only want to record what arrives.`,
+          result.replies.length > 0
+            ? `Answered ${result.status} in ${result.durationMs} ms with ${result.replies.length} message(s).`
+            : `Answered ${result.status} in ${result.durationMs} ms, with no message back — valid if you only want to record what arrives.`,
       }
     }
 
     if (kind === 'chatwoot') {
       const cliente = new ChatwootClient(config as ChatwootConfig)
-      const inbox = await cliente.verificar()
+      const inbox = await cliente.verify()
 
       if (inbox.channelType !== 'Channel::Api') {
         throw badRequest(
@@ -91,7 +91,7 @@ export async function integrationRoutes(app: FastifyInstance) {
       return { detail: `Inbox "${inbox.inboxName}" ready.` }
     }
 
-    await new TypebotClient(config as TypebotConfig).verificar()
+    await new TypebotClient(config as TypebotConfig).verify()
     return { detail: 'Flow reached and responding.' }
   }
 
@@ -103,7 +103,7 @@ export async function integrationRoutes(app: FastifyInstance) {
    * with neither, whoever is integrating takes on the manual setup on the
    * other side.
    */
-  async function prepararCaixa(
+  async function prepareInbox(
     bruto: Record<string, unknown>,
     webhookUrl: string,
   ): Promise<unknown> {
@@ -121,27 +121,27 @@ export async function integrationRoutes(app: FastifyInstance) {
 
     try {
       if (typeof bruto.createInbox === 'string' && bruto.createInbox.trim()) {
-        const criada = await cliente.criarCaixa(bruto.createInbox.trim(), webhookUrl)
+        const created = await cliente.createInboxFor(bruto.createInbox.trim(), webhookUrl)
         bruto.webhookConfigurado = true
-        return criada.id
+        return created.id
       }
 
       if (bruto.inboxId && bruto.apontarWebhook !== false) {
         await cliente.apontarWebhook(Number(bruto.inboxId), webhookUrl)
         bruto.webhookConfigurado = true
       }
-    } catch (erro) {
+    } catch (error) {
       /**
        * Creating and editing an inbox needs an administrator token; a plain
        * agent gets a 403. Saying so is the difference between someone swapping
        * the token and someone giving up, sure the gateway is broken.
        */
-      if (erro instanceof ChatwootError && (erro.status === 401 || erro.status === 403)) {
+      if (error instanceof ChatwootError && (error.status === 401 || error.status === 403)) {
         throw badRequest(
           'This token has no permission to create or edit inboxes. Use an administrator token, or create the API inbox in Chatwoot and paste the webhook URL by hand.',
         )
       }
-      throw erro
+      throw error
     }
 
     return bruto.inboxId
@@ -222,29 +222,29 @@ export async function integrationRoutes(app: FastifyInstance) {
         apiAccessToken,
       } as ChatwootConfig)
 
-      let accounts: Awaited<ReturnType<ChatwootClient['contas']>>
+      let accounts: Awaited<ReturnType<ChatwootClient['accounts']>>
       try {
-        accounts = await cliente.contas()
-      } catch (erro) {
-        if (erro instanceof ChatwootError && erro.status === 401) {
+        accounts = await cliente.accounts()
+      } catch (error) {
+        if (error instanceof ChatwootError && error.status === 401) {
           throw badRequest('Chatwoot rejected this token. Check that you copied the whole value.')
         }
         throw badRequest(
-          erro instanceof Error
-            ? `Could not reach Chatwoot: ${erro.message}`
+          error instanceof Error
+            ? `Could not reach Chatwoot: ${error.message}`
             : 'Could not reach Chatwoot.',
         )
       }
 
       if (!accountId) return { accounts, inboxes: null }
 
-      const caixas = await cliente.caixas()
+      const inboxes = await cliente.inboxes()
 
       return {
         accounts,
-        inboxes: caixas.map((caixa) => ({
-          ...caixa,
-          usable: caixa.channelType === 'Channel::Api',
+        inboxes: inboxes.map((inbox) => ({
+          ...inbox,
+          usable: inbox.channelType === 'Channel::Api',
         })),
       }
     },
@@ -280,7 +280,7 @@ export async function integrationRoutes(app: FastifyInstance) {
             durationMs: z.number(),
             replies: z.array(z.string()),
             raw: z.string(),
-            diagnostico: z.string().nullable(),
+            diagnosis: z.string().nullable(),
             /** What was posted, for whoever builds the flow on the other side. */
             sentPayload: z.record(z.unknown()),
           }),
@@ -291,14 +291,14 @@ export async function integrationRoutes(app: FastifyInstance) {
       const config = httpConfigSchema.parse(request.body)
 
       try {
-        const resultado = await new HttpConnector(config).enviar(EVENTO_DE_TESTE)
+        const result = await new HttpConnector(config).send(EVENTO_DE_TESTE)
 
         return {
-          ok: resultado.diagnostico === null,
-          ...resultado,
+          ok: result.diagnosis === null,
+          ...result,
           sentPayload: EVENTO_DE_TESTE as unknown as Record<string, unknown>,
         }
-      } catch (erro) {
+      } catch (error) {
         /**
          * A network failure comes back as a response, not an API error: whoever
          * is testing wants the reason on screen, and a 500 here would only say
@@ -306,13 +306,13 @@ export async function integrationRoutes(app: FastifyInstance) {
          */
         return {
           ok: false,
-          status: erro instanceof HttpConnectorError ? erro.status : 0,
+          status: error instanceof HttpConnectorError ? error.status : 0,
           durationMs: 0,
           replies: [],
           raw: '',
-          diagnostico:
-            erro instanceof Error
-              ? erro.message
+          diagnosis:
+            error instanceof Error
+              ? error.message
               : 'Could not reach that URL. Check that it is reachable from the gateway server.',
           sentPayload: EVENTO_DE_TESTE as unknown as Record<string, unknown>,
         }
@@ -347,8 +347,8 @@ export async function integrationRoutes(app: FastifyInstance) {
       const auth = requireAuth(request)
       const { id: sessionId, kind } = request.params
 
-      const sessao = await new SessionRepository(app.db, auth.orgId).findById(sessionId)
-      if (!sessao) throw notFound('Session not found.')
+      const session = await new SessionRepository(app.db, auth.orgId).findById(sessionId)
+      if (!session) throw notFound('Session not found.')
 
       const bruto = { ...request.body }
 
@@ -372,8 +372,8 @@ export async function integrationRoutes(app: FastifyInstance) {
          */
         try {
           Object.assign(bruto, derivarDoLink(bruto.shareUrl))
-        } catch (erro) {
-          throw badRequest(erro instanceof Error ? erro.message : 'Invalid flow link.')
+        } catch (error) {
+          throw badRequest(error instanceof Error ? error.message : 'Invalid flow link.')
         }
         bruto.shareUrl = undefined
       }
@@ -401,11 +401,11 @@ export async function integrationRoutes(app: FastifyInstance) {
        * other tab.
        */
       if (kind === 'chatwoot') {
-        bruto.inboxId = await prepararCaixa(bruto, webhookUrl)
+        bruto.inboxId = await prepareInbox(bruto, webhookUrl)
       }
 
       const config = parseConfig(kind, bruto)
-      const { detail } = await verificar(kind, config)
+      const { detail } = await verify(kind, config)
 
       const integration = await saveIntegration(app.db, encryptionKey, {
         id: integrationId,
@@ -473,12 +473,12 @@ export async function integrationRoutes(app: FastifyInstance) {
     async (request, reply) => {
       const { integrationId, token } = request.params
 
-      const integracao = await findIntegrationById(app.db, integrationId, encryptionKey)
-      if (integracao?.row.kind !== 'chatwoot') {
+      const integration = await findIntegrationById(app.db, integrationId, encryptionKey)
+      if (integration?.row.kind !== 'chatwoot') {
         throw notFound('Integration not found.')
       }
 
-      const config = integracao.config as ChatwootConfig
+      const config = integration.config as ChatwootConfig
       if (!safeEqual(token, config.webhookToken)) {
         throw forbidden('Invalid webhook token.')
       }
@@ -492,12 +492,12 @@ export async function integrationRoutes(app: FastifyInstance) {
       // Answer before processing: our error must not become their redelivery.
       void processar(
         app,
-        integracao.row.id,
-        integracao.row.orgId,
-        integracao.row.sessionId,
+        integration.row.id,
+        integration.row.orgId,
+        integration.row.sessionId,
         evento,
-      ).catch((erro) => {
-        app.log.error({ err: erro, integrationId }, 'failed to process Chatwoot event')
+      ).catch((error) => {
+        app.log.error({ err: error, integrationId }, 'failed to process Chatwoot event')
       })
 
       return reply.send({ received: true })

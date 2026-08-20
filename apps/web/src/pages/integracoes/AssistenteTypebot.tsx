@@ -13,11 +13,11 @@ import { ApiError, put } from '../../lib/api'
  * clipboard of someone who has just published a flow.
  */
 export function AssistenteTypebot({
-  sessoes,
-  aoSalvar,
+  sessions,
+  onSave,
 }: {
-  sessoes: SessionRow[]
-  aoSalvar: () => void
+  sessions: SessionRow[]
+  onSave: () => void
 }) {
   const t = useT()
   const [sessionId, setSessionId] = useState('')
@@ -25,14 +25,14 @@ export function AssistenteTypebot({
   const [apiToken, setApiToken] = useState('')
   const [humanHandoffKeyword, setPalavra] = useState('agent')
   const [humanHandoffReply, setResposta] = useState('')
-  const [erro, setErro] = useState<string | null>(null)
-  const [ocupado, setOcupado] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
   const [pronto, setPronto] = useState<IntegrationSaved | null>(null)
 
-  async function conectar(evento: FormEvent) {
+  async function connect(evento: FormEvent) {
     evento.preventDefault()
-    setOcupado(true)
-    setErro(null)
+    setBusy(true)
+    setError(null)
 
     try {
       setPronto(
@@ -43,11 +43,11 @@ export function AssistenteTypebot({
           ...(humanHandoffReply.trim() ? { humanHandoffReply } : {}),
         }),
       )
-      aoSalvar()
-    } catch (falha) {
-      setErro(falha instanceof ApiError ? falha.message : t('wizard.apiUnreachable'))
+      onSave()
+    } catch (failure) {
+      setError(failure instanceof ApiError ? failure.message : t('wizard.apiUnreachable'))
     } finally {
-      setOcupado(false)
+      setBusy(false)
     }
   }
 
@@ -71,7 +71,7 @@ export function AssistenteTypebot({
 
   return (
     <Card title={t('typebot.title')} hint={t('typebot.hint')}>
-      <form onSubmit={conectar} className="flex flex-col gap-3">
+      <form onSubmit={connect} className="flex flex-col gap-3">
         <label className="flex flex-col gap-1.5">
           <span className="eyebrow">{t('wizard.pickSession')}</span>
           <select
@@ -81,13 +81,13 @@ export function AssistenteTypebot({
             className="rounded-md border border-line bg-surface-2 px-3 py-2 text-sm text-ink"
           >
             <option value="">{t('wizard.pickSessionPlaceholder')}</option>
-            {sessoes.map((s) => (
+            {sessions.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.name}
               </option>
             ))}
           </select>
-          {sessoes.length === 0 && (
+          {sessions.length === 0 && (
             <span className="text-xs text-warn">{t('wizard.noSessions')}</span>
           )}
         </label>
@@ -148,18 +148,18 @@ export function AssistenteTypebot({
           <span className="text-xs text-muted">{t('typebot.handoffReplyHint')}</span>
         </label>
 
-        {erro && (
+        {error && (
           <p role="alert" className="rounded-md bg-crit/10 px-3 py-2 text-xs text-crit">
-            {erro}
+            {error}
           </p>
         )}
 
         <button
           type="submit"
-          disabled={ocupado}
+          disabled={busy}
           className="mt-1 rounded-md bg-accent px-3 py-2 text-sm font-medium text-on-fill transition-opacity hover:opacity-90 disabled:opacity-50"
         >
-          {ocupado ? t('typebot.submitting') : t('typebot.submit')}
+          {busy ? t('typebot.submitting') : t('typebot.submit')}
         </button>
       </form>
     </Card>

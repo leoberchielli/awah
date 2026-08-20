@@ -29,8 +29,8 @@ interface Pedido {
   headers?: Record<string, string>
 }
 
-const RETENTATIVA_BASE_MS = 300
-const RETENTATIVA_TETO_MS = 8000
+const RETRY_BASE_MS = 300
+const RETRY_CAP_MS = 8000
 
 export class HttpClient {
   private readonly baseUrl: string
@@ -58,58 +58,58 @@ export class HttpClient {
 
   async request<T>(pedido: Pedido): Promise<T> {
     const url = this.montarUrl(pedido.path, pedido.query)
-    const podeRepetir = pedido.idempotente ?? ['GET', 'HEAD', 'DELETE'].includes(pedido.method)
+    const canRetry = pedido.idempotente ?? ['GET', 'HEAD', 'DELETE'].includes(pedido.method)
 
-    let ultimoErro: unknown
+    let lastError: unknown
 
-    for (let tentativa = 0; tentativa <= this.maxRetries; tentativa++) {
+    for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
       try {
-        const resposta = await this.enviar(url, pedido)
+        const resposta = await this.send(url, pedido)
 
-        if (resposta.ok) return await this.lerCorpo<T>(resposta)
+        if (resposta.ok) return await this.readBody<T>(resposta)
 
-        const erro = await this.montarErro(resposta)
+        const error = await this.buildError(resposta)
 
         /**
          * Repeating a 4xx that is not 408 or 429 is waste: the server rejected
          * the content, and sending it again produces the same rejection.
          */
-        if (!erro.isRetryable || !podeRepetir || tentativa === this.maxRetries) throw erro
+        if (!error.isRetryable || !canRetry || attempt === this.maxRetries) throw error
 
-        await dormir(this.esperaAte(tentativa, resposta.headers.get('retry-after')))
-        ultimoErro = erro
-      } catch (falha) {
-        if (falha instanceof AwahError) {
-          if (!falha.isRetryable || !podeRepetir || tentativa === this.maxRetries) throw falha
-          ultimoErro = falha
+        await dormir(this.waitUntil(attempt, resposta.headers.get('retry-after')))
+        lastError = error
+      } catch (failure) {
+        if (failure instanceof AwahError) {
+          if (!failure.isRetryable || !canRetry || attempt === this.maxRetries) throw failure
+          lastError = failure
           continue
         }
 
         const conexao = new AwahConnectionError(
-          falha instanceof Error ? falha.message : 'falha de rede',
-          falha,
+          failure instanceof Error ? failure.message : 'falha de rede',
+          failure,
         )
-        if (!podeRepetir || tentativa === this.maxRetries) throw conexao
+        if (!canRetry || attempt === this.maxRetries) throw conexao
 
-        ultimoErro = conexao
-        await dormir(this.esperaAte(tentativa, null))
+        lastError = conexao
+        await dormir(this.waitUntil(attempt, null))
       }
     }
 
-    throw ultimoErro
+    throw lastError
   }
 
   private montarUrl(path: string, query?: Pedido['query']): string {
     const url = new URL(`${this.baseUrl}${path}`)
 
-    for (const [chave, valor] of Object.entries(query ?? {})) {
-      if (valor !== undefined) url.searchParams.set(chave, String(valor))
+    for (const [key, value] of Object.entries(query ?? {})) {
+      if (value !== undefined) url.searchParams.set(key, String(value))
     }
 
     return url.toString()
   }
 
-  private async enviar(url: string, pedido: Pedido): Promise<Response> {
+  private async send(url: string, pedido: Pedido): Promise<Response> {
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), this.timeoutMs)
 
@@ -131,26 +131,26 @@ export class HttpClient {
     }
   }
 
-  private async lerCorpo<T>(resposta: Response): Promise<T> {
+  private async readBody<T>(resposta: Response): Promise<T> {
     if (resposta.status === 204) return undefined as T
 
-    const texto = await resposta.text()
-    if (!texto) return undefined as T
+    const text = await resposta.text()
+    if (!text) return undefined as T
 
     try {
-      return JSON.parse(texto) as T
+      return JSON.parse(text) as T
     } catch {
-      return texto as T
+      return text as T
     }
   }
 
-  private async montarErro(resposta: Response): Promise<AwahError> {
-    const corpo = await resposta
+  private async buildError(resposta: Response): Promise<AwahError> {
+    const body = await resposta
       .text()
-      .then((texto) => (texto ? JSON.parse(texto) : null))
+      .then((text) => (text ? JSON.parse(text) : null))
       .catch(() => null)
 
-    const envelope = (corpo as { error?: { code?: string; message?: string; details?: unknown } })
+    const envelope = (body as { error?: { code?: string; message?: string; details?: unknown } })
       ?.error
 
     return new AwahError(
@@ -158,7 +158,7 @@ export class HttpClient {
       envelope?.code ?? 'unknown',
       envelope?.message ?? `A API respondeu ${resposta.status}.`,
       envelope?.details,
-      corpo,
+      body,
     )
   }
 
@@ -168,13 +168,13 @@ export class HttpClient {
    * The jitter is not decoration: without it, a hundred clients that took a 429
    * together come back together in the same millisecond and take a 429 again.
    */
-  private esperaAte(tentativa: number, retryAfter: string | null): number {
+  private waitUntil(attempt: number, retryAfter: string | null): number {
     if (retryAfter) {
       const segundos = Number(retryAfter)
       if (Number.isFinite(segundos) && segundos >= 0) return Math.min(segundos * 1000, 60_000)
     }
 
-    const teto = Math.min(RETENTATIVA_BASE_MS * 2 ** tentativa, RETENTATIVA_TETO_MS)
+    const teto = Math.min(RETRY_BASE_MS * 2 ** attempt, RETRY_CAP_MS)
     return teto / 2 + Math.random() * (teto / 2)
   }
 }

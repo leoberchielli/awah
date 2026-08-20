@@ -161,7 +161,7 @@ export interface KpiBusiness {
   byType: Array<{ type: string; count: number }>
 }
 
-export interface JanelaKpi {
+export interface KpiWindow {
   /** Hours back. Default 24, ceiling 720. */
   hours?: number
   sessionId?: string

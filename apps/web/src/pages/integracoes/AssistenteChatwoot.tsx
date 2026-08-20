@@ -2,8 +2,8 @@ import { type FormEvent, useState } from 'react'
 import { Card, cx, Empty } from '../../components/ui'
 import { Rich, useT } from '../../i18n'
 import type {
-  CaixaChatwoot,
-  ContaChatwoot,
+  ChatwootAccount,
+  ChatwootInbox,
   DescobertaChatwoot,
   IntegrationSaved,
   SessionRow,
@@ -21,75 +21,75 @@ import { ApiError, post, put } from '../../lib/api'
  * to exist.
  */
 export function AssistenteChatwoot({
-  sessoes,
-  aoSalvar,
+  sessions,
+  onSave,
 }: {
-  sessoes: SessionRow[]
-  aoSalvar: () => void
+  sessions: SessionRow[]
+  onSave: () => void
 }) {
   const t = useT()
   const [passo, setPasso] = useState<1 | 2 | 3>(1)
   const [baseUrl, setBaseUrl] = useState('https://app.chatwoot.com')
   const [apiAccessToken, setToken] = useState('')
-  const [contas, setContas] = useState<ContaChatwoot[]>([])
+  const [accounts, setAccounts] = useState<ChatwootAccount[]>([])
   const [accountId, setAccountId] = useState<number | null>(null)
-  const [caixas, setCaixas] = useState<CaixaChatwoot[]>([])
+  const [inboxes, setInboxes] = useState<ChatwootInbox[]>([])
   const [escolha, setEscolha] = useState<'nova' | number>('nova')
-  const [nomeDaCaixa, setNomeDaCaixa] = useState('WhatsApp (AWAH)')
+  const [inboxName, setInboxName] = useState('WhatsApp (AWAH)')
   const [sessionId, setSessionId] = useState('')
 
-  const [erro, setErro] = useState<string | null>(null)
-  const [ocupado, setOcupado] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
   const [pronto, setPronto] = useState<IntegrationSaved | null>(null)
 
-  async function executar(acao: () => Promise<void>) {
-    setOcupado(true)
-    setErro(null)
+  async function executar(action: () => Promise<void>) {
+    setBusy(true)
+    setError(null)
     try {
-      await acao()
-    } catch (falha) {
-      setErro(falha instanceof ApiError ? falha.message : t('wizard.apiUnreachable'))
+      await action()
+    } catch (failure) {
+      setError(failure instanceof ApiError ? failure.message : t('wizard.apiUnreachable'))
     } finally {
-      setOcupado(false)
+      setBusy(false)
     }
   }
 
-  const descobrirContas = (evento: FormEvent) => {
+  const discoverAccounts = (evento: FormEvent) => {
     evento.preventDefault()
     return executar(async () => {
-      const resultado = await post<DescobertaChatwoot>('/v1/integrations/chatwoot/discover', {
+      const result = await post<DescobertaChatwoot>('/v1/integrations/chatwoot/discover', {
         baseUrl,
         apiAccessToken,
       })
 
-      if (resultado.accounts.length === 0) {
+      if (result.accounts.length === 0) {
         throw new ApiError(400, 'sem_conta', t('chatwoot.noAccount'))
       }
 
-      setContas(resultado.accounts)
+      setAccounts(result.accounts)
       // A single account does not deserve a question: move on and fetch its inboxes.
-      const unica = resultado.accounts.length === 1 ? resultado.accounts[0] : null
+      const unica = result.accounts.length === 1 ? result.accounts[0] : null
       if (unica) {
-        await escolherConta(unica.id)
+        await pickAccount(unica.id)
         return
       }
       setPasso(2)
     })
   }
 
-  async function escolherConta(id: number) {
-    const resultado = await post<DescobertaChatwoot>('/v1/integrations/chatwoot/discover', {
+  async function pickAccount(id: number) {
+    const result = await post<DescobertaChatwoot>('/v1/integrations/chatwoot/discover', {
       baseUrl,
       apiAccessToken,
       accountId: id,
     })
 
     setAccountId(id)
-    setCaixas(resultado.inboxes ?? [])
+    setInboxes(result.inboxes ?? [])
     setPasso(3)
   }
 
-  const conectar = (evento: FormEvent) => {
+  const connect = (evento: FormEvent) => {
     evento.preventDefault()
     return executar(async () => {
       setPronto(
@@ -97,10 +97,10 @@ export function AssistenteChatwoot({
           baseUrl,
           apiAccessToken,
           accountId,
-          ...(escolha === 'nova' ? { createInbox: nomeDaCaixa } : { inboxId: escolha }),
+          ...(escolha === 'nova' ? { createInbox: inboxName } : { inboxId: escolha }),
         }),
       )
-      aoSalvar()
+      onSave()
     })
   }
 
@@ -140,29 +140,25 @@ export function AssistenteChatwoot({
   }
 
   return (
-    <Card title={t('chatwoot.title')} hint={t('chatwoot.hint')} action={<Passos atual={passo} />}>
+    <Card title={t('chatwoot.title')} hint={t('chatwoot.hint')} action={<Passos current={passo} />}>
       {passo === 1 && (
-        <form onSubmit={descobrirContas} className="flex flex-col gap-3">
-          <Campo
-            rotulo={t('chatwoot.address')}
+        <form onSubmit={discoverAccounts} className="flex flex-col gap-3">
+          <Field
+            label={t('chatwoot.address')}
             value={baseUrl}
             onChange={setBaseUrl}
             placeholder="https://app.chatwoot.com"
           />
-          <Campo
-            rotulo={t('chatwoot.token')}
+          <Field
+            label={t('chatwoot.token')}
             type="password"
             value={apiAccessToken}
             onChange={setToken}
             dica={t('chatwoot.tokenHint')}
           />
 
-          <Erro texto={erro} />
-          <Acao
-            ocupado={ocupado}
-            rotulo={t('chatwoot.continue')}
-            carregando={t('chatwoot.talking')}
-          />
+          <Erro text={error} />
+          <Action busy={busy} label={t('chatwoot.continue')} loading={t('chatwoot.talking')} />
         </form>
       )}
 
@@ -170,26 +166,26 @@ export function AssistenteChatwoot({
         <div className="flex flex-col gap-3">
           <p className="text-sm text-muted">{t('chatwoot.whichAccount')}</p>
           <ul className="flex flex-col gap-2">
-            {contas.map((conta) => (
-              <li key={conta.id}>
+            {accounts.map((account) => (
+              <li key={account.id}>
                 <button
                   type="button"
-                  disabled={ocupado}
-                  onClick={() => executar(() => escolherConta(conta.id))}
+                  disabled={busy}
+                  onClick={() => executar(() => pickAccount(account.id))}
                   className="flex w-full items-center justify-between rounded-md border border-line bg-surface px-3 py-2.5 text-left text-sm text-ink hover:bg-surface-2 disabled:opacity-50"
                 >
-                  <span>{conta.name}</span>
-                  <span className="font-mono text-xs text-muted">{conta.role}</span>
+                  <span>{account.name}</span>
+                  <span className="font-mono text-xs text-muted">{account.role}</span>
                 </button>
               </li>
             ))}
           </ul>
-          <Erro texto={erro} />
+          <Erro text={error} />
         </div>
       )}
 
       {passo === 3 && (
-        <form onSubmit={conectar} className="flex flex-col gap-3">
+        <form onSubmit={connect} className="flex flex-col gap-3">
           <label className="flex flex-col gap-1.5">
             <span className="eyebrow">{t('wizard.pickSession')}</span>
             <select
@@ -199,13 +195,13 @@ export function AssistenteChatwoot({
               className="rounded-md border border-line bg-surface-2 px-3 py-2 text-sm text-ink"
             >
               <option value="">{t('wizard.pickSessionPlaceholder')}</option>
-              {sessoes.map((s) => (
+              {sessions.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
                 </option>
               ))}
             </select>
-            {sessoes.length === 0 && (
+            {sessions.length === 0 && (
               <span className="text-xs text-warn">
                 Nenhuma sessão ainda. Crie uma na aba Sessões primeiro.
               </span>
@@ -216,17 +212,17 @@ export function AssistenteChatwoot({
             <span className="eyebrow">{t('chatwoot.inbox')}</span>
 
             <Opcao
-              selecionada={escolha === 'nova'}
+              selected={escolha === 'nova'}
               aoEscolher={() => setEscolha('nova')}
-              titulo={t('chatwoot.newInbox')}
+              title={t('chatwoot.newInbox')}
               detalhe={t('chatwoot.newInboxHint')}
             />
 
             {escolha === 'nova' && (
               <input
                 required
-                value={nomeDaCaixa}
-                onChange={(e) => setNomeDaCaixa(e.target.value)}
+                value={inboxName}
+                onChange={(e) => setInboxName(e.target.value)}
                 className="ml-6 rounded-md border border-line bg-surface-2 px-3 py-2 text-sm text-ink"
               />
             )}
@@ -236,37 +232,33 @@ export function AssistenteChatwoot({
              * whoever is looking for the inbox they already use needs to see
              * why it will not do.
              */}
-            {caixas.map((caixa) => (
+            {inboxes.map((inbox) => (
               <Opcao
-                key={caixa.id}
-                selecionada={escolha === caixa.id}
-                aoEscolher={() => setEscolha(caixa.id)}
-                desabilitada={!caixa.usable}
-                titulo={caixa.name}
+                key={inbox.id}
+                selected={escolha === inbox.id}
+                aoEscolher={() => setEscolha(inbox.id)}
+                disabled={!inbox.usable}
+                title={inbox.name}
                 detalhe={
-                  caixa.usable
+                  inbox.usable
                     ? t('chatwoot.existingInbox')
-                    : `Tipo ${caixa.channelType} — tem transporte próprio e ignoraria o gateway.`
+                    : `Tipo ${inbox.channelType} — tem transporte próprio e ignoraria o gateway.`
                 }
               />
             ))}
 
-            {caixas.length === 0 && <Empty>{t('chatwoot.noInbox')}</Empty>}
+            {inboxes.length === 0 && <Empty>{t('chatwoot.noInbox')}</Empty>}
           </fieldset>
 
-          <Erro texto={erro} />
-          <Acao
-            ocupado={ocupado}
-            rotulo={t('chatwoot.connect')}
-            carregando={t('chatwoot.preparing')}
-          />
+          <Erro text={error} />
+          <Action busy={busy} label={t('chatwoot.connect')} loading={t('chatwoot.preparing')} />
         </form>
       )}
     </Card>
   )
 }
 
-function Passos({ atual }: { atual: number }) {
+function Passos({ current }: { current: number }) {
   const t = useT()
 
   return (
@@ -277,67 +269,67 @@ function Passos({ atual }: { atual: number }) {
           aria-hidden
           className={cx(
             'size-1.5 rounded-full',
-            n === atual ? 'bg-accent' : n < atual ? 'bg-ok' : 'bg-line-strong',
+            n === current ? 'bg-accent' : n < current ? 'bg-ok' : 'bg-line-strong',
           )}
         />
       ))}
-      <span className="sr-only">{t('wizard.stepOf', { n: atual, total: 3 })}</span>
+      <span className="sr-only">{t('wizard.stepOf', { n: current, total: 3 })}</span>
     </span>
   )
 }
 
 function Opcao({
-  selecionada,
+  selected,
   aoEscolher,
-  titulo,
+  title,
   detalhe,
-  desabilitada,
+  disabled,
 }: {
-  selecionada: boolean
+  selected: boolean
   aoEscolher: () => void
-  titulo: string
+  title: string
   detalhe: string
-  desabilitada?: boolean
+  disabled?: boolean
 }) {
   return (
     <label
       className={cx(
         'flex cursor-pointer items-start gap-2.5 rounded-md border px-3 py-2.5',
-        desabilitada && 'cursor-not-allowed opacity-50',
-        selecionada ? 'border-accent bg-accent-soft' : 'border-line bg-surface',
+        disabled && 'cursor-not-allowed opacity-50',
+        selected ? 'border-accent bg-accent-soft' : 'border-line bg-surface',
       )}
     >
       <input
         type="radio"
         name="caixa"
-        checked={selecionada}
-        disabled={desabilitada}
+        checked={selected}
+        disabled={disabled}
         onChange={aoEscolher}
         className="mt-0.5 accent-[var(--accent)]"
       />
       <span className="min-w-0">
-        <span className="block text-sm text-ink">{titulo}</span>
+        <span className="block text-sm text-ink">{title}</span>
         <span className="block text-xs text-muted">{detalhe}</span>
       </span>
     </label>
   )
 }
 
-function Campo({
-  rotulo,
+function Field({
+  label,
   value,
   onChange,
   dica,
   ...resto
 }: {
-  rotulo: string
+  label: string
   value: string
-  onChange: (valor: string) => void
+  onChange: (value: string) => void
   dica?: string
 } & Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'value'>) {
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="eyebrow">{rotulo}</span>
+      <span className="eyebrow">{label}</span>
       <input
         required
         value={value}
@@ -350,31 +342,23 @@ function Campo({
   )
 }
 
-function Erro({ texto }: { texto: string | null }) {
-  if (!texto) return null
+function Erro({ text }: { text: string | null }) {
+  if (!text) return null
   return (
     <p role="alert" className="rounded-md bg-crit/10 px-3 py-2 text-xs text-crit">
-      {texto}
+      {text}
     </p>
   )
 }
 
-function Acao({
-  ocupado,
-  rotulo,
-  carregando,
-}: {
-  ocupado: boolean
-  rotulo: string
-  carregando: string
-}) {
+function Action({ busy, label, loading }: { busy: boolean; label: string; loading: string }) {
   return (
     <button
       type="submit"
-      disabled={ocupado}
+      disabled={busy}
       className="mt-1 rounded-md bg-accent px-3 py-2 text-sm font-medium text-on-fill transition-opacity hover:opacity-90 disabled:opacity-50"
     >
-      {ocupado ? carregando : rotulo}
+      {busy ? loading : label}
     </button>
   )
 }

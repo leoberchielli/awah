@@ -54,11 +54,11 @@ describe('capacidades da engine oficial', () => {
 
   /** Presence does not exist in the Cloud API; ignoring it beats failing a send. */
   it('presença é silenciosamente ignorada', async () => {
-    const chamadas = vi.fn()
-    const { adapter } = montar(chamadas)
+    const calls = vi.fn()
+    const { adapter } = montar(calls)
 
     await expect(adapter.sendPresence()).resolves.toBeUndefined()
-    expect(chamadas).not.toHaveBeenCalled()
+    expect(calls).not.toHaveBeenCalled()
   })
 })
 
@@ -88,8 +88,8 @@ describe('conexão', () => {
     await expect(adapter.connect()).rejects.toThrow(/rejected the credentials/i)
     expect(adapter.isReady()).toBe(false)
 
-    const fechamento = eventos.find((e) => e.type === 'closed')
-    expect(fechamento).toMatchObject({ shouldReconnect: false, loggedOut: true })
+    const closing = eventos.find((e) => e.type === 'closed')
+    expect(closing).toMatchObject({ shouldReconnect: false, loggedOut: true })
   })
 
   it('token expirado não fica reconectando em laço', async () => {
@@ -97,8 +97,8 @@ describe('conexão', () => {
     const { adapter, eventos } = montar(fetchImpl as unknown as typeof fetch)
 
     await expect(adapter.connect()).rejects.toThrow()
-    const fechamento = eventos.find((e) => e.type === 'closed')
-    expect(fechamento).toMatchObject({ shouldReconnect: false })
+    const closing = eventos.find((e) => e.type === 'closed')
+    expect(closing).toMatchObject({ shouldReconnect: false })
   })
 })
 
@@ -117,16 +117,16 @@ describe('envio', () => {
     const { adapter } = montar(fetchImpl as unknown as typeof fetch)
     await adapter.connect()
 
-    const resultado = await adapter.sendText('5511988887777@s.whatsapp.net', 'olá')
-    expect(resultado.engineMessageId).toBe('wamid.ABC123')
+    const result = await adapter.sendText('5511988887777@s.whatsapp.net', 'olá')
+    expect(result.engineMessageId).toBe('wamid.ABC123')
   })
 
   /** Meta expects digits; the JID suffix belongs to the unofficial protocol. */
   it('converte JID para o formato da Meta', async () => {
-    let corpoEnviado: Record<string, unknown> = {}
+    let sentBody: Record<string, unknown> = {}
     const fetchImpl = vi.fn(async (_url: string, init?: RequestInit) => {
       if (!init?.method) return resposta({ display_phone_number: '551199999999' })
-      corpoEnviado = JSON.parse(String(init.body))
+      sentBody = JSON.parse(String(init.body))
       return resposta({ messages: [{ id: 'wamid.X' }] })
     })
 
@@ -134,8 +134,8 @@ describe('envio', () => {
     await adapter.connect()
     await adapter.sendText('5511988887777@s.whatsapp.net', 'oi')
 
-    expect(corpoEnviado.to).toBe('5511988887777')
-    expect(corpoEnviado.messaging_product).toBe('whatsapp')
+    expect(sentBody.to).toBe('5511988887777')
+    expect(sentBody.messaging_product).toBe('whatsapp')
   })
 
   /**

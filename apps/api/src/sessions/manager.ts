@@ -211,9 +211,9 @@ export class SessionManager {
      * node wins, even if they all try in the same millisecond.
      */
     if (!(await this.deps.lease.acquire(sessionId))) {
-      const dono = await this.deps.lease.owner(sessionId)
+      const owner = await this.deps.lease.owner(sessionId)
       throw conflict(
-        `This session is running on node ${dono ?? 'unknown'}. Commands are routed automatically; there is no need to start it again.`,
+        `This session is running on node ${owner ?? 'unknown'}. Commands are routed automatically; there is no need to start it again.`,
       )
     }
 
@@ -461,8 +461,8 @@ export class SessionManager {
       return this.stop(orgId, sessionId, options)
     }
 
-    const dono = await this.deps.lease.owner(sessionId)
-    if (!dono || dono === this.deps.nodeId) {
+    const owner = await this.deps.lease.owner(sessionId)
+    if (!owner || owner === this.deps.nodeId) {
       // No owner: all that is left is to set the state right in the database.
       return this.stop(orgId, sessionId, options)
     }
@@ -477,7 +477,7 @@ export class SessionManager {
     })
 
     if (!resposta.ok) {
-      throw conflict(`Failed to forward the command to node ${dono}: ${resposta.error}`)
+      throw conflict(`Failed to forward the command to node ${owner}: ${resposta.error}`)
     }
   }
 
@@ -491,8 +491,8 @@ export class SessionManager {
       return this.requestPairingCode(orgId, sessionId, phoneNumber)
     }
 
-    const dono = await this.deps.lease.owner(sessionId)
-    if (!dono || dono === this.deps.nodeId) {
+    const owner = await this.deps.lease.owner(sessionId)
+    if (!owner || owner === this.deps.nodeId) {
       throw badRequest('Start the session before requesting a pairing code.')
     }
 
@@ -504,7 +504,7 @@ export class SessionManager {
     })
 
     if (!resposta.ok) {
-      throw conflict(`Failed to forward the command to node ${dono}: ${resposta.error}`)
+      throw conflict(`Failed to forward the command to node ${owner}: ${resposta.error}`)
     }
 
     const code = (resposta.result as { code?: unknown } | undefined)?.code

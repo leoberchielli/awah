@@ -84,18 +84,18 @@ export class FailoverScanner {
     this.scanning = true
 
     try {
-      const candidatas = (await this.candidates()).filter(
+      const candidates = (await this.candidates()).filter(
         (c) => !this.deps.sessions.isRunning(c.id),
       )
-      if (candidatas.length === 0) return
+      if (candidates.length === 0) return
 
       /**
        * One ownership lookup for the whole batch. Asking session by session
        * would multiply the round trips to Redis by a number that grows with
        * the fleet, in a loop that runs on every node at the same time.
        */
-      const donos = await this.deps.lease.owners(candidatas.map((c) => c.id))
-      const orfas = candidatas.filter((c) => !donos.has(c.id)).slice(0, this.deps.batchSize)
+      const owners = await this.deps.lease.owners(candidates.map((c) => c.id))
+      const orfas = candidates.filter((c) => !owners.has(c.id)).slice(0, this.deps.batchSize)
 
       if (orfas.length === 0) return
 

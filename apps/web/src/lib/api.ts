@@ -36,11 +36,11 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const body = await response.json().catch(() => null)
 
   if (!response.ok) {
-    const erro = (body as ErrorBody)?.error
+    const error = (body as ErrorBody)?.error
     throw new ApiError(
       response.status,
-      erro?.code ?? 'unknown',
-      erro?.message ?? `Falha na requisição (HTTP ${response.status}).`,
+      error?.code ?? 'unknown',
+      error?.message ?? `Falha na requisição (HTTP ${response.status}).`,
     )
   }
 
@@ -60,12 +60,12 @@ export const del = <T>(path: string) => api<T>(path, { method: 'DELETE' })
 // Contracts. They mirror the server's responses; what is unused stays out.
 // ---------------------------------------------------------------------------
 
-export type Papel = 'viewer' | 'operator' | 'admin' | 'owner'
+export type Role = 'viewer' | 'operator' | 'admin' | 'owner'
 
 export interface Me {
   kind: 'user' | 'api_key'
   organizationId: string
-  role: Papel
+  role: Role
   userId: string | null
 }
 
@@ -73,7 +73,7 @@ export interface Member {
   userId: string
   email: string
   name: string
-  role: Papel
+  role: Role
   joinedAt: string
 }
 
@@ -82,7 +82,7 @@ export interface ApiKeyRow {
   name: string
   /** The token's public part. It is how you identify the key in a log. */
   prefix: string
-  role: Papel
+  role: Role
   /** Null when the key reaches the whole organization. */
   sessionScope: string[] | null
   lastUsedAt: string | null
@@ -223,13 +223,13 @@ export interface Bootstrap {
   openRegistration: boolean
 }
 
-export interface ContaChatwoot {
+export interface ChatwootAccount {
   id: number
   name: string
   role: string
 }
 
-export interface CaixaChatwoot {
+export interface ChatwootInbox {
   id: number
   name: string
   channelType: string
@@ -238,8 +238,8 @@ export interface CaixaChatwoot {
 }
 
 export interface DescobertaChatwoot {
-  accounts: ContaChatwoot[]
-  inboxes: CaixaChatwoot[] | null
+  accounts: ChatwootAccount[]
+  inboxes: ChatwootInbox[] | null
 }
 
 export interface TesteDoConector {
@@ -249,7 +249,7 @@ export interface TesteDoConector {
   durationMs: number
   replies: string[]
   raw: string
-  diagnostico: string | null
+  diagnosis: string | null
   /** What was posted, so the flow on the other side can be built on the sample. */
   sentPayload: Record<string, unknown>
 }

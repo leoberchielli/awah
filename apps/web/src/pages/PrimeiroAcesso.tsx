@@ -15,29 +15,29 @@ import { ApiError, post } from '../lib/api'
  * The route closes itself as soon as an organization exists, so this screen
  * shows up once in the life of the instance.
  */
-export function PrimeiroAcesso() {
+export function FirstRun() {
   const t = useT()
   const [organizationName, setOrganizationName] = useState('')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [erro, setErro] = useState<string | null>(null)
-  const [enviando, setEnviando] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [sending, setSending] = useState(false)
 
   const curta = password.length > 0 && password.length < 12
 
   async function criar(evento: FormEvent) {
     evento.preventDefault()
-    setEnviando(true)
-    setErro(null)
+    setSending(true)
+    setError(null)
 
     try {
       await post('/v1/auth/register', { organizationName, name, email, password })
       // Registration hands back a live session: go straight in, no login prompt.
       window.location.assign('/sessions')
-    } catch (falha) {
-      setErro(falha instanceof ApiError ? falha.message : t('setup.apiUnreachable'))
-      setEnviando(false)
+    } catch (failure) {
+      setError(failure instanceof ApiError ? failure.message : t('setup.apiUnreachable'))
+      setSending(false)
     }
   }
 
@@ -54,31 +54,31 @@ export function PrimeiroAcesso() {
         </div>
 
         <form onSubmit={criar} className="card flex flex-col gap-4 p-5">
-          <Campo
+          <Field
             id="organizationName"
-            rotulo={t('setup.orgName')}
+            label={t('setup.orgName')}
             placeholder={t('setup.orgPlaceholder')}
             value={organizationName}
             onChange={setOrganizationName}
           />
-          <Campo
+          <Field
             id="name"
-            rotulo={t('setup.yourName')}
+            label={t('setup.yourName')}
             autoComplete="name"
             value={name}
             onChange={setName}
           />
-          <Campo
+          <Field
             id="email"
-            rotulo={t('login.email')}
+            label={t('login.email')}
             type="email"
             autoComplete="username"
             value={email}
             onChange={setEmail}
           />
-          <Campo
+          <Field
             id="password"
-            rotulo={t('login.password')}
+            label={t('login.password')}
             type="password"
             autoComplete="new-password"
             value={password}
@@ -87,18 +87,18 @@ export function PrimeiroAcesso() {
             problema={curta}
           />
 
-          {erro && (
+          {error && (
             <p role="alert" className="rounded-md bg-crit/10 px-3 py-2 text-xs text-crit">
-              {erro}
+              {error}
             </p>
           )}
 
           <button
             type="submit"
-            disabled={enviando || curta}
+            disabled={sending || curta}
             className="rounded-md bg-accent px-3 py-2 text-sm font-medium text-on-fill transition-opacity hover:opacity-90 disabled:opacity-50"
           >
-            {enviando ? t('setup.submitting') : t('setup.submit')}
+            {sending ? t('setup.submitting') : t('setup.submit')}
           </button>
         </form>
 
@@ -110,9 +110,9 @@ export function PrimeiroAcesso() {
   )
 }
 
-function Campo({
+function Field({
   id,
-  rotulo,
+  label,
   value,
   onChange,
   dica,
@@ -120,15 +120,15 @@ function Campo({
   ...resto
 }: {
   id: string
-  rotulo: string
+  label: string
   value: string
-  onChange: (valor: string) => void
+  onChange: (value: string) => void
   dica?: string
   problema?: boolean
 } & Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'value' | 'id'>) {
   return (
     <label htmlFor={id} className="flex flex-col gap-1.5">
-      <span className="eyebrow">{rotulo}</span>
+      <span className="eyebrow">{label}</span>
       <input
         id={id}
         required

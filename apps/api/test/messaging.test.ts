@@ -94,8 +94,8 @@ describe('timestamp do protocolo', () => {
   })
 
   it('cai no agora quando o valor não presta', () => {
-    for (const entrada of [null, undefined, 0, -5, Number.NaN]) {
-      expect(toDate(entrada).getTime()).toBeGreaterThan(Date.now() - 5000)
+    for (const input of [null, undefined, 0, -5, Number.NaN]) {
+      expect(toDate(input).getTime()).toBeGreaterThan(Date.now() - 5000)
     }
   })
 })
@@ -104,22 +104,22 @@ describe('política de retenção', () => {
   const agora = new Date('2026-08-18T12:00:00Z')
 
   it('marca a data de expiração no padrão de 30 dias', () => {
-    const resultado = applyRetention('conteúdo', 30, agora)
-    expect(resultado.body).toBe('conteúdo')
-    expect(resultado.contentExpiresAt?.toISOString()).toBe('2026-09-17T12:00:00.000Z')
+    const result = applyRetention('conteúdo', 30, agora)
+    expect(result.body).toBe('conteúdo')
+    expect(result.contentExpiresAt?.toISOString()).toBe('2026-09-17T12:00:00.000Z')
   })
 
   /** Zero means never persist a body — the row is born with metadata only. */
   it('descarta o corpo quando a retenção é zero', () => {
-    const resultado = applyRetention('sensível', 0, agora)
-    expect(resultado.body).toBeNull()
-    expect(resultado.contentExpiresAt).toBeNull()
+    const result = applyRetention('sensível', 0, agora)
+    expect(result.body).toBeNull()
+    expect(result.contentExpiresAt).toBeNull()
   })
 
   it('retém para sempre com -1', () => {
-    const resultado = applyRetention('conteúdo', -1, agora)
-    expect(resultado.body).toBe('conteúdo')
-    expect(resultado.contentExpiresAt).toBeNull()
+    const result = applyRetention('conteúdo', -1, agora)
+    expect(result.body).toBe('conteúdo')
+    expect(result.contentExpiresAt).toBeNull()
   })
 
   it('preserva corpo nulo sem inventar conteúdo', () => {
@@ -128,10 +128,10 @@ describe('política de retenção', () => {
 })
 
 describe('backoff exponencial', () => {
-  const semJitter = () => 0
+  const withoutJitter = () => 0
 
   it('dobra a cada tentativa', () => {
-    const opts = { baseMs: 2000, capMs: 3_600_000, random: semJitter }
+    const opts = { baseMs: 2000, capMs: 3_600_000, random: withoutJitter }
     expect(exponentialBackoff({ ...opts, attempt: 1 })).toBe(2000)
     expect(exponentialBackoff({ ...opts, attempt: 2 })).toBe(4000)
     expect(exponentialBackoff({ ...opts, attempt: 3 })).toBe(8000)
@@ -139,7 +139,7 @@ describe('backoff exponencial', () => {
 
   it('respeita o teto', () => {
     expect(
-      exponentialBackoff({ attempt: 50, baseMs: 2000, capMs: 60_000, random: semJitter }),
+      exponentialBackoff({ attempt: 50, baseMs: 2000, capMs: 60_000, random: withoutJitter }),
     ).toBe(60_000)
   })
 

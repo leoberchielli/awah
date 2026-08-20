@@ -23,12 +23,12 @@ describe.skipIf(!hasInfra)('integrações com ferramentas externas', () => {
   let encryptionKey: Buffer
 
   /** Records everything the connector tried to say to Chatwoot. */
-  let chamadas: Array<{ url: string; method: string; body: unknown }>
+  let calls: Array<{ url: string; method: string; body: unknown }>
 
   function fetchDoChatwoot(): typeof fetch {
     return vi.fn(async (url: string | URL, init?: RequestInit) => {
       const endereco = String(url)
-      chamadas.push({
+      calls.push({
         url: endereco,
         method: init?.method ?? 'GET',
         body: init?.body ? JSON.parse(String(init.body)) : null,
@@ -61,8 +61,8 @@ describe.skipIf(!hasInfra)('integrações com ferramentas externas', () => {
     })
   }
 
-  async function receber(body: string, engineMessageId = `wamid.${randomUUID()}`) {
-    await dispatcher().aoReceber({
+  async function receive(body: string, engineMessageId = `wamid.${randomUUID()}`) {
+    await dispatcher().onReceive({
       orgId: org.orgId,
       sessionId,
       chatId: CHAT_ID,
@@ -74,7 +74,7 @@ describe.skipIf(!hasInfra)('integrações com ferramentas externas', () => {
     return engineMessageId
   }
 
-  async function fila() {
+  async function queue() {
     return app.db
       .select({
         chatId: schema.outboxMessages.chatId,
@@ -91,14 +91,14 @@ describe.skipIf(!hasInfra)('integrações com ferramentas externas', () => {
     encryptionKey = Buffer.from(app.env.ENCRYPTION_KEY, 'base64')
     org = await seedOrg(app.db)
 
-    const [linha] = await app.db
+    const [row] = await app.db
       .insert(schema.sessions)
       .values({ orgId: org.orgId, name: `integra-${randomUUID().slice(0, 8)}`, engine: 'baileys' })
       .returning({ id: schema.sessions.id })
-    if (!linha) throw new Error('falha ao criar sessão')
-    sessionId = linha.id
+    if (!row) throw new Error('falha ao criar sessão')
+    sessionId = row.id
 
-    const integracao = await saveIntegration(app.db, encryptionKey, {
+    const integration = await saveIntegration(app.db, encryptionKey, {
       orgId: org.orgId,
       sessionId,
       kind: 'chatwoot',
@@ -110,11 +110,11 @@ describe.skipIf(!hasInfra)('integrações com ferramentas externas', () => {
         webhookToken: TOKEN,
       }),
     })
-    integrationId = integracao.id
+    integrationId = integration.id
   })
 
   beforeEach(() => {
-    chamadas = []
+    calls = []
   })
 
   afterAll(async () => {
@@ -124,38 +124,38 @@ describe.skipIf(!hasInfra)('integrações com ferramentas externas', () => {
 
   describe('do WhatsApp para o Chatwoot', () => {
     it('abre a conversa uma vez e reaproveita nas seguintes', async () => {
-      await receber('primeira mensagem')
+      await receive('primeira mensagem')
 
       const vinculo = await findLink(app.db, integrationId, CHAT_ID)
       expect(vinculo?.externalConversationId).toBe('555')
       expect(vinculo?.externalContactId).toBe('42')
 
-      const criouConversa = chamadas.filter((c) => c.url.endsWith('/conversations')).length
+      const criouConversa = calls.filter((c) => c.url.endsWith('/conversations')).length
       expect(criouConversa).toBe(1)
 
-      chamadas = []
-      await receber('segunda mensagem')
+      calls = []
+      await receive('segunda mensagem')
 
       /**
        * Reopening the conversation on every message would create a new Chatwoot
        * thread per inbound message — the operator would see one conversation
        * chopped into dozens of pieces.
        */
-      expect(chamadas.filter((c) => c.url.endsWith('/conversations'))).toHaveLength(0)
-      expect(chamadas.some((c) => c.url.includes('/messages'))).toBe(true)
+      expect(calls.filter((c) => c.url.endsWith('/conversations'))).toHaveLength(0)
+      expect(calls.some((c) => c.url.includes('/messages'))).toBe(true)
     })
 
     it('leva o id do WhatsApp como source_id', async () => {
-      const id = await receber('com rastro')
+      const id = await receive('com rastro')
 
-      const mensagem = chamadas.find((c) => c.url.includes('/messages'))
-      expect((mensagem?.body as { source_id?: string })?.source_id).toBe(id)
-      expect((mensagem?.body as { message_type?: string })?.message_type).toBe('incoming')
+      const message = calls.find((c) => c.url.includes('/messages'))
+      expect((message?.body as { source_id?: string })?.source_id).toBe(id)
+      expect((message?.body as { message_type?: string })?.message_type).toBe('incoming')
     })
 
     it('ignora mensagem sem texto', async () => {
-      await receber('')
-      expect(chamadas).toHaveLength(0)
+      await receive('')
+      expect(calls).toHaveLength(0)
     })
 
     /**
@@ -163,12 +163,12 @@ describe.skipIf(!hasInfra)('integrações com ferramentas externas', () => {
      * limit, it would drop the WhatsApp connection over a third-party tool.
      */
     it('engole a falha e registra o erro na integração', async () => {
-      const quebrado = vi.fn(
+      const broken = vi.fn(
         async () => new Response(JSON.stringify({ message: 'fora do ar' }), { status: 503 }),
       ) as unknown as typeof fetch
 
       await expect(
-        dispatcher(quebrado).aoReceber({
+        dispatcher(broken).onReceive({
           orgId: org.orgId,
           sessionId,
           chatId: `5511900000000@s.whatsapp.net`,
@@ -179,13 +179,13 @@ describe.skipIf(!hasInfra)('integrações com ferramentas externas', () => {
         }),
       ).resolves.toBeUndefined()
 
-      const [linha] = await app.db
+      const [row] = await app.db
         .select({ lastError: schema.integrations.lastError })
         .from(schema.integrations)
         .where(eq(schema.integrations.id, integrationId))
         .limit(1)
 
-      expect(linha?.lastError).toMatch(/503/)
+      expect(row?.lastError).toMatch(/503/)
     })
   })
 
@@ -211,7 +211,7 @@ describe.skipIf(!hasInfra)('integrações com ferramentas externas', () => {
 
     beforeAll(async () => {
       // Makes sure the link for conversation 555 exists before this batch runs.
-      await receber('abre a conversa')
+      await receive('abre a conversa')
     })
 
     it('recusa token errado', async () => {
@@ -231,12 +231,12 @@ describe.skipIf(!hasInfra)('integrações com ferramentas externas', () => {
     })
 
     it('enfileira a resposta do agente', async () => {
-      const antes = (await fila()).length
+      const before = (await queue()).length
       expect((await webhook(respostaDeAgente(1001))).statusCode).toBe(200)
 
-      const depois = await aguardar(async () => {
-        const linhas = await fila()
-        return linhas.length > antes ? linhas : null
+      const depois = await wait(async () => {
+        const rows = await queue()
+        return rows.length > before ? rows : null
       })
 
       const nova = depois?.find((l) => l.clientMessageId === 'chatwoot:1001')
@@ -254,9 +254,9 @@ describe.skipIf(!hasInfra)('integrações com ferramentas externas', () => {
       await webhook(respostaDeAgente(2002))
       await webhook(respostaDeAgente(2002))
 
-      const iguais = await aguardar(async () => {
-        const linhas = (await fila()).filter((l) => l.clientMessageId === 'chatwoot:2002')
-        return linhas.length > 0 ? linhas : null
+      const iguais = await wait(async () => {
+        const rows = (await queue()).filter((l) => l.clientMessageId === 'chatwoot:2002')
+        return rows.length > 0 ? rows : null
       })
 
       expect(iguais).toHaveLength(1)
@@ -267,7 +267,7 @@ describe.skipIf(!hasInfra)('integrações com ferramentas externas', () => {
      * about to go back out to WhatsApp again. `source_id` is what cuts it.
      */
     it('não devolve ao WhatsApp a mensagem que veio de lá', async () => {
-      const antes = (await fila()).length
+      const before = (await queue()).length
 
       await webhook({
         ...respostaDeAgente(3003),
@@ -277,31 +277,31 @@ describe.skipIf(!hasInfra)('integrações com ferramentas externas', () => {
       await webhook({ ...respostaDeAgente(3004), source_id: 'wamid.OUTRA' })
 
       await new Promise((r) => setTimeout(r, 400))
-      expect((await fila()).length).toBe(antes)
+      expect((await queue()).length).toBe(before)
     })
 
     it('não manda nota interna para o cliente', async () => {
-      const antes = (await fila()).length
+      const before = (await queue()).length
       await webhook({ ...respostaDeAgente(4004), private: true })
 
       await new Promise((r) => setTimeout(r, 400))
-      expect((await fila()).length).toBe(antes)
+      expect((await queue()).length).toBe(before)
     })
 
     it('ignora evento que não é criação de mensagem', async () => {
-      const antes = (await fila()).length
+      const before = (await queue()).length
       await webhook({ ...respostaDeAgente(5005), event: 'conversation_status_changed' })
 
       await new Promise((r) => setTimeout(r, 400))
-      expect((await fila()).length).toBe(antes)
+      expect((await queue()).length).toBe(before)
     })
 
     it('ignora resposta vazia', async () => {
-      const antes = (await fila()).length
+      const before = (await queue()).length
       await webhook(respostaDeAgente(6006, '   '))
 
       await new Promise((r) => setTimeout(r, 400))
-      expect((await fila()).length).toBe(antes)
+      expect((await queue()).length).toBe(before)
     })
   })
 
@@ -353,22 +353,22 @@ describe.skipIf(!hasInfra)('integrações com ferramentas externas', () => {
       config,
     })
 
-    const linhas = await app.db
+    const rows = await app.db
       .select({ id: schema.integrations.id })
       .from(schema.integrations)
       .where(
         and(eq(schema.integrations.sessionId, sessionId), eq(schema.integrations.kind, 'chatwoot')),
       )
 
-    expect(linhas).toHaveLength(1)
-    expect(linhas[0]?.id).toBe(integrationId)
+    expect(rows).toHaveLength(1)
+    expect(rows[0]?.id).toBe(integrationId)
   })
 })
 
-async function aguardar<T>(consulta: () => Promise<T | null>, tentativas = 40): Promise<T | null> {
-  for (let i = 0; i < tentativas; i++) {
-    const resultado = await consulta()
-    if (resultado) return resultado
+async function wait<T>(consulta: () => Promise<T | null>, attempts = 40): Promise<T | null> {
+  for (let i = 0; i < attempts; i++) {
+    const result = await consulta()
+    if (result) return result
     await new Promise((resolve) => setTimeout(resolve, 50))
   }
   return null

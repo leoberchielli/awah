@@ -267,13 +267,13 @@ export async function buildApp(env: Env): Promise<FastifyInstance> {
    * the JSON turned into `<!doctype html>`.
    */
   app.setNotFoundHandler((request, reply) => {
-    const navegacao =
+    const navigation =
       app.spaIndex !== null &&
       (request.method === 'GET' || request.method === 'HEAD') &&
       !ehRotaDoServidor(request.url) &&
       String(request.headers.accept ?? '').includes('text/html')
 
-    if (navegacao) {
+    if (navigation) {
       return reply
         .code(200)
         .type('text/html; charset=utf-8')

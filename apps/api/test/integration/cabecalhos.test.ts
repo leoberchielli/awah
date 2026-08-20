@@ -27,8 +27,8 @@ describe.skipIf(!hasInfra)('cabeçalhos de segurança', () => {
         .map((parte) => parte.trim())
         .filter(Boolean)
         .map((parte) => {
-          const [nome, ...valores] = parte.split(' ')
-          return [nome ?? '', valores.join(' ')]
+          const [name, ...values] = parte.split(' ')
+          return [name ?? '', values.join(' ')]
         }),
     )
   }
