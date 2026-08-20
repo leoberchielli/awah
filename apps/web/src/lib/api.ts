@@ -176,7 +176,15 @@ export interface KpiBusiness {
 export interface RiskSnapshot {
   score: {
     value: number
-    factors: Array<{ name: string; points: number; max: number; detail: string }>
+    factors: Array<{
+      name: string
+      points: number
+      max: number
+      /** English prose from the API. Only used when no translation exists. */
+      detail: string
+      /** The numbers behind `detail`, so the panel can word it in the user's language. */
+      values: Record<string, number>
+    }>
   }
   usage: { minute: number; hour: number; day: number; newContactsToday: number }
   limits: { perMinute: number; perHour: number; perDay: number; newContactsPerDay: number }

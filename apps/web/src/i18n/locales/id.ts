@@ -214,6 +214,7 @@ export const id: Catalog = {
   'sessions.detail': 'Rincian',
   'sessions.detailEmpty': 'Ketuk sebuah sesi untuk melihat risiko, kuota, dan riwayat putus.',
   'sessions.new': 'Sesi baru',
+  'sessions.onNode': 'node {id}',
   'sessions.namePlaceholder': 'nama sesi',
   'sessions.create': 'Buat',
   'sessions.createFailed': 'Sesi gagal dibuat.',
@@ -252,6 +253,11 @@ export const id: Catalog = {
   'risk.perDay': 'Per hari',
   'risk.newContactsToday': 'Kontak baru hari ini',
   'risk.factors': 'Dari mana skor berasal',
+  'risk.factor.one_sided_conversation':
+    '{sent} terkirim berbanding {received} diterima dalam 24 jam',
+  'risk.factor.new_contacts': '{used} dari {limit} yang diizinkan hari ini',
+  'risk.factor.delivery_failure': '{percent}% pengiriman tidak sampai',
+  'risk.factor.speed': '{used} dari {limit} dalam menit terakhir',
 
   'events.title': 'Riwayat koneksi',
   'events.hint':

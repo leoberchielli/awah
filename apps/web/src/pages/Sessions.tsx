@@ -2,7 +2,7 @@ import { type FormEvent, useState } from 'react'
 import { Shell } from '../components/Shell'
 import { Card, cx, Empty, Pill, Skeleton, Stat, type Tone } from '../components/ui'
 import { useQuery } from '../hooks/useQuery'
-import { Rich, type TranslationKey, useT } from '../i18n'
+import { Rich, type Translate, type TranslationKey, useT } from '../i18n'
 import type { QrResponse, RiskSnapshot, SessionEvent, SessionRow } from '../lib/api'
 import { ApiError, post } from '../lib/api'
 import { dateTime, num, pct, phone, since } from '../lib/format'
@@ -206,7 +206,8 @@ function SessionCard({
             <span className="block truncate text-sm font-medium text-ink">{session.name}</span>
             <span className="block truncate font-mono text-xs text-muted">
               {phone(session.phoneNumber)} · {session.engine}
-              {session.ownerNodeId && ` · nó ${session.ownerNodeId.slice(0, 8)}`}
+              {session.ownerNodeId &&
+                ` · ${t('sessions.onNode', { id: session.ownerNodeId.slice(0, 8) })}`}
             </span>
           </span>
         </button>
@@ -377,6 +378,26 @@ function QrPanel({ sessionId }: { sessionId: string }) {
   )
 }
 
+type ScoreFactor = { name: string; detail: string; values: Record<string, number> }
+
+/**
+ * The factor's explanation, in the reader's language.
+ *
+ * The API sends the fact twice: as numbers, and as an English sentence. The
+ * panel is translated into ten languages, so it words the numbers itself and
+ * keeps the sentence only as a fallback — a signal added to the score later
+ * still shows up here, in English but visible, instead of vanishing from the
+ * one list that explains why the score is what it is.
+ *
+ * `t` returns the key itself when it knows no translation and English has none
+ * either, which is exactly the "no wording for this signal" case.
+ */
+function explain(t: Translate, factor: ScoreFactor): string {
+  const key = `risk.factor.${factor.name}` as TranslationKey
+  const worded = t(key, factor.values)
+  return worded === key ? factor.detail : worded
+}
+
 function RiskPanel({ sessionId }: { sessionId: string }) {
   const t = useT()
   const risk = useQuery<RiskSnapshot>(`/v1/sessions/${sessionId}/risk`, 5000)
@@ -445,7 +466,7 @@ function RiskPanel({ sessionId }: { sessionId: string }) {
             <ul className="flex flex-col gap-1">
               {scoring.map((factor) => (
                 <li key={factor.name} className="flex items-baseline justify-between gap-2">
-                  <span className="text-xs text-muted">{factor.detail}</span>
+                  <span className="text-xs text-muted">{explain(t, factor)}</span>
                   <span className="shrink-0 font-mono text-xs text-ink tnum">
                     +{factor.points}
                     <span className="text-muted">/{factor.max}</span>

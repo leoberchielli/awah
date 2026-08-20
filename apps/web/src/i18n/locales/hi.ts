@@ -211,6 +211,7 @@ export const hi: Catalog = {
   'sessions.detail': 'विवरण',
   'sessions.detailEmpty': 'रिस्क, बजट और ड्रॉप इतिहास देखने के लिए किसी सेशन पर टैप करें।',
   'sessions.new': 'नया सेशन',
+  'sessions.onNode': 'नोड {id}',
   'sessions.namePlaceholder': 'सेशन का नाम',
   'sessions.create': 'बनाएँ',
   'sessions.createFailed': 'सेशन नहीं बन सका।',
@@ -247,6 +248,10 @@ export const hi: Catalog = {
   'risk.perDay': 'प्रति दिन',
   'risk.newContactsToday': 'आज के नए संपर्क',
   'risk.factors': 'स्कोर कहाँ से आता है',
+  'risk.factor.one_sided_conversation': '24 घंटे में {received} प्राप्त के मुकाबले {sent} भेजे गए',
+  'risk.factor.new_contacts': 'आज अनुमत {limit} में से {used}',
+  'risk.factor.delivery_failure': '{percent}% संदेश नहीं पहुँचे',
+  'risk.factor.speed': 'पिछले मिनट में {limit} में से {used}',
 
   'events.title': 'कनेक्शन इतिहास',
   'events.hint': 'अनुवादित कारण के बग़ल में कच्चा प्रोटोकॉल कोड — इसी से आप लॉग पढ़े बिना ड्रॉप समझ पाते हैं।',

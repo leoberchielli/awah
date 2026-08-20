@@ -26,10 +26,19 @@ export async function riskRoutes(app: FastifyInstance) {
               value: z.number(),
               factors: z.array(
                 z.object({
-                  name: z.string(),
+                  name: z
+                    .string()
+                    .describe(
+                      'Stable signal identifier: one_sided_conversation, new_contacts, delivery_failure, speed.',
+                    ),
                   points: z.number(),
                   max: z.number(),
-                  detail: z.string(),
+                  detail: z.string().describe('The fact in English prose.'),
+                  values: z
+                    .record(z.number())
+                    .describe(
+                      'The numbers behind `detail`, for callers that render their own wording.',
+                    ),
                 }),
               ),
             }),

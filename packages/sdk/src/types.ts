@@ -102,7 +102,16 @@ export interface WebhookEndpoint {
 export interface RiskSnapshot {
   score: {
     value: number
-    factors: Array<{ name: string; points: number; max: number; detail: string }>
+    factors: Array<{
+      /** one_sided_conversation, new_contacts, delivery_failure, speed. */
+      name: string
+      points: number
+      max: number
+      /** The fact in English prose. */
+      detail: string
+      /** The numbers behind `detail`, for callers that word it themselves. */
+      values: Record<string, number>
+    }>
   }
   usage: { minute: number; hour: number; day: number; newContactsToday: number }
   limits: { perMinute: number; perHour: number; perDay: number; newContactsPerDay: number }

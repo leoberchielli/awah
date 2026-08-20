@@ -235,6 +235,7 @@ export const en = {
   'sessions.detail': 'Detail',
   'sessions.detailEmpty': 'Tap a session to see risk, budget and drop history.',
   'sessions.new': 'New session',
+  'sessions.onNode': 'node {id}',
   'sessions.namePlaceholder': 'session name',
   'sessions.create': 'Create',
   'sessions.createFailed': 'Could not create the session.',
@@ -275,6 +276,10 @@ export const en = {
   'risk.perDay': 'Per day',
   'risk.newContactsToday': 'New contacts today',
   'risk.factors': 'Where the score comes from',
+  'risk.factor.one_sided_conversation': '{sent} sent for {received} received in 24 h',
+  'risk.factor.new_contacts': '{used} of {limit} allowed today',
+  'risk.factor.delivery_failure': '{percent}% of sends did not arrive',
+  'risk.factor.speed': '{used} of {limit} in the last minute',
 
   // ---- connection history ----
   'events.title': 'Connection history',

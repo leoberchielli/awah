@@ -12,11 +12,25 @@ export interface RiskSignals {
 }
 
 export interface ScoreFactor {
+  /**
+   * Stable identifier for the signal. Part of the response contract, so it is
+   * snake_case English and does not change with anyone's locale.
+   */
   name: string
   /** How much this signal added to the score. */
   points: number
   max: number
+  /** The same fact in English prose, for anything reading the API directly. */
   detail: string
+  /**
+   * The numbers behind `detail`, so a caller can say it in its own words.
+   *
+   * The dashboard is translated into ten languages and used to print `detail`
+   * verbatim, which meant a German operator read the explanation of their own
+   * risk score in another language entirely. A sentence assembled by the API
+   * cannot be translated by the client; the numbers can.
+   */
+  values: Record<string, number>
 }
 
 export interface RiskScore {
@@ -53,10 +67,11 @@ export function computeScore(signals: RiskSignals): RiskScore {
   const ratio = signals.outbound24h / (signals.inbound24h + 1)
   const ratioPoints = signals.outbound24h < 10 ? 0 : clamp01((ratio - 2) / 18) * 35
   factors.push({
-    name: 'conversa_unilateral',
+    name: 'one_sided_conversation',
     points: Math.round(ratioPoints),
     max: 35,
-    detail: `${signals.outbound24h} enviadas para ${signals.inbound24h} recebidas em 24 h`,
+    detail: `${signals.outbound24h} sent for ${signals.inbound24h} received in 24 h`,
+    values: { sent: signals.outbound24h, received: signals.inbound24h },
   })
 
   /**
@@ -68,10 +83,11 @@ export function computeScore(signals: RiskSignals): RiskScore {
     signals.newContactsLimit > 0 ? signals.newContacts24h / signals.newContactsLimit : 0
   const newContactPoints = clamp01(newRatio) * 25
   factors.push({
-    name: 'contatos_novos',
+    name: 'new_contacts',
     points: Math.round(newContactPoints),
     max: 25,
-    detail: `${signals.newContacts24h} de ${signals.newContactsLimit} permitidos hoje`,
+    detail: `${signals.newContacts24h} of ${signals.newContactsLimit} allowed today`,
+    values: { used: signals.newContacts24h, limit: signals.newContactsLimit },
   })
 
   /**
@@ -80,11 +96,13 @@ export function computeScore(signals: RiskSignals): RiskScore {
    * bought or stale list, which is the short road to a ban.
    */
   const failurePoints = clamp01(signals.deliveryFailureRate / 0.3) * 25
+  const failurePercent = Math.round(signals.deliveryFailureRate * 100)
   factors.push({
-    name: 'falha_de_entrega',
+    name: 'delivery_failure',
     points: Math.round(failurePoints),
     max: 25,
-    detail: `${Math.round(signals.deliveryFailureRate * 100)}% dos envios não chegaram`,
+    detail: `${failurePercent}% of sends did not arrive`,
+    values: { percent: failurePercent },
   })
 
   /**
@@ -95,10 +113,11 @@ export function computeScore(signals: RiskSignals): RiskScore {
   const speedRatio = signals.minuteLimit > 0 ? signals.minuteUsage / signals.minuteLimit : 0
   const speedPoints = clamp01(speedRatio) * 15
   factors.push({
-    name: 'velocidade',
+    name: 'speed',
     points: Math.round(speedPoints),
     max: 15,
-    detail: `${signals.minuteUsage} de ${signals.minuteLimit} no último minuto`,
+    detail: `${signals.minuteUsage} of ${signals.minuteLimit} in the last minute`,
+    values: { used: signals.minuteUsage, limit: signals.minuteLimit },
   })
 
   const value = Math.min(

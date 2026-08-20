@@ -121,21 +121,66 @@ describe('risk score', () => {
   /** Low volume is not blasting, even with no replies — 5 messages unanswered is normal. */
   it('does not punish small volume with no replies', () => {
     const factor = computeScore({ ...base, outbound24h: 5, inbound24h: 0 }).factors.find(
-      (f) => f.name === 'conversa_unilateral',
+      (f) => f.name === 'one_sided_conversation',
     )
     expect(factor?.points).toBe(0)
   })
 
   it('penalizes too many new contacts', () => {
     const score = computeScore({ ...base, newContacts24h: 100, newContactsLimit: 100 })
-    const factor = score.factors.find((f) => f.name === 'contatos_novos')
+    const factor = score.factors.find((f) => f.name === 'new_contacts')
     expect(factor?.points).toBe(25)
   })
 
   it('penalizes a high delivery failure rate', () => {
     const score = computeScore({ ...base, outbound24h: 100, deliveryFailureRate: 0.3 })
-    const factor = score.factors.find((f) => f.name === 'falha_de_entrega')
+    const factor = score.factors.find((f) => f.name === 'delivery_failure')
     expect(factor?.points).toBe(25)
+  })
+
+  /**
+   * The dashboard renders these factors in ten languages by looking each name
+   * up as a translation key and interpolating `values`. Rename a factor and
+   * every translation for it silently stops matching — the panel falls back to
+   * the English sentence and nothing goes red, so the drift is only ever found
+   * by a reader who cannot read the explanation of their own risk score.
+   */
+  it('keeps the factor names and their numbers as a stable contract', () => {
+    const { factors } = computeScore({
+      ...base,
+      outbound24h: 100,
+      inbound24h: 4,
+      newContacts24h: 9,
+      deliveryFailureRate: 0.12,
+      minuteUsage: 7,
+    })
+
+    expect(factors.map((f) => f.name)).toEqual([
+      'one_sided_conversation',
+      'new_contacts',
+      'delivery_failure',
+      'speed',
+    ])
+
+    expect(factors.map((f) => f.values)).toEqual([
+      { sent: 100, received: 4 },
+      { used: 9, limit: 100 },
+      { percent: 12 },
+      { used: 7, limit: 12 },
+    ])
+  })
+
+  /**
+   * `detail` is the fallback the panel prints when a signal has no translation
+   * yet, and it is what anyone reading the API directly sees. A factor that
+   * ships without it explains nothing to either.
+   */
+  it('states every factor in English as well as in numbers', () => {
+    for (const factor of computeScore({ ...base, outbound24h: 100 }).factors) {
+      expect(factor.detail).not.toBe('')
+      expect(factor.detail).toMatch(/^[ -~]+$/)
+      expect(Object.keys(factor.values).length).toBeGreaterThan(0)
+    }
   })
 
   it('never goes above 100', () => {

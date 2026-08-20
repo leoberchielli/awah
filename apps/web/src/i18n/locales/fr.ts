@@ -216,6 +216,7 @@ export const fr: Catalog = {
   'sessions.detailEmpty':
     "Touchez une session pour voir le risque, le budget et l'historique des chutes.",
   'sessions.new': 'Nouvelle session',
+  'sessions.onNode': 'nœud {id}',
   'sessions.namePlaceholder': 'nom de la session',
   'sessions.create': 'Créer',
   'sessions.createFailed': "La session n'a pas pu être créée.",
@@ -254,6 +255,10 @@ export const fr: Catalog = {
   'risk.perDay': 'Par jour',
   'risk.newContactsToday': "Nouveaux contacts aujourd'hui",
   'risk.factors': "D'où vient le score",
+  'risk.factor.one_sided_conversation': '{sent} envoyés pour {received} reçus en 24 h',
+  'risk.factor.new_contacts': "{used} sur {limit} autorisés aujourd'hui",
+  'risk.factor.delivery_failure': '{percent}% des envois ne sont pas arrivés',
+  'risk.factor.speed': '{used} sur {limit} dans la dernière minute',
 
   'events.title': 'Historique de connexion',
   'events.hint':

@@ -213,6 +213,7 @@ export const tr: Catalog = {
   'sessions.detail': 'Ayrıntı',
   'sessions.detailEmpty': 'Riski, kotayı ve kopma geçmişini görmek için bir oturuma dokunun.',
   'sessions.new': 'Yeni oturum',
+  'sessions.onNode': '{id} düğümü',
   'sessions.namePlaceholder': 'oturum adı',
   'sessions.create': 'Oluştur',
   'sessions.createFailed': 'Oturum oluşturulamadı.',
@@ -250,6 +251,10 @@ export const tr: Catalog = {
   'risk.perDay': 'Günde',
   'risk.newContactsToday': 'Bugünkü yeni kişiler',
   'risk.factors': 'Puan nereden geliyor',
+  'risk.factor.one_sided_conversation': '24 saatte {received} alınana karşılık {sent} gönderildi',
+  'risk.factor.new_contacts': 'Bugün izin verilen {limit} adetten {used} tanesi',
+  'risk.factor.delivery_failure': 'Gönderimlerin %{percent} kadarı ulaşmadı',
+  'risk.factor.speed': 'Son dakikada {limit} adetten {used} tanesi',
 
   'events.title': 'Bağlantı geçmişi',
   'events.hint':

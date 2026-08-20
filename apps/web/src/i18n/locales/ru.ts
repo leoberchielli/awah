@@ -214,6 +214,7 @@ export const ru: Catalog = {
   'sessions.detail': 'Детали',
   'sessions.detailEmpty': 'Нажмите на сессию, чтобы увидеть риск, лимиты и историю обрывов.',
   'sessions.new': 'Новая сессия',
+  'sessions.onNode': 'узел {id}',
   'sessions.namePlaceholder': 'название сессии',
   'sessions.create': 'Создать',
   'sessions.createFailed': 'Не удалось создать сессию.',
@@ -252,6 +253,10 @@ export const ru: Catalog = {
   'risk.perDay': 'В сутки',
   'risk.newContactsToday': 'Новых контактов сегодня',
   'risk.factors': 'Из чего складывается оценка',
+  'risk.factor.one_sided_conversation': '{sent} отправлено на {received} полученных за 24 ч',
+  'risk.factor.new_contacts': '{used} из {limit} разрешённых сегодня',
+  'risk.factor.delivery_failure': '{percent}% отправлений не дошли',
+  'risk.factor.speed': '{used} из {limit} за последнюю минуту',
 
   'events.title': 'История подключений',
   'events.hint':

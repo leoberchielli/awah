@@ -210,6 +210,7 @@ export const ar: Catalog = {
   'sessions.detail': 'التفاصيل',
   'sessions.detailEmpty': 'انقر على جلسة لعرض المخاطر والميزانية وسجل الانقطاعات.',
   'sessions.new': 'جلسة جديدة',
+  'sessions.onNode': 'العقدة {id}',
   'sessions.namePlaceholder': 'اسم الجلسة',
   'sessions.create': 'إنشاء',
   'sessions.createFailed': 'تعذّر إنشاء الجلسة.',
@@ -247,6 +248,10 @@ export const ar: Catalog = {
   'risk.perDay': 'في اليوم',
   'risk.newContactsToday': 'جهات اتصال جديدة اليوم',
   'risk.factors': 'من أين تأتي الدرجة',
+  'risk.factor.one_sided_conversation': '{sent} مُرسَلة مقابل {received} مُستلَمة خلال 24 ساعة',
+  'risk.factor.new_contacts': '{used} من {limit} مسموح بها اليوم',
+  'risk.factor.delivery_failure': '{percent}% من الرسائل لم تصل',
+  'risk.factor.speed': '{used} من {limit} في الدقيقة الأخيرة',
 
   'events.title': 'سجل الاتصال',
   'events.hint':

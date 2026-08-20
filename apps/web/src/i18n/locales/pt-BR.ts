@@ -213,6 +213,7 @@ export const ptBR: Catalog = {
   'sessions.detail': 'Detalhe',
   'sessions.detailEmpty': 'Toque numa sessão para ver risco, orçamento e histórico de queda.',
   'sessions.new': 'Nova sessão',
+  'sessions.onNode': 'nó {id}',
   'sessions.namePlaceholder': 'nome da sessão',
   'sessions.create': 'Criar',
   'sessions.createFailed': 'Falha ao criar a sessão.',
@@ -251,6 +252,10 @@ export const ptBR: Catalog = {
   'risk.perDay': 'Por dia',
   'risk.newContactsToday': 'Contatos novos hoje',
   'risk.factors': 'De onde vem o score',
+  'risk.factor.one_sided_conversation': '{sent} enviadas para {received} recebidas em 24 h',
+  'risk.factor.new_contacts': '{used} de {limit} permitidos hoje',
+  'risk.factor.delivery_failure': '{percent}% dos envios não chegaram',
+  'risk.factor.speed': '{used} de {limit} no último minuto',
 
   'events.title': 'Histórico de conexão',
   'events.hint':

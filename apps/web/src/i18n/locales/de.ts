@@ -217,6 +217,7 @@ export const de: Catalog = {
   'sessions.detailEmpty':
     'Tippen Sie auf eine Sitzung, um Risiko, Budget und Abbruchverlauf zu sehen.',
   'sessions.new': 'Neue Sitzung',
+  'sessions.onNode': 'Knoten {id}',
   'sessions.namePlaceholder': 'Name der Sitzung',
   'sessions.create': 'Anlegen',
   'sessions.createFailed': 'Die Sitzung konnte nicht angelegt werden.',
@@ -255,6 +256,10 @@ export const de: Catalog = {
   'risk.perDay': 'Pro Tag',
   'risk.newContactsToday': 'Neue Kontakte heute',
   'risk.factors': 'Woher der Wert kommt',
+  'risk.factor.one_sided_conversation': '{sent} gesendet auf {received} empfangen in 24 h',
+  'risk.factor.new_contacts': '{used} von {limit} heute erlaubt',
+  'risk.factor.delivery_failure': '{percent}% der Sendungen kamen nicht an',
+  'risk.factor.speed': '{used} von {limit} in der letzten Minute',
 
   'events.title': 'Verbindungsverlauf',
   'events.hint':
