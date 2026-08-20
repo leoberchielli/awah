@@ -10,6 +10,7 @@ export const id: Catalog = {
   'common.removing': 'Menghapus…',
   'common.none': '—',
   'common.session': 'Sesi',
+  'common.group': 'Grup {id}',
   'common.allSessions': 'Semua sesi',
   'common.filterBySession': 'Saring per sesi',
   'common.apiDocs': 'Dokumentasi API',
@@ -22,8 +23,6 @@ export const id: Catalog = {
   'common.themeSystem': 'Ikuti sistem',
   'common.themeDark': 'Gelap',
   'common.noDataInWindow': 'Tidak ada data pada rentang yang dipilih.',
-  'window.hours': '{n} j',
-  'window.days': '{n} h',
 
   'nav.operation': 'Operasi',
   'nav.business': 'Bisnis',

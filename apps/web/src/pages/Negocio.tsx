@@ -147,7 +147,7 @@ function TabelaDeChats({ linhas }: { linhas: KpiBusiness['topChats'] }) {
           className="flex items-center gap-3 border-b border-line/60 py-2.5 last:border-0"
         >
           <span className="w-40 shrink-0 truncate font-mono text-xs text-ink" title={linha.chatId}>
-            {chat(linha.chatId)}
+            {chat(linha.chatId, (id) => t('common.group', { id }))}
           </span>
           <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-2">
             <span

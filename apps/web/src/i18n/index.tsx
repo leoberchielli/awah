@@ -1,4 +1,5 @@
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from 'react'
+import { usarIdioma } from '../lib/format'
 import { type Catalog, en, type TranslationKey } from './locales/en'
 import { detectLocale, FALLBACK, findLocale, LOCALES } from './registry'
 
@@ -47,6 +48,9 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 
     document.documentElement.lang = target.code
     document.documentElement.dir = target.dir
+    // Números, datas e durações não passam pelo catálogo: quem localiza é o
+    // `Intl`, e ele precisa saber em que idioma o painel está.
+    usarIdioma(target.code)
 
     if (target.code === FALLBACK) {
       setCatalog(en)

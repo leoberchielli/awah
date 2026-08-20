@@ -3,6 +3,7 @@ import { NavLink, useLocation, useSearchParams } from 'react-router-dom'
 import { useTheme } from '../hooks/useTheme'
 import { type TranslationKey, useT } from '../i18n'
 import { post } from '../lib/api'
+import { janela } from '../lib/format'
 import { papelAoMenos, useMe } from '../lib/sessao'
 import {
   IconeChave,
@@ -21,12 +22,12 @@ import { cx } from './ui'
 
 /** Janelas oferecidas. Mais que isso vira menu; menos, vira limitação. */
 export const JANELAS = [
-  { horas: 1, valor: 1, unidade: 'window.hours' },
-  { horas: 6, valor: 6, unidade: 'window.hours' },
-  { horas: 24, valor: 24, unidade: 'window.hours' },
-  { horas: 168, valor: 7, unidade: 'window.days' },
-  { horas: 720, valor: 30, unidade: 'window.days' },
-] as const satisfies ReadonlyArray<{ horas: number; valor: number; unidade: TranslationKey }>
+  { horas: 1, valor: 1, unidade: 'hour' },
+  { horas: 6, valor: 6, unidade: 'hour' },
+  { horas: 24, valor: 24, unidade: 'hour' },
+  { horas: 168, valor: 7, unidade: 'day' },
+  { horas: 720, valor: 30, unidade: 'day' },
+] as const satisfies ReadonlyArray<{ horas: number; valor: number; unidade: 'hour' | 'day' }>
 
 /**
  * A janela e o filtro de sessão moram na URL.
@@ -241,20 +242,20 @@ function TopBar({ acoes }: { acoes?: ReactNode }) {
           aria-label={t('common.timeWindow')}
           className="flex overflow-hidden rounded-lg border border-line/70 bg-surface/60 backdrop-blur-sm"
         >
-          {JANELAS.map((janela) => (
+          {JANELAS.map((opcao) => (
             <button
-              key={janela.horas}
+              key={opcao.horas}
               type="button"
-              onClick={() => definirHoras(janela.horas)}
-              aria-pressed={horas === janela.horas}
+              onClick={() => definirHoras(opcao.horas)}
+              aria-pressed={horas === opcao.horas}
               className={cx(
                 'px-2.5 py-1.5 font-mono text-xs transition-colors',
-                horas === janela.horas
+                horas === opcao.horas
                   ? 'bg-accent-soft font-medium text-accent'
                   : 'text-muted hover:text-ink',
               )}
             >
-              {t(janela.unidade, { n: janela.valor })}
+              {janela(opcao.valor, opcao.unidade)}
             </button>
           ))}
         </div>

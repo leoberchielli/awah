@@ -11,6 +11,7 @@ export const de: Catalog = {
   'common.removing': 'Wird entfernt…',
   'common.none': '—',
   'common.session': 'Sitzung',
+  'common.group': 'Gruppe {id}',
   'common.allSessions': 'Alle Sitzungen',
   'common.filterBySession': 'Nach Sitzung filtern',
   'common.apiDocs': 'API-Dokumentation',
@@ -23,8 +24,6 @@ export const de: Catalog = {
   'common.themeSystem': 'System',
   'common.themeDark': 'Dunkel',
   'common.noDataInWindow': 'Keine Daten im gewählten Zeitfenster.',
-  'window.hours': '{n} Std.',
-  'window.days': '{n} T.',
 
   'nav.operation': 'Betrieb',
   'nav.business': 'Geschäft',

@@ -10,6 +10,7 @@ export const es: Catalog = {
   'common.removing': 'Quitando…',
   'common.none': '—',
   'common.session': 'Sesión',
+  'common.group': 'Grupo {id}',
   'common.allSessions': 'Todas las sesiones',
   'common.filterBySession': 'Filtrar por sesión',
   'common.apiDocs': 'Documentación de la API',
@@ -22,8 +23,6 @@ export const es: Catalog = {
   'common.themeSystem': 'Del sistema',
   'common.themeDark': 'Oscuro',
   'common.noDataInWindow': 'Sin datos en la ventana elegida.',
-  'window.hours': '{n} h',
-  'window.days': '{n} d',
 
   'nav.operation': 'Operación',
   'nav.business': 'Negocio',

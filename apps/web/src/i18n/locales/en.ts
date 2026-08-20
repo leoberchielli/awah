@@ -22,6 +22,7 @@ export const en = {
   'common.removing': 'Removing…',
   'common.none': '—',
   'common.session': 'Session',
+  'common.group': 'Group {id}',
   'common.allSessions': 'All sessions',
   'common.filterBySession': 'Filter by session',
   'common.apiDocs': 'API documentation',
@@ -35,8 +36,6 @@ export const en = {
   'common.themeDark': 'Dark',
   'common.noDataInWindow': 'No data in the selected window.',
   // Unit is separate from the number because it is not "h" everywhere.
-  'window.hours': '{n} h',
-  'window.days': '{n} d',
 
   // ---- navigation ----
   'nav.operation': 'Operations',

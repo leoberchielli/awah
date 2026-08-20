@@ -10,6 +10,7 @@ export const ptBR: Catalog = {
   'common.removing': 'Removendo…',
   'common.none': '—',
   'common.session': 'Sessão',
+  'common.group': 'Grupo {id}',
   'common.allSessions': 'Todas as sessões',
   'common.filterBySession': 'Filtrar por sessão',
   'common.apiDocs': 'Documentação da API',
@@ -22,8 +23,6 @@ export const ptBR: Catalog = {
   'common.themeSystem': 'Do sistema',
   'common.themeDark': 'Escuro',
   'common.noDataInWindow': 'Sem dados na janela escolhida.',
-  'window.hours': '{n} h',
-  'window.days': '{n} d',
 
   'nav.operation': 'Operação',
   'nav.business': 'Negócio',

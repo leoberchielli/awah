@@ -10,6 +10,7 @@ export const tr: Catalog = {
   'common.removing': 'Kaldırılıyor…',
   'common.none': '—',
   'common.session': 'Oturum',
+  'common.group': '{id} grubu',
   'common.allSessions': 'Tüm oturumlar',
   'common.filterBySession': 'Oturuma göre süz',
   'common.apiDocs': 'API belgeleri',
@@ -22,8 +23,6 @@ export const tr: Catalog = {
   'common.themeSystem': 'Sistem',
   'common.themeDark': 'Koyu',
   'common.noDataInWindow': 'Seçilen aralıkta veri yok.',
-  'window.hours': '{n} sa',
-  'window.days': '{n} g',
 
   'nav.operation': 'Operasyon',
   'nav.business': 'İş',

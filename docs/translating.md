@@ -1,9 +1,12 @@
 # Translating the dashboard
 
-The interface ships in ten languages. Three of them — Hindi, Arabic and Russian
-— are **empty on purpose** and fall back to English until a native speaker fills
-them in. If you speak one of those, or a language that is not on the list at
-all, this page is the whole process.
+The interface ships in ten languages, all of them complete. If you speak one of
+them and something reads wrong, or you speak a language that is not on the list
+at all, this page is the whole process.
+
+The ten shipped catalogs were not written by native speakers of every language.
+Corrections are the most useful pull request this project can get, and the
+smallest: one line is a valid contribution.
 
 ## The rule that makes this cheap
 
@@ -25,10 +28,10 @@ pnpm i18n:check
 ```
 
 ```
-source: en.ts — 279 keys
+source: en.ts — 298 keys
 
-ar     ████████············  40%  112/279
-de     ████████████████████ 100%  279/279
+ar     ████████████████████ 100%  298/298
+de     ████████████████████ 100%  298/298
 ```
 
 ## Adding a language that is not listed
