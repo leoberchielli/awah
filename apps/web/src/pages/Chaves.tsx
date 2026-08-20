@@ -2,26 +2,28 @@ import { type FormEvent, useState } from 'react'
 import { Shell } from '../components/Shell'
 import { Card, Empty, Pill, Skeleton, type Tone } from '../components/ui'
 import { useQuery } from '../hooks/useQuery'
+import { type TranslationKey, useT } from '../i18n'
 import type { SessionRow } from '../lib/api'
 import { ApiError, type ApiKeyCreated, type ApiKeyRow, del, type Papel, post } from '../lib/api'
 import { dataHora, desde, statusDeSessao } from '../lib/format'
 import { papelAoMenos, useMe } from '../lib/sessao'
 
-const PAPEIS: Array<{ valor: Papel; rotulo: string; resumo: string }> = [
-  { valor: 'viewer', rotulo: 'Leitura', resumo: 'consulta mensagens e métricas; não envia nada' },
-  { valor: 'operator', rotulo: 'Operação', resumo: 'envia mensagens e liga/desliga sessões' },
-  { valor: 'admin', rotulo: 'Administração', resumo: 'também cria sessões e webhooks' },
-  { valor: 'owner', rotulo: 'Dono', resumo: 'tudo que admin faz' },
+const PAPEIS: Array<{ valor: Papel; rotulo: TranslationKey; resumo: TranslationKey }> = [
+  { valor: 'viewer', rotulo: 'keys.role.viewer', resumo: 'keys.role.viewerSummary' },
+  { valor: 'operator', rotulo: 'keys.role.operator', resumo: 'keys.role.operatorSummary' },
+  { valor: 'admin', rotulo: 'keys.role.admin', resumo: 'keys.role.adminSummary' },
+  { valor: 'owner', rotulo: 'keys.role.owner', resumo: 'keys.role.ownerSummary' },
 ]
 
-const VALIDADES = [
-  { valor: '', rotulo: 'Não expira' },
-  { valor: '30', rotulo: '30 dias' },
-  { valor: '90', rotulo: '90 dias' },
-  { valor: '365', rotulo: '1 ano' },
+const VALIDADES: Array<{ valor: string; chave: TranslationKey; n?: number }> = [
+  { valor: '', chave: 'keys.expiry.never' },
+  { valor: '30', chave: 'keys.expiry.days', n: 30 },
+  { valor: '90', chave: 'keys.expiry.days', n: 90 },
+  { valor: '365', chave: 'keys.expiry.year' },
 ]
 
 export function Chaves() {
+  const t = useT()
   const me = useMe()
   const podeAdministrar = papelAoMenos(me.role, 'admin')
 
@@ -31,11 +33,8 @@ export function Chaves() {
   if (!podeAdministrar) {
     return (
       <Shell>
-        <Card title="Chaves de API">
-          <Empty>
-            Emitir e revogar chave é administração de identidade, reservada a administradores. Peça
-            a quem administra a organização.
-          </Empty>
+        <Card title={t('nav.keys')}>
+          <Empty>{t('keys.gate')}</Empty>
         </Card>
       </Shell>
     )
@@ -50,14 +49,11 @@ export function Chaves() {
           aoEmitir={chaves.refetch}
         />
 
-        <Card
-          title="Chaves emitidas"
-          hint="Chave de API é credencial de servidor: ela envia mensagem em nome da organização. Não coloque nenhuma em código que roda no navegador."
-        >
+        <Card title={t('keys.list.title')} hint={t('keys.list.hint')}>
           {!chaves.settled ? (
             <Skeleton className="h-24" />
           ) : (chaves.data?.keys.length ?? 0) === 0 ? (
-            <Empty>Nenhuma chave emitida ainda.</Empty>
+            <Empty>{t('keys.list.empty')}</Empty>
           ) : (
             <ul className="flex flex-col">
               {chaves.data?.keys.map((chave) => (
@@ -85,6 +81,7 @@ function Emissor({
   papelDoUsuario: Papel
   aoEmitir: () => void
 }) {
+  const t = useT()
   const [nome, setNome] = useState('')
   const [papel, setPapel] = useState<Papel>('operator')
   const [limitarSessoes, setLimitarSessoes] = useState(false)
@@ -124,11 +121,7 @@ function Emissor({
       setValidade('')
       aoEmitir()
     } catch (falha) {
-      setErro(
-        falha instanceof ApiError
-          ? falha.message
-          : 'Não foi possível emitir a chave. Tente de novo.',
-      )
+      setErro(falha instanceof ApiError ? falha.message : t('keys.failed'))
     } finally {
       setOcupado(false)
     }
@@ -139,30 +132,24 @@ function Emissor({
   }
 
   return (
-    <Card
-      title="Emitir chave"
-      hint="Para o seu servidor, o n8n, o Make ou qualquer coisa que chame a API sem um navegador no meio."
-    >
+    <Card title={t('keys.issue.title')} hint={t('keys.issue.hint')}>
       <form onSubmit={emitir} className="flex flex-col gap-3">
         <label className="flex flex-col gap-1.5">
-          <span className="eyebrow">Nome</span>
+          <span className="eyebrow">{t('keys.field.name')}</span>
           <input
             required
             minLength={2}
             maxLength={120}
             value={nome}
             onChange={(e) => setNome(e.target.value)}
-            placeholder="disparo do CRM"
+            placeholder={t('keys.field.namePlaceholder')}
             className="rounded-md border border-line bg-surface-2 px-3 py-2 text-sm text-ink placeholder:text-muted"
           />
-          <span className="text-xs text-muted">
-            Serve para você saber o que revogar depois. Use o nome do sistema que vai usá-la, não
-            "chave 1".
-          </span>
+          <span className="text-xs text-muted">{t('keys.field.nameHint')}</span>
         </label>
 
         <label className="flex flex-col gap-1.5">
-          <span className="eyebrow">Papel</span>
+          <span className="eyebrow">{t('keys.field.role')}</span>
           <select
             value={papel}
             onChange={(e) => setPapel(e.target.value as Papel)}
@@ -170,19 +157,16 @@ function Emissor({
           >
             {disponiveis.map((p) => (
               <option key={p.valor} value={p.valor}>
-                {p.rotulo} — {p.resumo}
+                {t(p.rotulo)} — {t(p.resumo)}
               </option>
             ))}
           </select>
           {/* O limite é a razão de existir da separação de credenciais. */}
-          <span className="text-xs text-muted">
-            Nenhum papel permite a uma chave criar outra chave nem mexer em membros. Isso exige
-            login de pessoa, para que uma chave vazada não vire tomada de conta.
-          </span>
+          <span className="text-xs text-muted">{t('keys.field.roleHint')}</span>
         </label>
 
         <fieldset className="flex flex-col gap-2">
-          <legend className="eyebrow mb-1.5">Alcance</legend>
+          <legend className="eyebrow mb-1.5">{t('keys.field.scope')}</legend>
 
           <label className="flex items-start gap-2 text-sm text-ink">
             <input
@@ -193,10 +177,8 @@ function Emissor({
               className="mt-0.5"
             />
             <span>
-              Toda a organização
-              <span className="block text-xs text-muted">
-                Vale para qualquer sessão, inclusive as que você criar depois.
-              </span>
+              {t('keys.scope.whole')}
+              <span className="block text-xs text-muted">{t('keys.scope.wholeHint')}</span>
             </span>
           </label>
 
@@ -209,20 +191,15 @@ function Emissor({
               className="mt-0.5"
             />
             <span>
-              Só as sessões que eu escolher
-              <span className="block text-xs text-muted">
-                Fora do escopo, a chave recebe 404 — o mesmo que uma sessão inexistente.
-              </span>
+              {t('keys.scope.picked')}
+              <span className="block text-xs text-muted">{t('keys.scope.pickedHint')}</span>
             </span>
           </label>
 
           {limitarSessoes && (
             <div className="ml-6 flex flex-col gap-1.5 rounded-md border border-line bg-surface-2 p-3">
               {sessoes.length === 0 ? (
-                <span className="text-xs text-warn">
-                  Nenhuma sessão ainda. Crie uma na aba Sessões, ou deixe a chave valer para toda a
-                  organização.
-                </span>
+                <span className="text-xs text-warn">{t('keys.scope.noSessions')}</span>
               ) : (
                 sessoes.map((sessao) => (
                   <label key={sessao.id} className="flex items-center gap-2 text-sm text-ink">
@@ -241,7 +218,7 @@ function Emissor({
         </fieldset>
 
         <label className="flex flex-col gap-1.5">
-          <span className="eyebrow">Validade</span>
+          <span className="eyebrow">{t('keys.field.expiry')}</span>
           <select
             value={validade}
             onChange={(e) => setValidade(e.target.value)}
@@ -249,7 +226,7 @@ function Emissor({
           >
             {VALIDADES.map((v) => (
               <option key={v.valor} value={v.valor}>
-                {v.rotulo}
+                {t(v.chave, v.n ? { n: v.n } : undefined)}
               </option>
             ))}
           </select>
@@ -257,7 +234,7 @@ function Emissor({
 
         {escopoVazio && (
           <p className="rounded-md bg-warn/10 px-3 py-2 text-xs text-warn">
-            Escolha ao menos uma sessão. Uma chave com escopo vazio não alcançaria nenhuma.
+            {t('keys.scope.empty')}
           </p>
         )}
 
@@ -272,7 +249,7 @@ function Emissor({
           disabled={ocupado || escopoVazio}
           className="mt-1 self-start rounded-md bg-accent px-3 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
         >
-          {ocupado ? 'Emitindo…' : 'Emitir chave'}
+          {ocupado ? t('keys.submitting') : t('keys.submit')}
         </button>
       </form>
     </Card>
@@ -293,13 +270,14 @@ function TokenRecemNascido({
   emitida: ApiKeyCreated
   aoFechar: () => void
 }) {
+  const t = useT()
   const [copia, setCopia] = useState<'parado' | 'copiado' | 'falhou'>('parado')
 
   return (
-    <Card title={`Chave "${emitida.key.name}" criada`}>
+    <Card title={t('keys.created.title', { name: emitida.key.name })}>
       <div className="flex flex-col gap-3">
         <p className="rounded-md bg-warn/10 px-3 py-2 text-sm text-warn">
-          Copie agora. Esta é a única vez que a chave aparece — o servidor guarda só o hash dela.
+          {t('keys.created.warning')}
         </p>
 
         <code className="block overflow-x-auto rounded-md border border-line bg-surface-2 px-3 py-2 font-mono text-xs break-all text-ink">
@@ -321,7 +299,7 @@ function TokenRecemNascido({
             }}
             className="rounded-md bg-accent px-3 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
           >
-            {copia === 'copiado' ? 'Copiado' : 'Copiar'}
+            {copia === 'copiado' ? t('keys.created.copied') : t('keys.created.copy')}
           </button>
 
           <button
@@ -329,19 +307,16 @@ function TokenRecemNascido({
             onClick={aoFechar}
             className="rounded-md border border-line bg-surface px-3 py-2 text-sm font-medium text-ink hover:bg-surface-2"
           >
-            Já guardei
+            {t('keys.created.done')}
           </button>
 
           {copia === 'falhou' && (
-            <span className="text-xs text-muted">
-              O navegador bloqueou a cópia. Selecione o texto acima e copie à mão.
-            </span>
+            <span className="text-xs text-muted">{t('keys.created.copyFailed')}</span>
           )}
         </div>
 
         <p className="text-xs text-muted">
-          Guarde num cofre de segredos ou numa variável de ambiente do seu servidor. No cabeçalho
-          ela vai como <code className="font-mono">Authorization: Bearer …</code>.
+          {t('keys.created.storage', { header: 'Authorization: Bearer …' })}
         </p>
       </div>
     </Card>
@@ -357,21 +332,22 @@ function LinhaDeChave({
   sessoes: SessionRow[]
   aoRevogar: () => void
 }) {
+  const t = useT()
   const [confirmando, setConfirmando] = useState(false)
   const [ocupado, setOcupado] = useState(false)
 
   const expirada = Boolean(chave.expiresAt && new Date(chave.expiresAt) < new Date())
   const morta = Boolean(chave.revokedAt) || expirada
 
-  const estado: { tone: Tone; texto: string } = chave.revokedAt
-    ? { tone: 'hold', texto: 'Revogada' }
+  const estado: { tone: Tone; chave: TranslationKey } = chave.revokedAt
+    ? { tone: 'hold', chave: 'keys.state.revoked' }
     : expirada
-      ? { tone: 'warn', texto: 'Expirada' }
-      : { tone: 'ok', texto: 'Ativa' }
+      ? { tone: 'warn', chave: 'keys.state.expired' }
+      : { tone: 'ok', chave: 'keys.state.active' }
 
   const alcance = chave.sessionScope
     ? chave.sessionScope.map((id) => sessoes.find((s) => s.id === id)?.name ?? id).join(', ')
-    : 'Toda a organização'
+    : t('keys.scope.whole')
 
   return (
     <li className="flex flex-wrap items-center gap-3 border-b border-line/60 py-3 last:border-0">
@@ -385,12 +361,16 @@ function LinhaDeChave({
         </span>
         <span className="block truncate text-xs text-muted">
           <code className="font-mono">{chave.prefix}</code> · {alcance} ·{' '}
-          {chave.lastUsedAt ? `usada ${desde(chave.lastUsedAt)}` : 'nunca usada'}
-          {chave.expiresAt && !chave.revokedAt && ` · expira em ${dataHora(chave.expiresAt)}`}
+          {chave.lastUsedAt
+            ? t('keys.usedAgo', { when: desde(chave.lastUsedAt) })
+            : t('keys.neverUsed')}
+          {chave.expiresAt &&
+            !chave.revokedAt &&
+            ` · ${t('keys.expiresOn', { when: dataHora(chave.expiresAt) })}`}
         </span>
       </span>
 
-      <Pill tone={estado.tone}>{estado.texto}</Pill>
+      <Pill tone={estado.tone}>{t(estado.chave)}</Pill>
 
       {!chave.revokedAt &&
         (confirmando ? (
@@ -405,14 +385,14 @@ function LinhaDeChave({
               }}
               className="rounded-md bg-crit px-2.5 py-1.5 text-xs font-medium text-white disabled:opacity-50"
             >
-              {ocupado ? 'Revogando…' : 'Confirmar'}
+              {ocupado ? t('keys.revoking') : t('common.confirm')}
             </button>
             <button
               type="button"
               onClick={() => setConfirmando(false)}
               className="text-xs text-muted hover:text-ink"
             >
-              Cancelar
+              {t('common.cancel')}
             </button>
           </span>
         ) : (
@@ -422,7 +402,7 @@ function LinhaDeChave({
             onClick={() => setConfirmando(true)}
             className="rounded-md border border-line bg-surface px-2.5 py-1.5 text-xs font-medium text-muted hover:text-crit"
           >
-            Revogar
+            {t('keys.revoke')}
           </button>
         ))}
     </li>

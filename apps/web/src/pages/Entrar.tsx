@@ -1,7 +1,9 @@
 import { type FormEvent, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { LanguagePicker } from '../components/LanguagePicker'
 import { Marca } from '../components/Shell'
 import { useQuery } from '../hooks/useQuery'
+import { useT } from '../i18n'
 import type { Bootstrap } from '../lib/api'
 import { ApiError, post } from '../lib/api'
 import { PrimeiroAcesso } from './PrimeiroAcesso'
@@ -14,6 +16,7 @@ import { PrimeiroAcesso } from './PrimeiroAcesso'
  * que envia mensagem em nome de todas as sessões da organização.
  */
 export function Entrar() {
+  const t = useT()
   const [params] = useSearchParams()
   // Quem abre /entrar numa instância vazia precisa da tela de setup, não do login.
   const bootstrap = useQuery<Bootstrap>('/v1/auth/bootstrap')
@@ -32,9 +35,7 @@ export function Entrar() {
       const voltar = params.get('voltar')
       window.location.assign(voltar?.startsWith('/') ? voltar : '/operacao')
     } catch (falha) {
-      setErro(
-        falha instanceof ApiError ? falha.message : 'Não consegui falar com o servidor da API.',
-      )
+      setErro(falha instanceof ApiError ? falha.message : t('login.failed'))
       setEnviando(false)
     }
   }
@@ -45,16 +46,19 @@ export function Entrar() {
     <div className="grid min-h-dvh place-items-center bg-ground px-4">
       <div className="w-full max-w-sm">
         <div className="mb-6 flex flex-col gap-2">
-          <Marca />
-          <p className="text-sm text-muted">
-            Gateway de WhatsApp com fila durável, motor de risco e sessões em cluster.
-          </p>
+          {/* O seletor vem antes do formulário: quem não lê o idioma detectado
+              precisa trocá-lo aqui, e não depois de conseguir entrar. */}
+          <div className="flex items-start justify-between gap-3">
+            <Marca />
+            <LanguagePicker />
+          </div>
+          <p className="text-sm text-muted">{t('app.tagline')}</p>
         </div>
 
         <form onSubmit={enviar} className="card flex flex-col gap-4 p-5">
           <Campo
             id="email"
-            rotulo="E-mail"
+            rotulo={t('login.email')}
             type="email"
             autoComplete="username"
             value={email}
@@ -62,7 +66,7 @@ export function Entrar() {
           />
           <Campo
             id="senha"
-            rotulo="Senha"
+            rotulo={t('login.password')}
             type="password"
             autoComplete="current-password"
             value={senha}
@@ -80,13 +84,11 @@ export function Entrar() {
             disabled={enviando}
             className="rounded-md bg-accent px-3 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
           >
-            {enviando ? 'Entrando…' : 'Entrar'}
+            {enviando ? t('login.submitting') : t('login.submit')}
           </button>
         </form>
 
-        <p className="mt-4 text-center text-xs text-muted">
-          Sem conta? Peça um convite a quem administra esta instância.
-        </p>
+        <p className="mt-4 text-center text-xs text-muted">{t('login.noAccount')}</p>
       </div>
     </div>
   )

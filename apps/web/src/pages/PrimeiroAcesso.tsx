@@ -1,5 +1,7 @@
 import { type FormEvent, useState } from 'react'
+import { LanguagePicker } from '../components/LanguagePicker'
 import { Marca } from '../components/Shell'
+import { useT } from '../i18n'
 import { ApiError, post } from '../lib/api'
 
 /**
@@ -13,6 +15,7 @@ import { ApiError, post } from '../lib/api'
  * aparece uma vez na vida da instância.
  */
 export function PrimeiroAcesso() {
+  const t = useT()
   const [organizationName, setOrganizationName] = useState('')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -32,9 +35,7 @@ export function PrimeiroAcesso() {
       // O registro já devolve a sessão pronta: entra direto, sem pedir login.
       window.location.assign('/sessoes')
     } catch (falha) {
-      setErro(
-        falha instanceof ApiError ? falha.message : 'Não consegui falar com o servidor da API.',
-      )
+      setErro(falha instanceof ApiError ? falha.message : t('setup.apiUnreachable'))
       setEnviando(false)
     }
   }
@@ -43,26 +44,32 @@ export function PrimeiroAcesso() {
     <div className="grid min-h-dvh place-items-center bg-ground px-4 py-10">
       <div className="w-full max-w-md">
         <div className="mb-6 flex flex-col gap-2">
-          <Marca />
-          <h1 className="text-lg font-semibold text-ink">Vamos começar</h1>
-          <p className="text-sm text-muted">
-            Esta instância ainda está vazia. Crie a sua organização e o primeiro usuário — depois
-            disso, esta tela não aparece mais e novos usuários entram por convite.
-          </p>
+          <div className="flex items-start justify-between gap-3">
+            <Marca />
+            <LanguagePicker />
+          </div>
+          <h1 className="text-lg font-semibold text-ink">{t('setup.title')}</h1>
+          <p className="text-sm text-muted">{t('setup.hint')}</p>
         </div>
 
         <form onSubmit={criar} className="card flex flex-col gap-4 p-5">
           <Campo
             id="organizationName"
-            rotulo="Nome da organização"
-            placeholder="Minha Empresa"
+            rotulo={t('setup.orgName')}
+            placeholder={t('setup.orgPlaceholder')}
             value={organizationName}
             onChange={setOrganizationName}
           />
-          <Campo id="name" rotulo="Seu nome" autoComplete="name" value={name} onChange={setName} />
+          <Campo
+            id="name"
+            rotulo={t('setup.yourName')}
+            autoComplete="name"
+            value={name}
+            onChange={setName}
+          />
           <Campo
             id="email"
-            rotulo="E-mail"
+            rotulo={t('login.email')}
             type="email"
             autoComplete="username"
             value={email}
@@ -70,12 +77,12 @@ export function PrimeiroAcesso() {
           />
           <Campo
             id="password"
-            rotulo="Senha"
+            rotulo={t('login.password')}
             type="password"
             autoComplete="new-password"
             value={password}
             onChange={setPassword}
-            dica={curta ? 'Faltam pelo menos 12 caracteres.' : 'Pelo menos 12 caracteres.'}
+            dica={curta ? t('setup.passwordShort') : t('setup.passwordHint')}
             problema={curta}
           />
 
@@ -90,14 +97,16 @@ export function PrimeiroAcesso() {
             disabled={enviando || curta}
             className="rounded-md bg-accent px-3 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
           >
-            {enviando ? 'Criando…' : 'Criar e entrar'}
+            {enviando ? t('setup.submitting') : t('setup.submit')}
           </button>
         </form>
 
-        <p className="mt-4 text-center text-xs text-muted">
-          Você entra como <strong className="text-ink">owner</strong> — o único papel que pode
-          promover outro owner e excluir a organização.
-        </p>
+        {/* A única string com marcação: o papel precisa destacar do resto da frase. */}
+        <p
+          className="mt-4 text-center text-xs text-muted [&_strong]:text-ink"
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: o texto vem do catálogo do próprio pacote, nunca de entrada do usuário
+          dangerouslySetInnerHTML={{ __html: t('setup.ownerNote') }}
+        />
       </div>
     </div>
   )

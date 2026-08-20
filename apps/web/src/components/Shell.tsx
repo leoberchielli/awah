@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { NavLink, useLocation, useSearchParams } from 'react-router-dom'
 import { useTheme } from '../hooks/useTheme'
+import { type TranslationKey, useT } from '../i18n'
 import { post } from '../lib/api'
 import { papelAoMenos, useMe } from '../lib/sessao'
 import {
@@ -14,16 +15,17 @@ import {
   IconeSessao,
   IconeSol,
 } from './icons'
+import { LanguagePicker } from './LanguagePicker'
 import { cx } from './ui'
 
 /** Janelas oferecidas. Mais que isso vira menu; menos, vira limitação. */
 export const JANELAS = [
-  { horas: 1, rotulo: '1 h' },
-  { horas: 6, rotulo: '6 h' },
-  { horas: 24, rotulo: '24 h' },
-  { horas: 168, rotulo: '7 d' },
-  { horas: 720, rotulo: '30 d' },
-] as const
+  { horas: 1, valor: 1, unidade: 'window.hours' },
+  { horas: 6, valor: 6, unidade: 'window.hours' },
+  { horas: 24, valor: 24, unidade: 'window.hours' },
+  { horas: 168, valor: 7, unidade: 'window.days' },
+  { horas: 720, valor: 30, unidade: 'window.days' },
+] as const satisfies ReadonlyArray<{ horas: number; valor: number; unidade: TranslationKey }>
 
 /**
  * A janela e o filtro de sessão moram na URL.
@@ -57,12 +59,20 @@ export function useFiltro() {
   }
 }
 
-const ABAS = [
-  { para: '/operacao', rotulo: 'Operação', Icone: IconePulso },
-  { para: '/negocio', rotulo: 'Negócio', Icone: IconeNegocio },
-  { para: '/sessoes', rotulo: 'Sessões', Icone: IconeSessao },
-  { para: '/integracoes', rotulo: 'Integrações', Icone: IconeLigacao },
-  { para: '/chaves', rotulo: 'Chaves', Icone: IconeChave, minimo: 'admin' as const },
+interface Aba {
+  para: string
+  chave: TranslationKey
+  Icone: (props: { width?: number; height?: number }) => ReactNode
+  /** Papel mínimo para a aba existir. Ausente, ela vale para todo mundo. */
+  minimo?: 'admin'
+}
+
+const ABAS: Aba[] = [
+  { para: '/operacao', chave: 'nav.operation', Icone: IconePulso },
+  { para: '/negocio', chave: 'nav.business', Icone: IconeNegocio },
+  { para: '/sessoes', chave: 'nav.sessions', Icone: IconeSessao },
+  { para: '/integracoes', chave: 'nav.integrations', Icone: IconeLigacao },
+  { para: '/chaves', chave: 'nav.keys', Icone: IconeChave, minimo: 'admin' },
 ]
 
 /**
@@ -102,6 +112,7 @@ export function Shell({ children, acoes }: { children: ReactNode; acoes?: ReactN
 function CabecalhoMovel() {
   const { search } = useLocation()
   const abas = useAbas()
+  const t = useT()
 
   return (
     <div className="mb-3 flex flex-col gap-3 sm:hidden">
@@ -116,12 +127,12 @@ function CabecalhoMovel() {
           className="flex items-center gap-1.5 text-xs text-muted"
         >
           <IconeSair width={14} height={14} />
-          Sair
+          {t('common.signOut')}
         </button>
       </div>
 
-      <nav aria-label="Seções" className="flex gap-1 overflow-x-auto">
-        {abas.map(({ para, rotulo, Icone }) => (
+      <nav aria-label={t('common.sections')} className="flex gap-1 overflow-x-auto">
+        {abas.map(({ para, chave, Icone }) => (
           <NavLink
             key={para}
             to={{ pathname: para, search }}
@@ -135,7 +146,7 @@ function CabecalhoMovel() {
             }
           >
             <Icone width={15} height={15} />
-            {rotulo}
+            {t(chave)}
           </NavLink>
         ))}
       </nav>
@@ -146,17 +157,18 @@ function CabecalhoMovel() {
 function Rail() {
   const { search } = useLocation()
   const abas = useAbas()
+  const t = useT()
 
   return (
     <nav
-      aria-label="Seções"
+      aria-label={t('common.sections')}
       className="sticky top-0 hidden h-dvh w-48 shrink-0 flex-col gap-1 border-r border-line py-5 pr-4 sm:flex"
     >
       <div className="mb-5 px-2">
         <Marca />
       </div>
 
-      {abas.map(({ para, rotulo, Icone }) => (
+      {abas.map(({ para, chave, Icone }) => (
         <NavLink
           key={para}
           to={{ pathname: para, search }}
@@ -170,13 +182,13 @@ function Rail() {
           }
         >
           <Icone />
-          {rotulo}
+          {t(chave)}
         </NavLink>
       ))}
 
       <div className="mt-auto flex flex-col items-start gap-1 px-2.5">
         <a href="/docs" className="py-1.5 text-xs text-muted hover:text-ink">
-          Documentação da API
+          {t('common.apiDocs')}
         </a>
         <button
           type="button"
@@ -187,7 +199,7 @@ function Rail() {
           className="flex items-center gap-2 py-1.5 text-xs text-muted hover:text-ink"
         >
           <IconeSair width={14} height={14} />
-          Sair
+          {t('common.signOut')}
         </button>
       </div>
     </nav>
@@ -210,6 +222,7 @@ export function Marca() {
 
 function TopBar({ acoes }: { acoes?: ReactNode }) {
   const { horas, definirHoras } = useFiltro()
+  const t = useT()
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-3">
@@ -217,7 +230,7 @@ function TopBar({ acoes }: { acoes?: ReactNode }) {
         {/* biome-ignore lint/a11y/useSemanticElements: fieldset exige legend visível e traz layout próprio; aqui são botões de alternância, não campos de formulário */}
         <div
           role="group"
-          aria-label="Janela de tempo"
+          aria-label={t('common.timeWindow')}
           className="flex overflow-hidden rounded-md border border-line bg-surface"
         >
           {JANELAS.map((janela) => (
@@ -233,40 +246,44 @@ function TopBar({ acoes }: { acoes?: ReactNode }) {
                   : 'text-muted hover:text-ink',
               )}
             >
-              {janela.rotulo}
+              {t(janela.unidade, { n: janela.valor })}
             </button>
           ))}
         </div>
         {acoes}
       </div>
 
-      <AlternadorDeTema />
+      <div className="flex items-center gap-2">
+        <LanguagePicker />
+        <AlternadorDeTema />
+      </div>
     </div>
   )
 }
 
 function AlternadorDeTema() {
   const [tema, setTema] = useTheme()
+  const t = useT()
 
   const opcoes = [
-    { valor: 'light' as const, Icone: IconeSol, rotulo: 'Claro' },
-    { valor: 'system' as const, Icone: IconeMonitor, rotulo: 'Do sistema' },
-    { valor: 'dark' as const, Icone: IconeLua, rotulo: 'Escuro' },
+    { valor: 'light' as const, Icone: IconeSol, chave: 'common.themeLight' as const },
+    { valor: 'system' as const, Icone: IconeMonitor, chave: 'common.themeSystem' as const },
+    { valor: 'dark' as const, Icone: IconeLua, chave: 'common.themeDark' as const },
   ]
 
   return (
     // biome-ignore lint/a11y/useSemanticElements: mesma razão do seletor de janela
     <div
       role="group"
-      aria-label="Tema"
+      aria-label={t('common.theme')}
       className="flex overflow-hidden rounded-md border border-line bg-surface"
     >
-      {opcoes.map(({ valor, Icone, rotulo }) => (
+      {opcoes.map(({ valor, Icone, chave }) => (
         <button
           key={valor}
           type="button"
-          title={rotulo}
-          aria-label={rotulo}
+          title={t(chave)}
+          aria-label={t(chave)}
           aria-pressed={tema === valor}
           onClick={() => setTema(valor)}
           className={cx(
@@ -284,6 +301,7 @@ function AlternadorDeTema() {
 /** Seletor de sessão, montado pelas telas que já têm a lista carregada. */
 export function FiltroDeSessao({ sessoes }: { sessoes: Array<{ id: string; name: string }> }) {
   const { sessao, definirSessao } = useFiltro()
+  const t = useT()
 
   return (
     <label className="flex items-center gap-2 text-xs text-muted">
@@ -293,7 +311,7 @@ export function FiltroDeSessao({ sessoes }: { sessoes: Array<{ id: string; name:
         onChange={(evento) => definirSessao(evento.target.value || null)}
         className="rounded-md border border-line bg-surface px-2 py-[7px] text-xs text-ink"
       >
-        <option value="">Todas as sessões</option>
+        <option value="">{t('common.allSessions')}</option>
         {sessoes.map((s) => (
           <option key={s.id} value={s.id}>
             {s.name}
