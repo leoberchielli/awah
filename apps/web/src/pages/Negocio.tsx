@@ -2,26 +2,34 @@ import { AreaSerie, BarrasHorizontais } from '../components/charts'
 import { FiltroDeSessao, Shell, useFiltro } from '../components/Shell'
 import { Card, Empty, Skeleton, Stat } from '../components/ui'
 import { useQuery } from '../hooks/useQuery'
+import { type Translate, type TranslationKey, useT } from '../i18n'
 import type { KpiBusiness, SessionRow } from '../lib/api'
 import { chat, dataHora, num, pct } from '../lib/format'
 
 /** Negócio muda em minutos, não em segundos. Meio minuto basta e pesa menos. */
 const POLL_MS = 30_000
 
-const ROTULO_POR_TIPO: Record<string, string> = {
-  text: 'Texto',
-  image: 'Imagem',
-  video: 'Vídeo',
-  audio: 'Áudio',
-  document: 'Documento',
-  sticker: 'Figurinha',
-  location: 'Localização',
-  contact: 'Contato',
-  reaction: 'Reação',
-  system: 'Sistema',
+const CHAVE_POR_TIPO: Record<string, TranslationKey> = {
+  text: 'type.text',
+  image: 'type.image',
+  video: 'type.video',
+  audio: 'type.audio',
+  document: 'type.document',
+  sticker: 'type.sticker',
+  location: 'type.location',
+  contact: 'type.contact',
+  reaction: 'type.reaction',
+  system: 'type.system',
+}
+
+/** Tipo desconhecido aparece cru: melhor o nome do protocolo que um rótulo errado. */
+function rotuloDoTipo(t: Translate, tipo: string): string {
+  const chave = CHAVE_POR_TIPO[tipo]
+  return chave ? t(chave) : tipo
 }
 
 export function Negocio() {
+  const t = useT()
   const { query } = useFiltro()
 
   const sessoes = useQuery<{ sessions: SessionRow[] }>('/v1/sessions', 0)
@@ -33,14 +41,14 @@ export function Negocio() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="card p-4">
             <Stat
-              label="Conversas ativas"
+              label={t('business.activeChats')}
               value={negocio.data ? num(negocio.data.activeChats) : '—'}
-              hint="Com pelo menos uma mensagem na janela"
+              hint={t('business.activeChatsHint')}
             />
           </div>
           <div className="card p-4">
             <Stat
-              label="Taxa de resposta"
+              label={t('business.responseRate')}
               value={negocio.data ? pct(negocio.data.responseRate) : '—'}
               tone={
                 !negocio.data
@@ -51,38 +59,42 @@ export function Negocio() {
                       ? 'warn'
                       : 'crit'
               }
-              hint="Conversas recebidas que tiveram resposta"
+              hint={t('business.responseRateHint')}
             />
           </div>
           <div className="card p-4">
             <Stat
-              label="1ª resposta · mediana"
+              label={t('business.firstReplyMedian')}
               value={segundos(negocio.data?.firstResponseSeconds.p50 ?? null)}
-              hint="Quanto o cliente esperou até alguém falar"
+              hint={t('business.firstReplyMedianHint')}
             />
           </div>
           <div className="card p-4">
             <Stat
-              label="1ª resposta · p95"
+              label={t('business.firstReplyP95')}
               value={segundos(negocio.data?.firstResponseSeconds.p95 ?? null)}
               tone={(negocio.data?.firstResponseSeconds.p95 ?? 0) > 3600 ? 'warn' : 'neutral'}
-              hint="O pior caso que ainda é comum"
+              hint={t('business.firstReplyP95Hint')}
             />
           </div>
         </div>
 
         <div className="grid gap-4 lg:grid-cols-3">
           <Card
-            title="Volume de conversa"
-            hint="Entrada e saída lado a lado — desequilíbrio persistente é disparo em massa ou fila parada."
+            title={t('business.volume')}
+            hint={t('business.volumeHint')}
             className="lg:col-span-2"
           >
             {negocio.data ? (
               <AreaSerie
                 series={negocio.data.volume}
                 visuais={[
-                  { key: 'messages.inbound', label: 'Recebidas', color: 'var(--ok)' },
-                  { key: 'messages.outbound', label: 'Enviadas', color: 'var(--accent)' },
+                  { key: 'messages.inbound', label: t('business.inbound'), color: 'var(--ok)' },
+                  {
+                    key: 'messages.outbound',
+                    label: t('business.outbound'),
+                    color: 'var(--accent)',
+                  },
                 ]}
                 altura={240}
               />
@@ -91,12 +103,12 @@ export function Negocio() {
             )}
           </Card>
 
-          <Card title="Tipos de mensagem" hint="O que trafega de verdade.">
+          <Card title={t('business.messageTypes')} hint={t('business.messageTypesHint')}>
             {negocio.data ? (
               <BarrasHorizontais
                 altura={240}
                 dados={negocio.data.byType.slice(0, 8).map((item) => ({
-                  rotulo: ROTULO_POR_TIPO[item.type] ?? item.type,
+                  rotulo: rotuloDoTipo(t, item.type),
                   valor: item.count,
                 }))}
               />
@@ -106,7 +118,7 @@ export function Negocio() {
           </Card>
         </div>
 
-        <Card title="Conversas mais movimentadas" hint="Volume por contato na janela escolhida.">
+        <Card title={t('business.busiestChats')} hint={t('business.busiestChatsHint')}>
           {negocio.data ? (
             <TabelaDeChats linhas={negocio.data.topChats} />
           ) : (
@@ -119,8 +131,10 @@ export function Negocio() {
 }
 
 function TabelaDeChats({ linhas }: { linhas: KpiBusiness['topChats'] }) {
+  const t = useT()
+
   if (linhas.length === 0) {
-    return <Empty>Nenhuma conversa registrada nesta janela.</Empty>
+    return <Empty>{t('business.noChats')}</Empty>
   }
 
   const maior = Math.max(...linhas.map((l) => l.messages), 1)

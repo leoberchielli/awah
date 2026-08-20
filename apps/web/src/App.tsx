@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { Marca } from './components/Shell'
 import { useQuery } from './hooks/useQuery'
+import { useT } from './i18n'
 import type { Bootstrap, Me } from './lib/api'
 import { ProvedorDeSessao } from './lib/sessao'
 import { Chaves } from './pages/Chaves'
@@ -66,11 +67,13 @@ function Autenticado({ children }: { children: React.ReactNode }) {
 }
 
 function Carregando() {
+  const t = useT()
+
   return (
     <div className="grid min-h-dvh place-items-center bg-ground">
       <div className="flex flex-col items-center gap-3">
         <Marca />
-        <span className="text-xs text-muted">Carregando…</span>
+        <span className="text-xs text-muted">{t('app.loading')}</span>
       </div>
     </div>
   )

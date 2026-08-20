@@ -1,7 +1,7 @@
 import { type FormEvent, useState } from 'react'
 import { LanguagePicker } from '../components/LanguagePicker'
 import { Marca } from '../components/Shell'
-import { useT } from '../i18n'
+import { Rich, useT } from '../i18n'
 import { ApiError, post } from '../lib/api'
 
 /**
@@ -101,12 +101,9 @@ export function PrimeiroAcesso() {
           </button>
         </form>
 
-        {/* A única string com marcação: o papel precisa destacar do resto da frase. */}
-        <p
-          className="mt-4 text-center text-xs text-muted [&_strong]:text-ink"
-          // biome-ignore lint/security/noDangerouslySetInnerHtml: o texto vem do catálogo do próprio pacote, nunca de entrada do usuário
-          dangerouslySetInnerHTML={{ __html: t('setup.ownerNote') }}
-        />
+        <p className="mt-4 text-center text-xs text-muted">
+          <Rich text={t('setup.ownerNote')} />
+        </p>
       </div>
     </div>
   )

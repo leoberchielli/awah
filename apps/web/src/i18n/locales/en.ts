@@ -136,6 +136,228 @@ export const en = {
   'keys.usedAgo': 'used {when}',
   'keys.neverUsed': 'never used',
   'keys.expiresOn': 'expires {when}',
+
+  // ---- integrations ----
+  'integrations.list.title': 'Connected tools',
+  'integrations.list.hint':
+    'AWAH is the transport. Chatwoot and Typebot have dedicated connectors; any other platform comes in through the HTTP connector. In every case the durable queue, per-chat ordering and the risk engine sit underneath.',
+  'integrations.list.empty': 'No tool connected yet. Set one up below.',
+  'integrations.kind.chatwoot': 'Chatwoot',
+  'integrations.kind.typebot': 'Typebot',
+  'integrations.kind.http': 'External platform',
+  'integrations.since': 'since {when}',
+  'integrations.state.error': 'Failing',
+  'integrations.state.active': 'Active',
+  'integrations.state.paused': 'Paused',
+  'integrations.disconnect': 'Disconnect',
+
+  // ---- business ----
+  'business.activeChats': 'Active conversations',
+  'business.activeChatsHint': 'With at least one message in the window',
+  'business.responseRate': 'Response rate',
+  'business.responseRateHint': 'Inbound conversations that got a reply',
+  'business.firstReplyMedian': 'First reply · median',
+  'business.firstReplyMedianHint': 'How long the customer waited before anyone spoke',
+  'business.firstReplyP95': 'First reply · p95',
+  'business.firstReplyP95Hint': 'The worst case that is still common',
+  'business.volume': 'Conversation volume',
+  'business.volumeHint':
+    'Inbound and outbound side by side — a lasting imbalance is either mass outreach or a stalled queue.',
+  'business.inbound': 'Received',
+  'business.outbound': 'Sent',
+  'business.messageTypes': 'Message types',
+  'business.messageTypesHint': 'What actually travels.',
+  'business.busiestChats': 'Busiest conversations',
+  'business.busiestChatsHint': 'Volume per contact in the selected window.',
+  'business.noChats': 'No conversation recorded in this window.',
+  'type.text': 'Text',
+  'type.image': 'Image',
+  'type.video': 'Video',
+  'type.audio': 'Audio',
+  'type.document': 'Document',
+  'type.sticker': 'Sticker',
+  'type.location': 'Location',
+  'type.contact': 'Contact',
+  'type.reaction': 'Reaction',
+  'type.system': 'System',
+
+  // ---- operations ----
+  'ops.connectedSessions': 'Connected sessions',
+  'ops.noneRunning': 'No session running',
+  'ops.ofWhatShouldRun': 'Of what should be running',
+  'ops.deliveryRate': 'Delivery rate',
+  'ops.ofTotal': '{delivered} of {sent}',
+  'ops.latencyP95': 'p95 latency',
+  'ops.latencyHint': 'From send to delivery ACK',
+  'ops.inQueue': 'In queue',
+  'ops.sendingNow': '{n} sending',
+  'ops.heldByRisk': 'Held by risk',
+  'ops.newContacts': '{n} new contacts',
+  'ops.funnel': 'Delivery funnel',
+  'ops.funnelHint': 'Where the message stops moving forward.',
+  'ops.funnel.sent': 'Sent',
+  'ops.funnel.delivered': 'Delivered',
+  'ops.funnel.read': 'Read',
+  'ops.funnel.failed': 'Failed',
+  'ops.throughput': 'Throughput',
+  'ops.throughputHint': 'Sent and received per hour.',
+  'ops.queue': 'Queue and retries',
+  'ops.queueHint': 'State right now, not over the period.',
+  'ops.queued': 'Waiting',
+  'ops.sending': 'Sending',
+  'ops.dead': 'Dropped',
+  'ops.deadHint': 'Ran out of attempts.',
+  'ops.deadWebhooks': 'Dead webhooks',
+  'ops.webhooksDelivered': '{n} delivered',
+  'ops.riskDecisions': 'Risk engine decisions',
+  'ops.riskDecisionsHint': 'Nothing is discarded; what does not pass, waits.',
+  'ops.decision.allowed': 'Allowed',
+  'ops.decision.delayed': 'Delayed',
+  'ops.decision.throttled': 'Throttled',
+  'ops.decision.held': 'Held',
+  'ops.riskScore': 'Risk score',
+  'ops.riskScoreHint': '0 is calm, 100 is the edge of a ban.',
+  'ops.sessionHealth': 'Session health',
+  'ops.sessionHealthHint': 'MTBF comes from recorded connection events, not from a heartbeat.',
+  'ops.noSessions': 'No session in this organization yet.',
+  'ops.col.session': 'Session',
+  'ops.col.state': 'State',
+  'ops.col.drops': 'Drops',
+  'ops.col.reconnects': 'Reconnects',
+  'ops.col.mtbf': 'MTBF',
+  'ops.col.lastCause': 'Last cause',
+
+  // ---- sessions ----
+  'sessions.title': 'Sessions',
+  'sessions.hint':
+    'Desired state and actual state, side by side. A gap between the two is what deserves attention.',
+  'sessions.empty':
+    'No session yet. Create the first one under <strong>New session</strong>, up top — then press Start and the QR shows up on its own.',
+  'sessions.detail': 'Detail',
+  'sessions.detailEmpty': 'Tap a session to see risk, budget and drop history.',
+  'sessions.new': 'New session',
+  'sessions.namePlaceholder': 'session name',
+  'sessions.create': 'Create',
+  'sessions.createFailed': 'Could not create the session.',
+  'sessions.commandFailed': 'Could not send the command.',
+  'sessions.shouldBeRunning': 'Should be running',
+  'sessions.start': 'Start',
+  'sessions.stop': 'Stop',
+  'sessions.logout': 'Disconnect device',
+  'engine.baileys': 'Baileys (unofficial)',
+  'engine.cloudApi': 'Cloud API (official)',
+
+  // ---- pairing ----
+  'pairing.title': 'Pair "{name}"',
+  'pairing.hint':
+    'The code refreshes itself every few seconds. Keep this screen open until the session shows as connected.',
+  'pairing.qrAlt': 'Pairing QR code',
+  'pairing.step1':
+    'Open WhatsApp on the phone that will answer for this session. Use a dedicated number — never your personal one.',
+  'pairing.step2':
+    'Tap the three dots (Android) or <strong>Settings</strong> (iPhone) and choose <strong>Linked devices</strong>.',
+  'pairing.step3':
+    'Tap <strong>Link a device</strong> and point the camera at the code beside this.',
+  'pairing.step4':
+    'As soon as the phone accepts, this panel disappears on its own and the session turns <strong>Connected</strong>.',
+  'pairing.cancel': 'Cancel pairing',
+
+  // ---- risk panel ----
+  'risk.title': 'Risk and budget',
+  'risk.hint': 'Nothing is discarded: what does not pass now, waits.',
+  'risk.none': 'No risk reading for this session.',
+  'risk.score': 'Score',
+  'risk.warmup': 'Warm-up',
+  'risk.ageDays': '{n} days old',
+  'risk.throttled': 'Brake on: the session is sending at {rate} of its normal pace.',
+  'risk.windows': 'Window usage',
+  'risk.perMinute': 'Per minute',
+  'risk.perHour': 'Per hour',
+  'risk.perDay': 'Per day',
+  'risk.newContactsToday': 'New contacts today',
+  'risk.factors': 'Where the score comes from',
+
+  // ---- connection history ----
+  'events.title': 'Connection history',
+  'events.hint':
+    'The raw protocol code next to the translated cause — that is what lets you understand a drop without reading logs.',
+  'events.empty': 'No event recorded for this session.',
+
+  // ---- connect wizards, shared ----
+  'wizard.pickSession': 'WhatsApp session',
+  'wizard.pickSessionPlaceholder': 'Choose the session',
+  'wizard.noSessions': 'No session yet. Create one under Sessions first.',
+  'wizard.optional': '(optional)',
+  'wizard.apiUnreachable': 'Could not reach the API server.',
+  'wizard.connectAnother': 'Connect another session',
+
+  // ---- typebot wizard ----
+  'typebot.connected': 'Typebot connected',
+  'typebot.connectedHint':
+    'There is nothing to configure on the other side: the gateway is what calls Typebot. Send a message to the number and the flow answers.',
+  'typebot.title': 'Connect Typebot',
+  'typebot.hint':
+    'Automated flow. What the customer writes goes into the flow, and the answer leaves through the gateway queue — with ordering, pacing and redelivery.',
+  'typebot.flowLink': 'Flow link',
+  'typebot.flowLinkHint':
+    'In Typebot: publish the flow and copy the link under <strong>Share</strong>. It is not the editor address — that one uses the internal id and will not work here.',
+  'typebot.apiToken': 'API token',
+  'typebot.apiTokenHint': 'Only needed if the flow is not public.',
+  'typebot.escapeWord': 'Escape word',
+  'typebot.escapeWordHint':
+    'Whoever types this leaves the flow and moves to a human. Leave it empty only if there is another path to a person.',
+  'typebot.submit': 'Test and connect',
+  'typebot.submitting': 'Testing the flow…',
+
+  // ---- http wizard ----
+  'http.connected': 'Platform connected',
+  'http.connectAnother': 'Connect another',
+  'http.title': 'Connect any platform',
+  'http.hint':
+    'The gateway posts every received message to your URL and sends back whatever the response carries. Works for n8n, Make, a serverless function or your own system.',
+  'http.url': 'URL that receives the messages',
+  'http.urlHint':
+    'Answer with {example} for the gateway to send it, or with an empty body to only record.',
+  'http.name': 'Name',
+  'http.namePlaceholder': 'n8n flow',
+  'http.secret': 'Signing secret',
+  'http.secretHint': 'Signs the body with HMAC, same as webhooks. If the URL is public, use it.',
+  'http.test': 'Test',
+  'http.testing': 'Testing…',
+  'http.connect': 'Connect',
+  'http.connecting': 'Connecting…',
+  'http.showPayload': 'Show what the gateway sends',
+  'http.hidePayload': 'Hide what the gateway sends',
+  'http.apiUnreachable': 'Could not reach the API.',
+
+  // ---- chatwoot wizard ----
+  'chatwoot.connected': 'Chatwoot connected',
+  'chatwoot.oneStepLeft':
+    'One step left: paste this URL into the <strong>Webhook URL</strong> field of your API inbox, in Chatwoot.',
+  'chatwoot.webhookDone':
+    'The webhook already points at the gateway — there is nothing to do in Chatwoot. Send a message to the number and it shows up in the inbox.',
+  'chatwoot.title': 'Connect Chatwoot',
+  'chatwoot.hint':
+    'Human support. The conversation shows up in the inbox and the agent reply comes back through the gateway.',
+  'chatwoot.address': 'Chatwoot address',
+  'chatwoot.token': 'Access token',
+  'chatwoot.tokenHint':
+    'In Chatwoot: your avatar → Profile → Access token. Use an administrator token so the gateway can create the inbox on its own.',
+  'chatwoot.continue': 'Continue',
+  'chatwoot.talking': 'Talking to Chatwoot…',
+  'chatwoot.noAccount': 'This token does not reach any Chatwoot account.',
+  'chatwoot.newInbox': 'Create a new inbox',
+  'chatwoot.newInboxHint':
+    'The gateway creates the API inbox and points the webhook at itself. Recommended.',
+  'chatwoot.existingInbox': 'Existing API inbox. Its webhook will be pointed at the gateway.',
+  'chatwoot.noInbox': 'No inbox in this account yet. The new one will be the first.',
+  'chatwoot.connect': 'Connect',
+  'chatwoot.preparing': 'Preparing the inbox…',
+  'chatwoot.inboxName': 'Inbox name',
+  'chatwoot.whichAccount': 'This token reaches more than one account. Which one?',
+  'chatwoot.inbox': 'Inbox',
+  'http.responseBody': 'Response body',
+  'wizard.stepOf': 'Step {n} of {total}',
 } as const
 
 export type TranslationKey = keyof typeof en

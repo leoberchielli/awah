@@ -1,5 +1,6 @@
 import { type FormEvent, useState } from 'react'
 import { Card, cx } from '../../components/ui'
+import { useT } from '../../i18n'
 import type { IntegrationSaved, SessionRow, TesteDoConector } from '../../lib/api'
 import { ApiError, post, put } from '../../lib/api'
 
@@ -19,6 +20,7 @@ export function AssistenteHttp({
   sessoes: SessionRow[]
   aoSalvar: () => void
 }) {
+  const t = useT()
   const [sessionId, setSessionId] = useState('')
   const [url, setUrl] = useState('')
   const [label, setLabel] = useState('')
@@ -40,7 +42,7 @@ export function AssistenteHttp({
     try {
       setTeste(await post<TesteDoConector>('/v1/integrations/http/test', corpo()))
     } catch (falha) {
-      setErro(falha instanceof ApiError ? falha.message : 'Não consegui falar com a API.')
+      setErro(falha instanceof ApiError ? falha.message : t('http.apiUnreachable'))
     } finally {
       setOcupado(null)
     }
@@ -54,7 +56,7 @@ export function AssistenteHttp({
       setPronto(await put<IntegrationSaved>(`/v1/sessions/${sessionId}/integrations/http`, corpo()))
       aoSalvar()
     } catch (falha) {
-      setErro(falha instanceof ApiError ? falha.message : 'Não consegui falar com a API.')
+      setErro(falha instanceof ApiError ? falha.message : t('http.apiUnreachable'))
     } finally {
       setOcupado(null)
     }
@@ -62,7 +64,7 @@ export function AssistenteHttp({
 
   if (pronto) {
     return (
-      <Card title="Plataforma conectada">
+      <Card title={t('http.connected')}>
         <div className="flex flex-col gap-3">
           <p className="rounded-md bg-ok/10 px-3 py-2 text-sm text-ok">{pronto.detail}</p>
           <button
@@ -70,7 +72,7 @@ export function AssistenteHttp({
             onClick={() => setPronto(null)}
             className="self-start rounded-md border border-line bg-surface px-2.5 py-1.5 text-xs font-medium text-ink hover:bg-surface-2"
           >
-            Conectar outra
+            {t('http.connectAnother')}
           </button>
         </div>
       </Card>
@@ -78,20 +80,17 @@ export function AssistenteHttp({
   }
 
   return (
-    <Card
-      title="Conectar qualquer plataforma"
-      hint="O gateway posta cada mensagem recebida na sua URL e envia de volta o que a resposta trouxer. Serve para n8n, Make, função serverless ou sistema próprio."
-    >
+    <Card title={t('http.title')} hint={t('http.hint')}>
       <form onSubmit={conectar} className="flex flex-col gap-3">
         <label className="flex flex-col gap-1.5">
-          <span className="eyebrow">Sessão do WhatsApp</span>
+          <span className="eyebrow">{t('wizard.pickSession')}</span>
           <select
             required
             value={sessionId}
             onChange={(e) => setSessionId(e.target.value)}
             className="rounded-md border border-line bg-surface-2 px-3 py-2 text-sm text-ink"
           >
-            <option value="">Escolha a sessão</option>
+            <option value="">{t('wizard.pickSessionPlaceholder')}</option>
             {sessoes.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.name}
@@ -101,38 +100,37 @@ export function AssistenteHttp({
         </label>
 
         <label className="flex flex-col gap-1.5">
-          <span className="eyebrow">URL que recebe as mensagens</span>
+          <span className="eyebrow">{t('http.url')}</span>
           <input
             required
             type="url"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
-            placeholder="https://n8n.suaempresa.com/webhook/atendimento"
+            placeholder="https://n8n.yourcompany.com/webhook/support"
             className="rounded-md border border-line bg-surface-2 px-3 py-2 text-sm text-ink placeholder:text-muted"
           />
           <span className="text-xs text-muted">
-            Responda com{' '}
-            <code className="font-mono text-[11px] text-ink">{'{"reply":"texto"}'}</code> para o
-            gateway enviar, ou com corpo vazio para só registrar.
+            {t('http.urlHint', { example: '{"reply":"..."}' })}
           </span>
         </label>
 
         <label className="flex flex-col gap-1.5">
           <span className="eyebrow">
-            Nome <span className="normal-case tracking-normal opacity-70">(opcional)</span>
+            {t('http.name')}{' '}
+            <span className="normal-case tracking-normal opacity-70">{t('wizard.optional')}</span>
           </span>
           <input
             value={label}
             onChange={(e) => setLabel(e.target.value)}
-            placeholder="Fluxo do n8n"
+            placeholder={t('http.namePlaceholder')}
             className="rounded-md border border-line bg-surface-2 px-3 py-2 text-sm text-ink placeholder:text-muted"
           />
         </label>
 
         <label className="flex flex-col gap-1.5">
           <span className="eyebrow">
-            Segredo de assinatura{' '}
-            <span className="normal-case tracking-normal opacity-70">(opcional)</span>
+            {t('http.secret')}{' '}
+            <span className="normal-case tracking-normal opacity-70">{t('wizard.optional')}</span>
           </span>
           <input
             type="password"
@@ -141,9 +139,7 @@ export function AssistenteHttp({
             className="rounded-md border border-line bg-surface-2 px-3 py-2 text-sm text-ink"
           />
           {/* Mesmo esquema dos webhooks: quem já valida um valida o outro. */}
-          <span className="text-xs text-muted">
-            Assina o corpo em HMAC, igual aos webhooks. Se a URL for pública, use.
-          </span>
+          <span className="text-xs text-muted">{t('http.secretHint')}</span>
         </label>
 
         {erro && (
@@ -161,14 +157,14 @@ export function AssistenteHttp({
             onClick={testar}
             className="rounded-md border border-line bg-surface px-3 py-2 text-sm font-medium text-ink hover:bg-surface-2 disabled:opacity-50"
           >
-            {ocupado === 'teste' ? 'Testando…' : 'Testar'}
+            {ocupado === 'teste' ? t('http.testing') : t('http.test')}
           </button>
           <button
             type="submit"
             disabled={ocupado !== null}
             className="flex-1 rounded-md bg-accent px-3 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
           >
-            {ocupado === 'salvar' ? 'Conectando…' : 'Conectar'}
+            {ocupado === 'salvar' ? t('http.connecting') : t('http.connect')}
           </button>
         </div>
       </form>
@@ -183,6 +179,7 @@ export function AssistenteHttp({
  * quando alguém acabou de plugar uma plataforma que ninguém aqui conhece.
  */
 function Resultado({ teste }: { teste: TesteDoConector }) {
+  const t = useT()
   const [mostrarEnviado, setMostrarEnviado] = useState(false)
 
   return (
@@ -225,7 +222,7 @@ function Resultado({ teste }: { teste: TesteDoConector }) {
 
       {teste.raw && (
         <details className="text-xs">
-          <summary className="cursor-pointer text-muted">Corpo da resposta</summary>
+          <summary className="cursor-pointer text-muted">{t('http.responseBody')}</summary>
           <pre className="mt-1.5 max-h-40 overflow-auto rounded border border-line bg-surface p-2 font-mono text-[11px] text-ink">
             {teste.raw}
           </pre>
@@ -237,7 +234,7 @@ function Resultado({ teste }: { teste: TesteDoConector }) {
         onClick={() => setMostrarEnviado((v) => !v)}
         className="self-start text-xs text-muted underline underline-offset-2 hover:text-ink"
       >
-        {mostrarEnviado ? 'Ocultar' : 'Ver'} o que o gateway envia
+        {mostrarEnviado ? t('http.hidePayload') : t('http.showPayload')}
       </button>
 
       {mostrarEnviado && (

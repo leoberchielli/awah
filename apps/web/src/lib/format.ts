@@ -66,24 +66,3 @@ export function chat(chatId: string): string {
   if (chatId.includes('@g.us')) return `Grupo ${semSufixo.slice(-6)}`
   return telefone(semSufixo)
 }
-
-/**
- * Estado da sessão em português.
- *
- * Vive aqui, e não na tela de Sessões, porque mais de uma tela mostra estado —
- * e um estado novo na engine tem que aparecer traduzido em todas de uma vez,
- * não só naquela onde alguém lembrou de atualizar o mapa.
- */
-const ROTULO_POR_STATUS: Record<string, string> = {
-  connected: 'Conectada',
-  connecting: 'Conectando',
-  pairing: 'Pareando',
-  created: 'Criada',
-  disconnected: 'Desconectada',
-  logged_out: 'Deslogada',
-  banned: 'Banida',
-}
-
-export function statusDeSessao(status: string): string {
-  return ROTULO_POR_STATUS[status] ?? status
-}

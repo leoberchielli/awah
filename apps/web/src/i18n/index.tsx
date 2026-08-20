@@ -3,6 +3,7 @@ import { type Catalog, en, type TranslationKey } from './locales/en'
 import { detectLocale, FALLBACK, findLocale, LOCALES } from './registry'
 
 export type { TranslationKey } from './locales/en'
+export { Rich } from './Rich'
 export { findLocale, LOCALES, type Locale } from './registry'
 
 const STORAGE_KEY = 'awah_lang'

@@ -305,7 +305,7 @@ export function FiltroDeSessao({ sessoes }: { sessoes: Array<{ id: string; name:
 
   return (
     <label className="flex items-center gap-2 text-xs text-muted">
-      <span className="sr-only">Filtrar por sessão</span>
+      <span className="sr-only">{t('common.filterBySession')}</span>
       <select
         value={sessao ?? ''}
         onChange={(evento) => definirSessao(evento.target.value || null)}

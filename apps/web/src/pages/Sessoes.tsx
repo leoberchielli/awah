@@ -2,28 +2,21 @@ import { type FormEvent, useState } from 'react'
 import { Shell } from '../components/Shell'
 import { Card, cx, Empty, Pill, Skeleton, Stat, type Tone } from '../components/ui'
 import { useQuery } from '../hooks/useQuery'
+import { Rich, type TranslationKey, useT } from '../i18n'
 import type { QrResponse, RiskSnapshot, SessionEvent, SessionRow } from '../lib/api'
 import { ApiError, post } from '../lib/api'
-import { dataHora, desde, num, pct, statusDeSessao, telefone } from '../lib/format'
+import { dataHora, desde, num, pct, telefone } from '../lib/format'
+import { statusLabel, statusTone } from '../lib/sessionStatus'
 
-const TOM_POR_STATUS: Record<string, Tone> = {
-  connected: 'ok',
-  connecting: 'warn',
-  pairing: 'warn',
-  created: 'hold',
-  disconnected: 'crit',
-  logged_out: 'crit',
-  banned: 'crit',
-}
-
-const ENGINES = [
-  { valor: 'baileys', rotulo: 'Baileys (não oficial)' },
-  { valor: 'cloud_api', rotulo: 'Cloud API (oficial)' },
+const ENGINES: Array<{ valor: string; rotulo: TranslationKey }> = [
+  { valor: 'baileys', rotulo: 'engine.baileys' },
+  { valor: 'cloud_api', rotulo: 'engine.cloudApi' },
 ]
 
 const PAREANDO = ['pairing', 'connecting']
 
 export function Sessoes() {
+  const t = useT()
   const [selecionada, setSelecionada] = useState<string | null>(null)
   const sessoes = useQuery<{ sessions: SessionRow[] }>('/v1/sessions', 4000)
   const lista = sessoes.data?.sessions ?? []
@@ -49,16 +42,15 @@ export function Sessoes() {
         <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
           <div className="flex min-w-0 flex-col gap-4">
             <Card
-              title="Sessões"
-              hint="Estado desejado e estado real, lado a lado. Divergência entre os dois é o que merece atenção."
+              title={t('sessions.title')}
+              hint={t('sessions.hint')}
               action={<NovaSessao aoCriar={sessoes.refetch} />}
             >
               {!sessoes.settled ? (
                 <Skeleton className="h-32" />
               ) : lista.length === 0 ? (
                 <Empty>
-                  Nenhuma sessão ainda. Crie a primeira em <strong>Nova sessão</strong>, aqui em
-                  cima — depois é só apertar Iniciar e o QR aparece sozinho.
+                  <Rich text={t('sessions.empty')} />
                 </Empty>
               ) : (
                 <ul className="flex flex-col">
@@ -85,8 +77,8 @@ export function Sessoes() {
             {alvo ? (
               <PainelDeRisco sessionId={alvo.id} />
             ) : (
-              <Card title="Detalhe">
-                <Empty>Toque numa sessão para ver risco, orçamento e histórico de queda.</Empty>
+              <Card title={t('sessions.detail')}>
+                <Empty>{t('sessions.detailEmpty')}</Empty>
               </Card>
             )}
           </div>
@@ -98,31 +90,22 @@ export function Sessoes() {
 
 /** O passo do pareamento, com o QR e o que fazer no aparelho lado a lado. */
 function Pareamento({ sessao, aoMudar }: { sessao: SessionRow; aoMudar: () => void }) {
+  const t = useT()
+
   return (
     <Card
-      title={`Parear "${sessao.name}"`}
-      hint="O código se renova sozinho a cada poucos segundos. Deixe esta tela aberta até a sessão aparecer como conectada."
-      action={<Pill tone="warn">{statusDeSessao(sessao.status)}</Pill>}
+      title={t('pairing.title', { name: sessao.name })}
+      hint={t('pairing.hint')}
+      action={<Pill tone="warn">{statusLabel(t, sessao.status)}</Pill>}
     >
       <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
         <PainelDeQr sessionId={sessao.id} />
 
         <ol className="flex flex-1 flex-col gap-3 text-sm text-muted">
-          <Passo n={1}>
-            Abra o WhatsApp no celular que vai atender por esta sessão. Use um número dedicado —
-            nunca o seu pessoal.
-          </Passo>
-          <Passo n={2}>
-            Toque nos três pontos (Android) ou em <strong>Ajustes</strong> (iPhone) e escolha{' '}
-            <strong>Aparelhos conectados</strong>.
-          </Passo>
-          <Passo n={3}>
-            Toque em <strong>Conectar um aparelho</strong> e aponte a câmera para o código ao lado.
-          </Passo>
-          <Passo n={4}>
-            Assim que o aparelho aceitar, esta faixa some sozinha e a sessão passa a{' '}
-            <strong>Conectada</strong>.
-          </Passo>
+          <Passo n={1} texto={t('pairing.step1')} />
+          <Passo n={2} texto={t('pairing.step2')} />
+          <Passo n={3} texto={t('pairing.step3')} />
+          <Passo n={4} texto={t('pairing.step4')} />
 
           <li className="mt-1">
             <CancelarPareamento sessionId={sessao.id} aoMudar={aoMudar} />
@@ -133,7 +116,7 @@ function Pareamento({ sessao, aoMudar }: { sessao: SessionRow; aoMudar: () => vo
   )
 }
 
-function Passo({ n, children }: { n: number; children: React.ReactNode }) {
+function Passo({ n, texto }: { n: number; texto: string }) {
   return (
     <li className="flex gap-3">
       <span
@@ -142,12 +125,15 @@ function Passo({ n, children }: { n: number; children: React.ReactNode }) {
       >
         {n}
       </span>
-      <span className="text-ink/80">{children}</span>
+      <span className="text-ink/80">
+        <Rich text={texto} />
+      </span>
     </li>
   )
 }
 
 function CancelarPareamento({ sessionId, aoMudar }: { sessionId: string; aoMudar: () => void }) {
+  const t = useT()
   const [ocupado, setOcupado] = useState(false)
 
   return (
@@ -161,7 +147,7 @@ function CancelarPareamento({ sessionId, aoMudar }: { sessionId: string; aoMudar
         setOcupado(false)
       }}
     >
-      Cancelar pareamento
+      {t('pairing.cancel')}
     </Botao>
   )
 }
@@ -179,6 +165,7 @@ function LinhaDeSessao({
   aoIniciar: () => void
   aoMudar: () => void
 }) {
+  const t = useT()
   const [ocupado, setOcupado] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
 
@@ -191,7 +178,7 @@ function LinhaDeSessao({
       if (acao === 'start') aoIniciar()
       aoMudar()
     } catch (falha) {
-      setErro(falha instanceof ApiError ? falha.message : 'Falha ao enviar o comando.')
+      setErro(falha instanceof ApiError ? falha.message : t('sessions.commandFailed'))
     } finally {
       setOcupado(false)
     }
@@ -226,24 +213,22 @@ function LinhaDeSessao({
         </button>
 
         <div className="flex items-center gap-2">
-          <Pill tone={TOM_POR_STATUS[sessao.status] ?? 'hold'}>
-            {statusDeSessao(sessao.status)}
-          </Pill>
+          <Pill tone={statusTone(sessao.status)}>{statusLabel(t, sessao.status)}</Pill>
 
-          {divergente && <Pill tone="crit">Deveria estar rodando</Pill>}
+          {divergente && <Pill tone="crit">{t('sessions.shouldBeRunning')}</Pill>}
 
           {sessao.running ? (
             <>
               <Botao onClick={() => comandar('stop')} disabled={ocupado}>
-                Parar
+                {t('sessions.stop')}
               </Botao>
               <Botao onClick={() => comandar('logout')} disabled={ocupado} tom="perigo">
-                Desconectar aparelho
+                {t('sessions.logout')}
               </Botao>
             </>
           ) : (
             <Botao onClick={() => comandar('start')} disabled={ocupado} tom="primario">
-              Iniciar
+              {t('sessions.start')}
             </Botao>
           )}
         </div>
@@ -293,6 +278,7 @@ function Botao({
 }
 
 function NovaSessao({ aoCriar }: { aoCriar: () => void }) {
+  const t = useT()
   const [aberto, setAberto] = useState(false)
   const [nome, setNome] = useState('')
   const [engine, setEngine] = useState('baileys')
@@ -307,14 +293,14 @@ function NovaSessao({ aoCriar }: { aoCriar: () => void }) {
       setAberto(false)
       aoCriar()
     } catch (falha) {
-      setErro(falha instanceof ApiError ? falha.message : 'Falha ao criar a sessão.')
+      setErro(falha instanceof ApiError ? falha.message : t('sessions.createFailed'))
     }
   }
 
   if (!aberto) {
     return (
       <Botao onClick={() => setAberto(true)} tom="primario">
-        Nova sessão
+        {t('sessions.new')}
       </Botao>
     )
   }
@@ -327,7 +313,7 @@ function NovaSessao({ aoCriar }: { aoCriar: () => void }) {
         required
         value={nome}
         onChange={(e) => setNome(e.target.value)}
-        placeholder="nome da sessão"
+        placeholder={t('sessions.namePlaceholder')}
         className="w-40 rounded-md border border-line bg-surface-2 px-2 py-1.5 text-xs text-ink"
       />
       <select
@@ -337,14 +323,14 @@ function NovaSessao({ aoCriar }: { aoCriar: () => void }) {
       >
         {ENGINES.map((item) => (
           <option key={item.valor} value={item.valor}>
-            {item.rotulo}
+            {t(item.rotulo)}
           </option>
         ))}
       </select>
       <Botao type="submit" tom="primario">
-        Criar
+        {t('sessions.create')}
       </Botao>
-      <Botao onClick={() => setAberto(false)}>Cancelar</Botao>
+      <Botao onClick={() => setAberto(false)}>{t('common.cancel')}</Botao>
       {erro && (
         <span role="alert" className="w-full text-xs text-crit">
           {erro}
@@ -361,6 +347,7 @@ function NovaSessao({ aoCriar }: { aoCriar: () => void }) {
  * WhatsApp aceita — um QR de dez segundos atrás já falhou.
  */
 function PainelDeQr({ sessionId }: { sessionId: string }) {
+  const t = useT()
   const qr = useQuery<QrResponse>(`/v1/sessions/${sessionId}/qr`, 2000)
 
   /**
@@ -383,7 +370,7 @@ function PainelDeQr({ sessionId }: { sessionId: string }) {
   return (
     <img
       src={qr.data.image}
-      alt="QR de pareamento"
+      alt={t('pairing.qrAlt')}
       width={248}
       height={248}
       className="size-[248px] shrink-0 rounded-lg border border-line bg-white p-2"
@@ -392,11 +379,12 @@ function PainelDeQr({ sessionId }: { sessionId: string }) {
 }
 
 function PainelDeRisco({ sessionId }: { sessionId: string }) {
+  const t = useT()
   const risco = useQuery<RiskSnapshot>(`/v1/sessions/${sessionId}/risk`, 5000)
 
   if (!risco.settled) {
     return (
-      <Card title="Risco e orçamento">
+      <Card title={t('risk.title')}>
         <Skeleton className="h-52" />
       </Card>
     )
@@ -404,8 +392,8 @@ function PainelDeRisco({ sessionId }: { sessionId: string }) {
 
   if (!risco.data) {
     return (
-      <Card title="Risco e orçamento">
-        <Empty>Sem leitura de risco para esta sessão.</Empty>
+      <Card title={t('risk.title')}>
+        <Empty>{t('risk.none')}</Empty>
       </Card>
     )
   }
@@ -415,35 +403,37 @@ function PainelDeRisco({ sessionId }: { sessionId: string }) {
   const pontuando = score.factors.filter((fator) => fator.points > 0)
 
   return (
-    <Card title="Risco e orçamento" hint="Nada é descartado: o que não passa agora, espera.">
+    <Card title={t('risk.title')} hint={t('risk.hint')}>
       <div className="flex flex-col gap-4">
         <div className="flex items-end justify-between gap-3">
           <Stat
-            label="Score"
+            label={t('risk.score')}
             value={score.value}
             unit="/100"
             tone={tom === 'ok' ? 'ok' : tom === 'warn' ? 'warn' : 'crit'}
           />
           <div className="text-right">
-            <span className="eyebrow">Warmup</span>
+            <span className="eyebrow">{t('risk.warmup')}</span>
             <p className="font-mono text-sm text-ink tnum">{pct(warmup.factor)}</p>
-            <p className="text-xs text-muted">{warmup.ageInDays.toFixed(1)} dias de idade</p>
+            <p className="text-xs text-muted">
+              {t('risk.ageDays', { n: warmup.ageInDays.toFixed(1) })}
+            </p>
           </div>
         </div>
 
         {throttleFactor < 1 && (
           <p className="rounded-md bg-warn/10 px-3 py-2 text-xs text-warn">
-            Freio ativo: a sessão está enviando a {pct(throttleFactor)} do ritmo normal.
+            {t('risk.throttled', { rate: pct(throttleFactor) })}
           </p>
         )}
 
         <div className="flex flex-col gap-2">
-          <span className="eyebrow">Consumo das janelas</span>
-          <Barra rotulo="Por minuto" usado={usage.minute} limite={limits.perMinute} />
-          <Barra rotulo="Por hora" usado={usage.hour} limite={limits.perHour} />
-          <Barra rotulo="Por dia" usado={usage.day} limite={limits.perDay} />
+          <span className="eyebrow">{t('risk.windows')}</span>
+          <Barra rotulo={t('risk.perMinute')} usado={usage.minute} limite={limits.perMinute} />
+          <Barra rotulo={t('risk.perHour')} usado={usage.hour} limite={limits.perHour} />
+          <Barra rotulo={t('risk.perDay')} usado={usage.day} limite={limits.perDay} />
           <Barra
-            rotulo="Contatos novos hoje"
+            rotulo={t('risk.newContactsToday')}
             usado={usage.newContactsToday}
             limite={limits.newContactsPerDay}
           />
@@ -452,7 +442,7 @@ function PainelDeRisco({ sessionId }: { sessionId: string }) {
         {/* Fator que não pontuou não explica nada; o cabeçalho sozinho só ocupa espaço. */}
         {pontuando.length > 0 && (
           <div className="flex flex-col gap-1.5">
-            <span className="eyebrow">De onde vem o score</span>
+            <span className="eyebrow">{t('risk.factors')}</span>
             <ul className="flex flex-col gap-1">
               {pontuando.map((fator) => (
                 <li key={fator.name} className="flex items-baseline justify-between gap-2">
@@ -505,20 +495,18 @@ const TOM_POR_EVENTO: Record<string, Tone> = {
 }
 
 function Timeline({ sessionId }: { sessionId: string }) {
+  const t = useT()
   const eventos = useQuery<{ events: SessionEvent[] }>(
     `/v1/sessions/${sessionId}/events?limit=40`,
     10_000,
   )
 
   return (
-    <Card
-      title="Histórico de conexão"
-      hint="O código bruto do protocolo ao lado da causa traduzida — é o que permite entender uma queda sem ler log."
-    >
+    <Card title={t('events.title')} hint={t('events.hint')}>
       {!eventos.settled ? (
         <Skeleton className="h-32" />
       ) : (eventos.data?.events.length ?? 0) === 0 ? (
-        <Empty>Nenhum evento registrado para esta sessão.</Empty>
+        <Empty>{t('events.empty')}</Empty>
       ) : (
         <ol className="flex flex-col">
           {eventos.data?.events.map((evento) => (

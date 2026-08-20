@@ -1,5 +1,6 @@
 import { type FormEvent, useState } from 'react'
 import { Card } from '../../components/ui'
+import { Rich, useT } from '../../i18n'
 import type { IntegrationSaved, SessionRow } from '../../lib/api'
 import { ApiError, put } from '../../lib/api'
 
@@ -18,6 +19,7 @@ export function AssistenteTypebot({
   sessoes: SessionRow[]
   aoSalvar: () => void
 }) {
+  const t = useT()
   const [sessionId, setSessionId] = useState('')
   const [shareUrl, setShareUrl] = useState('')
   const [apiToken, setApiToken] = useState('')
@@ -41,9 +43,7 @@ export function AssistenteTypebot({
       )
       aoSalvar()
     } catch (falha) {
-      setErro(
-        falha instanceof ApiError ? falha.message : 'Não consegui falar com o servidor da API.',
-      )
+      setErro(falha instanceof ApiError ? falha.message : t('wizard.apiUnreachable'))
     } finally {
       setOcupado(false)
     }
@@ -51,19 +51,16 @@ export function AssistenteTypebot({
 
   if (pronto) {
     return (
-      <Card title="Typebot conectado">
+      <Card title={t('typebot.connected')}>
         <div className="flex flex-col gap-3">
           <p className="rounded-md bg-ok/10 px-3 py-2 text-sm text-ok">{pronto.detail}</p>
-          <p className="text-sm text-muted">
-            Não há nada para configurar do outro lado: quem chama o Typebot é o gateway. Mande uma
-            mensagem para o número e o fluxo responde.
-          </p>
+          <p className="text-sm text-muted">{t('typebot.connectedHint')}</p>
           <button
             type="button"
             onClick={() => setPronto(null)}
             className="self-start rounded-md border border-line bg-surface px-2.5 py-1.5 text-xs font-medium text-ink hover:bg-surface-2"
           >
-            Conectar outra sessão
+            {t('wizard.connectAnother')}
           </button>
         </div>
       </Card>
@@ -71,20 +68,17 @@ export function AssistenteTypebot({
   }
 
   return (
-    <Card
-      title="Conectar o Typebot"
-      hint="Fluxo automatizado. O que o cliente escreve entra no fluxo, e a resposta sai pela fila do gateway — com ordem, ritmo e reentrega."
-    >
+    <Card title={t('typebot.title')} hint={t('typebot.hint')}>
       <form onSubmit={conectar} className="flex flex-col gap-3">
         <label className="flex flex-col gap-1.5">
-          <span className="eyebrow">Sessão do WhatsApp</span>
+          <span className="eyebrow">{t('wizard.pickSession')}</span>
           <select
             required
             value={sessionId}
             onChange={(e) => setSessionId(e.target.value)}
             className="rounded-md border border-line bg-surface-2 px-3 py-2 text-sm text-ink"
           >
-            <option value="">Escolha a sessão</option>
+            <option value="">{t('wizard.pickSessionPlaceholder')}</option>
             {sessoes.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.name}
@@ -92,31 +86,29 @@ export function AssistenteTypebot({
             ))}
           </select>
           {sessoes.length === 0 && (
-            <span className="text-xs text-warn">
-              Nenhuma sessão ainda. Crie uma na aba Sessões primeiro.
-            </span>
+            <span className="text-xs text-warn">{t('wizard.noSessions')}</span>
           )}
         </label>
 
         <label className="flex flex-col gap-1.5">
-          <span className="eyebrow">Link do fluxo</span>
+          <span className="eyebrow">{t('typebot.flowLink')}</span>
           <input
             required
             type="url"
             value={shareUrl}
             onChange={(e) => setShareUrl(e.target.value)}
-            placeholder="https://typebot.io/meu-fluxo"
+            placeholder="https://typebot.io/my-flow"
             className="rounded-md border border-line bg-surface-2 px-3 py-2 text-sm text-ink placeholder:text-muted"
           />
           <span className="text-xs text-muted">
-            No Typebot: publique o fluxo e copie o link em <strong>Share</strong>. Não é o endereço
-            do editor — aquele usa o id interno e não funciona aqui.
+            <Rich text={t('typebot.flowLinkHint')} />
           </span>
         </label>
 
         <label className="flex flex-col gap-1.5">
           <span className="eyebrow">
-            Token da API <span className="normal-case tracking-normal opacity-70">(opcional)</span>
+            {t('typebot.apiToken')}{' '}
+            <span className="normal-case tracking-normal opacity-70">{t('wizard.optional')}</span>
           </span>
           <input
             type="password"
@@ -124,21 +116,18 @@ export function AssistenteTypebot({
             onChange={(e) => setApiToken(e.target.value)}
             className="rounded-md border border-line bg-surface-2 px-3 py-2 text-sm text-ink"
           />
-          <span className="text-xs text-muted">Só necessário se o fluxo não for público.</span>
+          <span className="text-xs text-muted">{t('typebot.apiTokenHint')}</span>
         </label>
 
         <label className="flex flex-col gap-1.5">
-          <span className="eyebrow">Palavra de escape</span>
+          <span className="eyebrow">{t('typebot.escapeWord')}</span>
           <input
             value={humanHandoffKeyword}
             onChange={(e) => setPalavra(e.target.value)}
             className="rounded-md border border-line bg-surface-2 px-3 py-2 text-sm text-ink"
           />
           {/* Quem digita isso já desistiu do robô: a mensagem nem chega ao fluxo. */}
-          <span className="text-xs text-muted">
-            Quem digitar isso sai do fluxo e passa para atendimento humano. Deixe vazio só se houver
-            outro caminho até uma pessoa.
-          </span>
+          <span className="text-xs text-muted">{t('typebot.escapeWordHint')}</span>
         </label>
 
         {erro && (
@@ -152,7 +141,7 @@ export function AssistenteTypebot({
           disabled={ocupado}
           className="mt-1 rounded-md bg-accent px-3 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
         >
-          {ocupado ? 'Testando o fluxo…' : 'Testar e conectar'}
+          {ocupado ? t('typebot.submitting') : t('typebot.submit')}
         </button>
       </form>
     </Card>

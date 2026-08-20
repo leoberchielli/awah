@@ -1,5 +1,6 @@
 import { type FormEvent, useState } from 'react'
 import { Card, cx, Empty } from '../../components/ui'
+import { Rich, useT } from '../../i18n'
 import type {
   CaixaChatwoot,
   ContaChatwoot,
@@ -25,6 +26,7 @@ export function AssistenteChatwoot({
   sessoes: SessionRow[]
   aoSalvar: () => void
 }) {
+  const t = useT()
   const [passo, setPasso] = useState<1 | 2 | 3>(1)
   const [baseUrl, setBaseUrl] = useState('https://app.chatwoot.com')
   const [apiAccessToken, setToken] = useState('')
@@ -45,9 +47,7 @@ export function AssistenteChatwoot({
     try {
       await acao()
     } catch (falha) {
-      setErro(
-        falha instanceof ApiError ? falha.message : 'Não consegui falar com o servidor da API.',
-      )
+      setErro(falha instanceof ApiError ? falha.message : t('wizard.apiUnreachable'))
     } finally {
       setOcupado(false)
     }
@@ -62,7 +62,7 @@ export function AssistenteChatwoot({
       })
 
       if (resultado.accounts.length === 0) {
-        throw new ApiError(400, 'sem_conta', 'Este token não alcança nenhuma conta do Chatwoot.')
+        throw new ApiError(400, 'sem_conta', t('chatwoot.noAccount'))
       }
 
       setContas(resultado.accounts)
@@ -105,7 +105,7 @@ export function AssistenteChatwoot({
 
   if (pronto) {
     return (
-      <Card title="Chatwoot conectado">
+      <Card title={t('chatwoot.connected')}>
         <div className="flex flex-col gap-3">
           <p className="rounded-md bg-ok/10 px-3 py-2 text-sm text-ok">{pronto.detail}</p>
 
@@ -113,18 +113,14 @@ export function AssistenteChatwoot({
           {pronto.webhookUrl ? (
             <div className="flex flex-col gap-1.5">
               <p className="text-xs text-ink/80">
-                Falta um passo: cole esta URL no campo <strong>Webhook URL</strong> da sua caixa
-                API, no Chatwoot.
+                <Rich text={t('chatwoot.oneStepLeft')} />
               </p>
               <code className="truncate rounded border border-line bg-surface-2 px-2 py-1.5 font-mono text-[11px] text-ink">
                 {pronto.webhookUrl}
               </code>
             </div>
           ) : (
-            <p className="text-sm text-muted">
-              O webhook já foi apontado para o gateway — não há nada para fazer no Chatwoot. Mande
-              uma mensagem para o número e ela aparece na caixa de entrada.
-            </p>
+            <p className="text-sm text-muted">{t('chatwoot.webhookDone')}</p>
           )}
 
           <button
@@ -143,35 +139,35 @@ export function AssistenteChatwoot({
   }
 
   return (
-    <Card
-      title="Conectar o Chatwoot"
-      hint="Atendimento humano. A conversa aparece na caixa de entrada e a resposta do agente volta pelo gateway."
-      action={<Passos atual={passo} />}
-    >
+    <Card title={t('chatwoot.title')} hint={t('chatwoot.hint')} action={<Passos atual={passo} />}>
       {passo === 1 && (
         <form onSubmit={descobrirContas} className="flex flex-col gap-3">
           <Campo
-            rotulo="Endereço do Chatwoot"
+            rotulo={t('chatwoot.address')}
             value={baseUrl}
             onChange={setBaseUrl}
             placeholder="https://app.chatwoot.com"
           />
           <Campo
-            rotulo="Token de acesso"
+            rotulo={t('chatwoot.token')}
             type="password"
             value={apiAccessToken}
             onChange={setToken}
-            dica="No Chatwoot: seu avatar → Perfil → Token de acesso. Use um token de administrador para o gateway conseguir criar a caixa sozinho."
+            dica={t('chatwoot.tokenHint')}
           />
 
           <Erro texto={erro} />
-          <Acao ocupado={ocupado} rotulo="Continuar" carregando="Falando com o Chatwoot…" />
+          <Acao
+            ocupado={ocupado}
+            rotulo={t('chatwoot.continue')}
+            carregando={t('chatwoot.talking')}
+          />
         </form>
       )}
 
       {passo === 2 && (
         <div className="flex flex-col gap-3">
-          <p className="text-sm text-muted">Este token alcança mais de uma conta. Qual delas?</p>
+          <p className="text-sm text-muted">{t('chatwoot.whichAccount')}</p>
           <ul className="flex flex-col gap-2">
             {contas.map((conta) => (
               <li key={conta.id}>
@@ -194,14 +190,14 @@ export function AssistenteChatwoot({
       {passo === 3 && (
         <form onSubmit={conectar} className="flex flex-col gap-3">
           <label className="flex flex-col gap-1.5">
-            <span className="eyebrow">Sessão do WhatsApp</span>
+            <span className="eyebrow">{t('wizard.pickSession')}</span>
             <select
               required
               value={sessionId}
               onChange={(e) => setSessionId(e.target.value)}
               className="rounded-md border border-line bg-surface-2 px-3 py-2 text-sm text-ink"
             >
-              <option value="">Escolha a sessão</option>
+              <option value="">{t('wizard.pickSessionPlaceholder')}</option>
               {sessoes.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
@@ -216,13 +212,13 @@ export function AssistenteChatwoot({
           </label>
 
           <fieldset className="flex flex-col gap-2">
-            <span className="eyebrow">Caixa de entrada</span>
+            <span className="eyebrow">{t('chatwoot.inbox')}</span>
 
             <Opcao
               selecionada={escolha === 'nova'}
               aoEscolher={() => setEscolha('nova')}
-              titulo="Criar uma caixa nova"
-              detalhe="O gateway cria a caixa API e já aponta o webhook. Recomendado."
+              titulo={t('chatwoot.newInbox')}
+              detalhe={t('chatwoot.newInboxHint')}
             />
 
             {escolha === 'nova' && (
@@ -247,19 +243,21 @@ export function AssistenteChatwoot({
                 titulo={caixa.name}
                 detalhe={
                   caixa.usable
-                    ? 'Caixa API existente. O webhook dela será apontado para o gateway.'
+                    ? t('chatwoot.existingInbox')
                     : `Tipo ${caixa.channelType} — tem transporte próprio e ignoraria o gateway.`
                 }
               />
             ))}
 
-            {caixas.length === 0 && (
-              <Empty>Nenhuma caixa nesta conta ainda. A nova será a primeira.</Empty>
-            )}
+            {caixas.length === 0 && <Empty>{t('chatwoot.noInbox')}</Empty>}
           </fieldset>
 
           <Erro texto={erro} />
-          <Acao ocupado={ocupado} rotulo="Conectar" carregando="Preparando a caixa…" />
+          <Acao
+            ocupado={ocupado}
+            rotulo={t('chatwoot.connect')}
+            carregando={t('chatwoot.preparing')}
+          />
         </form>
       )}
     </Card>
@@ -267,6 +265,8 @@ export function AssistenteChatwoot({
 }
 
 function Passos({ atual }: { atual: number }) {
+  const t = useT()
+
   return (
     <span className="flex items-center gap-1.5">
       {[1, 2, 3].map((n) => (
@@ -279,7 +279,7 @@ function Passos({ atual }: { atual: number }) {
           )}
         />
       ))}
-      <span className="sr-only">Passo {atual} de 3</span>
+      <span className="sr-only">{t('wizard.stepOf', { n: atual, total: 3 })}</span>
     </span>
   )
 }

@@ -13,6 +13,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
+import { useT } from '../i18n'
 import type { Serie } from '../lib/api'
 import { horario, num } from '../lib/format'
 import { Empty } from './ui'
@@ -256,9 +257,10 @@ export function Funil({ etapas }: { etapas: EtapaDoFunil[] }) {
 export { Legend }
 
 function SemDados({ altura }: { altura: number }) {
+  const t = useT()
   return (
     <div style={{ height: altura }} className="flex items-center">
-      <Empty>Sem dados na janela escolhida.</Empty>
+      <Empty>{t('common.noDataInWindow')}</Empty>
     </div>
   )
 }

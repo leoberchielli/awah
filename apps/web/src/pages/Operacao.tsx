@@ -1,14 +1,17 @@
 import { AreaSerie, BarrasHorizontais, Funil, LinhaSerie } from '../components/charts'
 import { FiltroDeSessao, Shell, useFiltro } from '../components/Shell'
-import { Card, Empty, Pill, Skeleton, Stat, type Tone } from '../components/ui'
+import { Card, Empty, Pill, Skeleton, Stat } from '../components/ui'
 import { useQuery } from '../hooks/useQuery'
+import { useT } from '../i18n'
 import type { KpiDelivery, KpiRisk, KpiSessions, SessionRow } from '../lib/api'
 import { desde, duracao, minutos, num, pct } from '../lib/format'
+import { statusLabel, statusTone } from '../lib/sessionStatus'
 
 /** Cinco segundos: rápido o bastante para acompanhar um incidente, leve o bastante para deixar ligado. */
 const POLL_MS = 5000
 
 export function Operacao() {
+  const t = useT()
   const { query } = useFiltro()
 
   const sessoes = useQuery<{ sessions: SessionRow[] }>('/v1/sessions', POLL_MS)
@@ -32,23 +35,27 @@ export function Operacao() {
         />
 
         <div className="grid gap-4 lg:grid-cols-3">
-          <Card
-            title="Funil de entrega"
-            hint="Onde a mensagem para de avançar."
-            className="lg:col-span-1"
-          >
+          <Card title={t('ops.funnel')} hint={t('ops.funnelHint')} className="lg:col-span-1">
             {entrega.data ? (
               <Funil
                 etapas={[
-                  { rotulo: 'Enviadas', valor: entrega.data.funnel.sent, cor: 'var(--accent)' },
                   {
-                    rotulo: 'Entregues',
+                    rotulo: t('ops.funnel.sent'),
+                    valor: entrega.data.funnel.sent,
+                    cor: 'var(--accent)',
+                  },
+                  {
+                    rotulo: t('ops.funnel.delivered'),
                     valor: entrega.data.funnel.delivered,
                     cor: 'var(--ok)',
                   },
-                  { rotulo: 'Lidas', valor: entrega.data.funnel.read, cor: 'var(--ok)' },
                   {
-                    rotulo: 'Falhas',
+                    rotulo: t('ops.funnel.read'),
+                    valor: entrega.data.funnel.read,
+                    cor: 'var(--ok)',
+                  },
+                  {
+                    rotulo: t('ops.funnel.failed'),
                     valor: entrega.data.funnel.failed,
                     cor: 'var(--crit)',
                     // Falha se mede contra o que foi enviado, não contra o que foi lido.
@@ -61,7 +68,11 @@ export function Operacao() {
             )}
           </Card>
 
-          <Card title="Vazão" hint="Enviadas e recebidas por hora." className="lg:col-span-2">
+          <Card
+            title={t('ops.throughput')}
+            hint={t('ops.throughputHint')}
+            className="lg:col-span-2"
+          >
             {entrega.data ? (
               <AreaSerie
                 series={entrega.data.throughput}
@@ -78,26 +89,26 @@ export function Operacao() {
         </div>
 
         <div className="grid gap-4 lg:grid-cols-3">
-          <Card title="Fila e reentregas" hint="Estado do momento, não do período.">
+          <Card title={t('ops.queue')} hint={t('ops.queueHint')}>
             {entrega.data ? (
               <div className="grid grid-cols-2 gap-4">
                 <Stat
-                  label="Aguardando"
+                  label={t('ops.queued')}
                   value={num(entrega.data.queue.queued)}
                   tone={entrega.data.queue.queued > 500 ? 'warn' : 'neutral'}
                 />
-                <Stat label="Em envio" value={num(entrega.data.queue.sending)} />
+                <Stat label={t('ops.sending')} value={num(entrega.data.queue.sending)} />
                 <Stat
-                  label="Descartadas"
+                  label={t('ops.dead')}
                   value={num(entrega.data.queue.dead)}
                   tone={entrega.data.queue.dead > 0 ? 'crit' : 'neutral'}
-                  hint="Esgotaram as tentativas."
+                  hint={t('ops.deadHint')}
                 />
                 <Stat
-                  label="Webhooks mortos"
+                  label={t('ops.deadWebhooks')}
                   value={num(entrega.data.webhooks.dead)}
                   tone={entrega.data.webhooks.dead > 0 ? 'warn' : 'neutral'}
-                  hint={`${num(entrega.data.webhooks.delivered)} entregues`}
+                  hint={t('ops.webhooksDelivered', { n: num(entrega.data.webhooks.delivered) })}
                 />
               </div>
             ) : (
@@ -105,26 +116,31 @@ export function Operacao() {
             )}
           </Card>
 
-          <Card
-            title="Decisões do motor de risco"
-            hint="Nada é descartado; o que não passa, espera."
-          >
+          <Card title={t('ops.riskDecisions')} hint={t('ops.riskDecisionsHint')}>
             {risco.data ? (
               <BarrasHorizontais
                 altura={180}
                 dados={[
-                  { rotulo: 'Liberadas', valor: risco.data.decisions.allowed, cor: 'var(--ok)' },
                   {
-                    rotulo: 'Com atraso',
+                    rotulo: t('ops.decision.allowed'),
+                    valor: risco.data.decisions.allowed,
+                    cor: 'var(--ok)',
+                  },
+                  {
+                    rotulo: t('ops.decision.delayed'),
                     valor: risco.data.decisions.delayed,
                     cor: 'var(--accent)',
                   },
                   {
-                    rotulo: 'Reguladas',
+                    rotulo: t('ops.decision.throttled'),
                     valor: risco.data.decisions.throttled,
                     cor: 'var(--warn)',
                   },
-                  { rotulo: 'Seguradas', valor: risco.data.decisions.held, cor: 'var(--crit)' },
+                  {
+                    rotulo: t('ops.decision.held'),
+                    valor: risco.data.decisions.held,
+                    cor: 'var(--crit)',
+                  },
                 ]}
               />
             ) : (
@@ -132,7 +148,7 @@ export function Operacao() {
             )}
           </Card>
 
-          <Card title="Score de risco" hint="0 é tranquilo, 100 é beira do bloqueio.">
+          <Card title={t('ops.riskScore')} hint={t('ops.riskScoreHint')}>
             {risco.data ? (
               <LinhaSerie
                 series={risco.data.scoreSeries}
@@ -146,10 +162,7 @@ export function Operacao() {
           </Card>
         </div>
 
-        <Card
-          title="Saúde das sessões"
-          hint="MTBF vem dos eventos de conexão gravados, não de um heartbeat."
-        >
+        <Card title={t('ops.sessionHealth')} hint={t('ops.sessionHealthHint')}>
           {saude.data ? (
             <TabelaDeSaude linhas={saude.data.sessions} />
           ) : (
@@ -174,6 +187,7 @@ function FaixaDeResumo({
   risco: KpiRisk | null
   carregando: boolean
 }) {
+  const t = useT()
   if (carregando) {
     return (
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
@@ -194,71 +208,56 @@ function FaixaDeResumo({
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
       <div className="card p-4">
         <Stat
-          label="Sessões conectadas"
+          label={t('ops.connectedSessions')}
           value={`${conectadas}/${querRodar}`}
           tone={conectadas === querRodar ? 'ok' : conectadas === 0 ? 'crit' : 'warn'}
-          hint={querRodar === 0 ? 'Nenhuma sessão em execução' : 'Do que deveria estar rodando'}
+          hint={querRodar === 0 ? t('ops.noneRunning') : t('ops.ofWhatShouldRun')}
         />
       </div>
       <div className="card p-4">
         <Stat
-          label="Taxa de entrega"
+          label={t('ops.deliveryRate')}
           value={pct(taxa)}
           tone={taxa >= 0.95 ? 'ok' : taxa >= 0.85 ? 'warn' : 'crit'}
-          hint={`${num(entrega?.funnel.delivered ?? 0)} de ${num(entrega?.funnel.sent ?? 0)}`}
+          hint={t('ops.ofTotal', {
+            delivered: num(entrega?.funnel.delivered ?? 0),
+            sent: num(entrega?.funnel.sent ?? 0),
+          })}
         />
       </div>
       <div className="card p-4">
         <Stat
-          label="Latência p95"
+          label={t('ops.latencyP95')}
           value={duracao(p95)}
           tone={p95 === null ? 'neutral' : p95 < 5000 ? 'ok' : p95 < 20000 ? 'warn' : 'crit'}
-          hint="Do envio ao ACK de entrega"
+          hint={t('ops.latencyHint')}
         />
       </div>
       <div className="card p-4">
         <Stat
-          label="Na fila"
+          label={t('ops.inQueue')}
           value={num(entrega?.queue.queued ?? 0)}
           tone={(entrega?.queue.queued ?? 0) > 500 ? 'warn' : 'neutral'}
-          hint={`${num(entrega?.queue.sending ?? 0)} em envio`}
+          hint={t('ops.sendingNow', { n: num(entrega?.queue.sending ?? 0) })}
         />
       </div>
       <div className="card p-4">
         <Stat
-          label="Seguradas pelo risco"
+          label={t('ops.heldByRisk')}
           value={num(segurado)}
           tone={segurado > 0 ? 'warn' : 'ok'}
-          hint={`${num(risco?.newContacts ?? 0)} contatos novos`}
+          hint={t('ops.newContacts', { n: num(risco?.newContacts ?? 0) })}
         />
       </div>
     </div>
   )
 }
 
-const TOM_POR_STATUS: Record<string, Tone> = {
-  connected: 'ok',
-  connecting: 'warn',
-  pairing: 'warn',
-  created: 'hold',
-  disconnected: 'crit',
-  logged_out: 'crit',
-  banned: 'crit',
-}
-
-const ROTULO_POR_STATUS: Record<string, string> = {
-  connected: 'Conectada',
-  connecting: 'Conectando',
-  pairing: 'Pareando',
-  created: 'Criada',
-  disconnected: 'Desconectada',
-  logged_out: 'Deslogada',
-  banned: 'Banida',
-}
-
 function TabelaDeSaude({ linhas }: { linhas: KpiSessions['sessions'] }) {
+  const t = useT()
+
   if (linhas.length === 0) {
-    return <Empty>Nenhuma sessão nesta organização ainda.</Empty>
+    return <Empty>{t('ops.noSessions')}</Empty>
   }
 
   return (
@@ -266,12 +265,12 @@ function TabelaDeSaude({ linhas }: { linhas: KpiSessions['sessions'] }) {
       <table className="w-full min-w-[640px] text-sm">
         <thead>
           <tr className="border-b border-line text-left">
-            <Th>Sessão</Th>
-            <Th>Estado</Th>
-            <Th alinhamento="right">Quedas</Th>
-            <Th alinhamento="right">Reconexões</Th>
-            <Th alinhamento="right">MTBF</Th>
-            <Th>Última causa</Th>
+            <Th>{t('ops.col.session')}</Th>
+            <Th>{t('ops.col.state')}</Th>
+            <Th alinhamento="right">{t('ops.col.drops')}</Th>
+            <Th alinhamento="right">{t('ops.col.reconnects')}</Th>
+            <Th alinhamento="right">{t('ops.col.mtbf')}</Th>
+            <Th>{t('ops.col.lastCause')}</Th>
           </tr>
         </thead>
         <tbody>
@@ -279,9 +278,7 @@ function TabelaDeSaude({ linhas }: { linhas: KpiSessions['sessions'] }) {
             <tr key={linha.sessionId} className="border-b border-line/60 last:border-0">
               <td className="py-2.5 pr-3 font-medium text-ink">{linha.name}</td>
               <td className="py-2.5 pr-3">
-                <Pill tone={TOM_POR_STATUS[linha.status] ?? 'hold'}>
-                  {ROTULO_POR_STATUS[linha.status] ?? linha.status}
-                </Pill>
+                <Pill tone={statusTone(linha.status)}>{statusLabel(t, linha.status)}</Pill>
               </td>
               <td
                 className={`py-2.5 pr-3 text-right font-mono tnum ${

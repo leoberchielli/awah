@@ -5,8 +5,9 @@ import { useQuery } from '../hooks/useQuery'
 import { type TranslationKey, useT } from '../i18n'
 import type { SessionRow } from '../lib/api'
 import { ApiError, type ApiKeyCreated, type ApiKeyRow, del, type Papel, post } from '../lib/api'
-import { dataHora, desde, statusDeSessao } from '../lib/format'
+import { dataHora, desde } from '../lib/format'
 import { papelAoMenos, useMe } from '../lib/sessao'
+import { statusLabel } from '../lib/sessionStatus'
 
 const PAPEIS: Array<{ valor: Papel; rotulo: TranslationKey; resumo: TranslationKey }> = [
   { valor: 'viewer', rotulo: 'keys.role.viewer', resumo: 'keys.role.viewerSummary' },
@@ -209,7 +210,7 @@ function Emissor({
                       onChange={() => alternar(sessao.id)}
                     />
                     <span>{sessao.name}</span>
-                    <span className="text-xs text-muted">{statusDeSessao(sessao.status)}</span>
+                    <span className="text-xs text-muted">{statusLabel(t, sessao.status)}</span>
                   </label>
                 ))
               )}
