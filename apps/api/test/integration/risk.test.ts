@@ -128,6 +128,95 @@ describe.skipIf(!hasInfra)('risk engine', () => {
     })
   })
 
+  /**
+   * The case the unit tests could never reach.
+   *
+   * Reading the counters and recording the send afterwards is correct as long
+   * as nothing else runs in between — which is exactly how a test calls it, one
+   * step after the other, and exactly what production is not. The scheduler
+   * runs fifty sends at a time, and between the reading and the recording sits
+   * the typing indicator, the human jitter of several seconds and the round
+   * trip to WhatsApp.
+   *
+   * A benchmark found a session capped at one message per minute sending
+   * twenty-six in twenty seconds. Every one of them had read the same empty
+   * window. These tests hold the reservation to its promise under exactly that
+   * pressure.
+   */
+  describe('reserving under concurrency', () => {
+    it('lets through the cap and not one more, however many ask at once', async () => {
+      const limits = { ...DEFAULT_LIMITS, perMinute: 5 }
+
+      const verdicts = await Promise.all(
+        Array.from({ length: 40 }, (_, i) =>
+          budget.reserve(sessionId, limits, false, `race${i}@s.whatsapp.net`),
+        ),
+      )
+
+      const allowed = verdicts.filter((v) => v.exceeded === null)
+      expect(allowed).toHaveLength(5)
+      expect(new Set(allowed.map((v) => v.reservation)).size).toBe(5)
+      for (const v of verdicts.filter((x) => x.exceeded !== null)) {
+        expect(v.reservation).toBeNull()
+      }
+    })
+
+    /**
+     * Forty different recipients arriving together is the shape of a broadcast,
+     * and the new-contact cap is the signal that most reliably gets a number
+     * reported. It has to hold under the same pressure as the volume windows.
+     */
+    it('holds the new-contact cap against a simultaneous broadcast', async () => {
+      const limits = { ...DEFAULT_LIMITS, newContactsPerDay: 3 }
+
+      const verdicts = await Promise.all(
+        Array.from({ length: 40 }, (_, i) =>
+          budget.reserve(sessionId, limits, true, `fresh${i}@s.whatsapp.net`),
+        ),
+      )
+
+      expect(verdicts.filter((v) => v.exceeded === null)).toHaveLength(3)
+    })
+
+    /**
+     * A reserved slot that never becomes a send has to come back, or a session
+     * having a bad afternoon spends its whole daily allowance on messages
+     * nobody received.
+     */
+    it('gives the slot back when the send never goes out', async () => {
+      const limits = { ...DEFAULT_LIMITS, perMinute: 2 }
+
+      const first = await budget.reserve(sessionId, limits, false, 'a@s.whatsapp.net')
+      const second = await budget.reserve(sessionId, limits, false, 'b@s.whatsapp.net')
+      expect(second.exceeded).toBeNull()
+
+      const third = await budget.reserve(sessionId, limits, false, 'c@s.whatsapp.net')
+      expect(third.exceeded).toBe('minute')
+
+      await budget.release(sessionId, first.reservation as string, false, 'a@s.whatsapp.net')
+
+      const afterRelease = await budget.reserve(sessionId, limits, false, 'c@s.whatsapp.net')
+      expect(afterRelease.exceeded).toBeNull()
+    })
+
+    /**
+     * `check` is what the dashboard calls. Reporting on a budget must never
+     * spend it — otherwise merely watching the panel would throttle the number
+     * it is watching.
+     */
+    it('reports without consuming', async () => {
+      const limits = { ...DEFAULT_LIMITS, perMinute: 3 }
+
+      for (let i = 0; i < 10; i++) {
+        const verdict = await budget.check(sessionId, limits, false)
+        expect(verdict.exceeded).toBeNull()
+        expect(verdict.reservation).toBeNull()
+      }
+
+      expect((await budget.usage(sessionId)).minute).toBe(0)
+    })
+  })
+
   describe('contact recognition', () => {
     it('treats a never-seen recipient as new', async () => {
       expect(await budget.isKnownContact(sessionId, 'inedito@s.whatsapp.net')).toBe(false)

@@ -188,6 +188,32 @@ quando o conjunto estiver exercitado contra tráfego real.
 - Teto de corpo de requisição configurável, 1 MiB por padrão.
 - Aviso no boot quando `METRICS_TOKEN` não está definido.
 
+### Corrigido
+
+**O orçamento não segurava sob concorrência.**
+
+O motor de risco lia as janelas deslizantes, decidia, e registrava o envio
+depois da entrega. Entre os dois passos ficavam a presença de digitação, o
+jitter humano de vários segundos e a ida e volta até o engine — e o agendador
+roda cinquenta envios ao mesmo tempo. Todo trabalhador dentro dessa fresta lia
+a mesma janela vazia, e todos passavam.
+
+O efeito não era sutil. Um benchmark flagrou uma sessão com teto de uma
+mensagem por minuto enviando vinte e seis em vinte segundos; uma medição direta
+passou quarenta envios simultâneos por um teto de cinco. Ou seja: o recurso que
+mais define este projeto — dosar o ritmo de um número para ele não ser banido —
+não funcionava justamente quando havia tráfego, que é a única hora em que
+importa.
+
+A contagem e a reserva agora acontecem dentro de um único script no Redis,
+então são um passo indivisível por mais trabalhadores que perguntem ao mesmo
+tempo. Um slot que não vira envio é devolvido, para que uma sessão com uma
+tarde ruim não gaste a cota do dia com mensagens que ninguém recebeu. O `check`
+segue somente de leitura para o painel: relatar um orçamento não pode consumi-lo.
+
+Quem já rodava isto deve assumir que seus números vinham enviando mais rápido
+do que os limites configurados.
+
 ### Notas
 
 Nada além do pareamento foi exercitado contra um número real de ponta a ponta. O

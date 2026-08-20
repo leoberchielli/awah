@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { and, type Database, eq, schema } from '@awah/db'
 import type Redis from 'ioredis'
 import type { SessionLimits } from './limits'
@@ -21,7 +22,79 @@ export interface BudgetVerdict {
   usage: BudgetUsage
   /** When the full window opens. Null when nothing is blocking. */
   availableAt: Date | null
+  /**
+   * The slot this send is holding, to be released if it never goes out.
+   *
+   * Null when the budget refused, and null on the read-only `check` path.
+   */
+  reservation: string | null
 }
+
+/**
+ * Reserve a slot in every window at once, or refuse — with nothing in between.
+ *
+ * This exists because the obvious shape does not work. Reading the counters,
+ * deciding, and recording the send after it lands leaves a gap the width of an
+ * entire delivery: the typing indicator, the human jitter of several seconds,
+ * and the round trip to WhatsApp. With fifty workers running in parallel, every
+ * one of them reads the same empty window inside that gap and every one of them
+ * is allowed through. A benchmark caught a session capped at one message per
+ * minute sending twenty-six in twenty seconds.
+ *
+ * Redis runs a script to completion before serving anything else, so counting
+ * and reserving inside one becomes a single indivisible step and the cap holds
+ * no matter how many workers ask at the same instant.
+ *
+ * KEYS: the sends window, the new-contacts window.
+ * ARGV: now, minute/hour/day spans, the four limits, whether the recipient is
+ *       new, the member to store, the chat id, the key TTL.
+ * Returns: the exceeded window (empty when allowed) plus the four counts, read
+ *          before the reservation so the reported usage is what the decision
+ *          was actually made on.
+ */
+const RESERVE_SCRIPT = `
+local sent, fresh = KEYS[1], KEYS[2]
+local now = tonumber(ARGV[1])
+local minuteMs, hourMs, dayMs = tonumber(ARGV[2]), tonumber(ARGV[3]), tonumber(ARGV[4])
+local perMinute, perHour, perDay = tonumber(ARGV[5]), tonumber(ARGV[6]), tonumber(ARGV[7])
+local newPerDay = tonumber(ARGV[8])
+local isNew = tonumber(ARGV[9])
+local member, chatId, ttl = ARGV[10], ARGV[11], tonumber(ARGV[12])
+
+-- Pruning first, so a long-idle session is not judged on entries that have
+-- already left the largest window.
+redis.call('ZREMRANGEBYSCORE', sent, '-inf', now - dayMs)
+redis.call('ZREMRANGEBYSCORE', fresh, '-inf', now - dayMs)
+
+local minute = redis.call('ZCOUNT', sent, now - minuteMs, '+inf')
+local hour = redis.call('ZCOUNT', sent, now - hourMs, '+inf')
+local day = redis.call('ZCOUNT', sent, now - dayMs, '+inf')
+local newToday = redis.call('ZCOUNT', fresh, now - dayMs, '+inf')
+
+-- Same order as the report: the most restrictive window is named first, so the
+-- ETA handed back is the one that actually applies.
+local exceeded = ''
+if isNew == 1 and newToday >= newPerDay then
+  exceeded = 'newContactsToday'
+elseif minute >= perMinute then
+  exceeded = 'minute'
+elseif hour >= perHour then
+  exceeded = 'hour'
+elseif day >= perDay then
+  exceeded = 'day'
+end
+
+if exceeded == '' then
+  redis.call('ZADD', sent, now, member)
+  redis.call('EXPIRE', sent, ttl)
+  if isNew == 1 then
+    redis.call('ZADD', fresh, now, chatId)
+    redis.call('EXPIRE', fresh, ttl)
+  end
+end
+
+return { exceeded, minute, hour, day, newToday }
+`
 
 /**
  * Sliding-window send counters.
@@ -85,6 +158,7 @@ export class BudgetTracker {
         exceeded: 'newContactsToday',
         usage,
         availableAt: await this.windowOpensAt(this.newContactsKey(sessionId), DAY),
+        reservation: null,
       }
     }
 
@@ -93,6 +167,7 @@ export class BudgetTracker {
         exceeded: 'minute',
         usage,
         availableAt: await this.windowOpensAt(this.sentKey(sessionId), MINUTE),
+        reservation: null,
       }
     }
 
@@ -101,6 +176,7 @@ export class BudgetTracker {
         exceeded: 'hour',
         usage,
         availableAt: await this.windowOpensAt(this.sentKey(sessionId), HOUR),
+        reservation: null,
       }
     }
 
@@ -109,10 +185,99 @@ export class BudgetTracker {
         exceeded: 'day',
         usage,
         availableAt: await this.windowOpensAt(this.sentKey(sessionId), DAY),
+        reservation: null,
       }
     }
 
-    return { exceeded: null, usage, availableAt: null }
+    return { exceeded: null, usage, availableAt: null, reservation: null }
+  }
+
+  /**
+   * Takes a slot if every window has one, atomically.
+   *
+   * This is what the send path calls. `check` stays for the dashboard, which
+   * only reports and must not consume anything by looking.
+   */
+  async reserve(
+    sessionId: string,
+    limits: SessionLimits,
+    isNewContact: boolean,
+    chatId: string,
+  ): Promise<BudgetVerdict> {
+    const nowMs = this.now()
+    const sent = this.sentKey(sessionId)
+    const fresh = this.newContactsKey(sessionId)
+
+    /*
+     * The member has to be unique per send. Keying it by instant and chat alone
+     * would make two sends to the same conversation in the same millisecond a
+     * single ZSET entry, and the budget would undercount exactly when traffic
+     * is heaviest.
+     */
+    const member = `${nowMs}:${chatId}:${randomUUID()}`
+
+    const raw = (await this.redis.eval(
+      RESERVE_SCRIPT,
+      2,
+      sent,
+      fresh,
+      String(nowMs),
+      String(MINUTE),
+      String(HOUR),
+      String(DAY),
+      String(limits.perMinute),
+      String(limits.perHour),
+      String(limits.perDay),
+      String(limits.newContactsPerDay),
+      isNewContact ? '1' : '0',
+      member,
+      chatId,
+      String(KEY_TTL_SECONDS),
+    )) as [string, number, number, number, number]
+
+    const [exceeded, minute, hour, day, newContactsToday] = raw
+    const usage: BudgetUsage = { minute, hour, day, newContactsToday }
+
+    if (exceeded === '') {
+      return { exceeded: null, usage, availableAt: null, reservation: member }
+    }
+
+    const key = exceeded === 'newContactsToday' ? fresh : sent
+    const span = exceeded === 'minute' ? MINUTE : exceeded === 'hour' ? HOUR : DAY
+
+    return {
+      exceeded: exceeded as keyof BudgetUsage,
+      usage,
+      availableAt: await this.windowOpensAt(key, span),
+      reservation: null,
+    }
+  }
+
+  /**
+   * Gives a reserved slot back.
+   *
+   * A send that was refused by the engine, or that never left because the
+   * session dropped mid-jitter, must not spend budget — otherwise a number
+   * having a bad afternoon quietly loses its whole daily allowance to messages
+   * that never reached anybody.
+   */
+  async release(sessionId: string, reservation: string, isNewContact: boolean, chatId: string) {
+    const pipeline = this.redis.pipeline()
+    pipeline.zrem(this.sentKey(sessionId), reservation)
+    /*
+     * The new-contact entry only comes back if this send is the reason it is
+     * there. A second message to the same recipient may already have landed and
+     * made the contact genuinely known, and removing the mark then would let
+     * the daily cap be spent twice on one person.
+     */
+    if (isNewContact) {
+      pipeline.sismember(this.contactsKey(sessionId), chatId)
+    }
+    const results = await pipeline.exec()
+
+    if (isNewContact && results?.[1]?.[1] === 0) {
+      await this.redis.zrem(this.newContactsKey(sessionId), chatId)
+    }
   }
 
   /**
@@ -142,22 +307,38 @@ export class BudgetTracker {
     return new Date(Math.max(expiresAt, nowMs + 250))
   }
 
-  /** Records the send in the windows. Called after successful delivery. */
-  async record(sessionId: string, chatId: string, isNewContact: boolean): Promise<void> {
+  /**
+   * Confirms a delivered send.
+   *
+   * When the send came through `reserve`, the windows were already written at
+   * decision time and all that is left is to remember the contact. The
+   * `reserved` flag is false only on the paths that skip the budget entirely —
+   * the engine switched off, or an explicit client override — and there the
+   * write still has to happen here, or those sends would be invisible to every
+   * window and to the score built on top of them.
+   */
+  async record(
+    sessionId: string,
+    chatId: string,
+    isNewContact: boolean,
+    reserved = false,
+  ): Promise<void> {
     const nowMs = this.now()
-    const sent = this.sentKey(sessionId)
     const pipeline = this.redis.pipeline()
 
-    pipeline.zadd(sent, nowMs, `${nowMs}:${chatId}`)
-    // Prunes what left the largest window, so the ZSET cannot grow forever.
-    pipeline.zremrangebyscore(sent, '-inf', nowMs - DAY)
-    pipeline.expire(sent, KEY_TTL_SECONDS)
+    if (!reserved) {
+      const sent = this.sentKey(sessionId)
+      pipeline.zadd(sent, nowMs, `${nowMs}:${chatId}:${randomUUID()}`)
+      // Prunes what left the largest window, so the ZSET cannot grow forever.
+      pipeline.zremrangebyscore(sent, '-inf', nowMs - DAY)
+      pipeline.expire(sent, KEY_TTL_SECONDS)
 
-    if (isNewContact) {
-      const fresh = this.newContactsKey(sessionId)
-      pipeline.zadd(fresh, nowMs, chatId)
-      pipeline.zremrangebyscore(fresh, '-inf', nowMs - DAY)
-      pipeline.expire(fresh, KEY_TTL_SECONDS)
+      if (isNewContact) {
+        const fresh = this.newContactsKey(sessionId)
+        pipeline.zadd(fresh, nowMs, chatId)
+        pipeline.zremrangebyscore(fresh, '-inf', nowMs - DAY)
+        pipeline.expire(fresh, KEY_TTL_SECONDS)
+      }
     }
 
     pipeline.sadd(this.contactsKey(sessionId), chatId)

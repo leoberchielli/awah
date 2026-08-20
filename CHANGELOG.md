@@ -187,6 +187,31 @@ v1.0, once the whole thing has been exercised against real traffic.
 - Configurable request body cap, 1 MiB by default.
 - Boot warning when `METRICS_TOKEN` is not set.
 
+### Fixed
+
+**The budget did not hold under concurrency.**
+
+The risk engine read its sliding windows, decided, and recorded the send after
+delivery. Between those two steps sat the typing indicator, the human jitter of
+several seconds and the round trip to the engine — and the scheduler runs fifty
+sends at a time. Every worker inside that gap read the same empty window and
+every one of them was let through.
+
+The effect was not subtle. A benchmark caught a session capped at one message
+per minute sending twenty-six in twenty seconds; a direct measurement put forty
+concurrent sends through a cap of five. In other words the headline feature of
+this project — pacing a number so it does not get banned — was not doing its
+job whenever traffic actually arrived, which is the only time it matters.
+
+The counting and the reservation now happen inside one Redis script, so they
+are a single indivisible step no matter how many workers ask at once. A slot
+that never becomes a send is given back, so a session having a bad afternoon
+does not spend its daily allowance on messages nobody received. `check` stays
+read-only for the dashboard: reporting on a budget must not consume it.
+
+Anyone running this before now should assume their numbers were sending faster
+than the limits they configured.
+
 ### Notes
 
 The delivery funnel, the risk engine under load and the retry path have now been

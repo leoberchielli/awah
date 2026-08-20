@@ -213,16 +213,28 @@ export class OutboxDispatcher {
 
       // The session may have dropped during the wait.
       if (!adapter.isReady()) {
+        await this.deps.risk.releaseReservation(job.sessionId, decision, job.chatId)
         await release(this.deps.db, job.id)
         return
       }
 
       const result = await adapter.sendText(job.chatId, text)
       await markSent(this.deps.db, job.id, result.engineMessageId)
-      await this.deps.risk.recordSent(job.sessionId, job.chatId, decision.isNewContact)
+      await this.deps.risk.recordSent(
+        job.sessionId,
+        job.chatId,
+        decision.isNewContact,
+        decision.reservation !== null,
+      )
       await this.deps.onDelivered(job, result.engineMessageId, result.timestamp)
       this.deps.observeSend?.('sent', elapsed())
     } catch (error) {
+      /*
+       * The slot goes back before anything else. The retry will evaluate again
+       * and reserve again, so keeping this one would charge the budget once per
+       * attempt for a message that has never been delivered.
+       */
+      await this.deps.risk.releaseReservation(job.sessionId, decision, job.chatId)
       this.deps.observeSend?.('failed', elapsed())
       const message = error instanceof Error ? error.message : String(error)
       const delay = exponentialBackoff({

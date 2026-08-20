@@ -18,6 +18,14 @@ export interface RiskDecision {
   usage: BudgetUsage
   limits: SessionLimits
   isNewContact: boolean
+  /**
+   * The budget slot this decision is holding.
+   *
+   * Present whenever the budget allowed the send, and it has to be given back
+   * if the send then does not happen. Null when the send was held, and null on
+   * the paths that skip the budget entirely.
+   */
+  reservation: string | null
 }
 
 export interface RiskSnapshot {
@@ -143,11 +151,24 @@ export class RiskEngine {
         usage,
         limits,
         isNewContact,
+        reservation: null,
       }
     }
 
-    // 1. Budget: a full window holds the send until a slot opens.
-    const verdict = await this.deps.budget.check(input.sessionId, limits, isNewContact)
+    /*
+     * 1. Budget: a full window holds the send until a slot opens.
+     *
+     * `reserve`, not `check`. The slot is taken here and not after delivery,
+     * because everything between the two — the typing indicator, the jitter,
+     * the round trip — is time during which other workers would otherwise read
+     * this same window as empty and be let through as well.
+     */
+    const verdict = await this.deps.budget.reserve(
+      input.sessionId,
+      limits,
+      isNewContact,
+      input.chatId,
+    )
     if (verdict.exceeded) {
       return {
         action: 'held',
@@ -159,6 +180,7 @@ export class RiskEngine {
         usage: verdict.usage,
         limits,
         isNewContact,
+        reservation: null,
       }
     }
 
@@ -192,12 +214,30 @@ export class RiskEngine {
       usage,
       limits,
       isNewContact,
+      reservation: verdict.reservation,
     }
   }
 
-  /** Books the send against the budget. Called after successful delivery. */
-  async recordSent(sessionId: string, chatId: string, isNewContact: boolean): Promise<void> {
-    await this.deps.budget.record(sessionId, chatId, isNewContact)
+  /**
+   * Gives back a slot whose send never went out.
+   *
+   * Without this a session that spends an afternoon failing would burn its
+   * whole daily allowance on messages nobody received, and the operator would
+   * see a budget full of sends that do not exist.
+   */
+  async releaseReservation(sessionId: string, decision: RiskDecision, chatId: string) {
+    if (!decision.reservation) return
+    await this.deps.budget.release(sessionId, decision.reservation, decision.isNewContact, chatId)
+  }
+
+  /** Confirms a delivered send. Called after successful delivery. */
+  async recordSent(
+    sessionId: string,
+    chatId: string,
+    isNewContact: boolean,
+    reserved = false,
+  ): Promise<void> {
+    await this.deps.budget.record(sessionId, chatId, isNewContact, reserved)
     // The aggregates changed: invalidate so the next calculation sees reality.
     this.signalsCache.delete(sessionId)
   }

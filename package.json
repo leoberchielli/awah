@@ -22,7 +22,8 @@
     "db:migrate": "pnpm --filter @awah/db migrate",
     "db:studio": "pnpm --filter @awah/db studio",
     "i18n:check": "node scripts/i18n-check.mjs",
-    "contrast:check": "node scripts/contrast-check.mjs"
+    "contrast:check": "node scripts/contrast-check.mjs",
+    "bench": "node scripts/benchmark.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.1.2",
