@@ -814,6 +814,25 @@ Every check ran against a live instance over HTTP, with the \`simulator\` engine
 standing in for the last hop. Nothing here is mocked.
 
 ${corpo}
+## What this page does not cover
+
+**Isolation between organizations.** Two tenants cannot see each other's
+sessions, keys or integrations — but this script cannot demonstrate it, because
+an initialized instance refuses to hand out a second organization, which is
+itself one of the checks above. That guarantee is covered by the integration
+suite instead, against a real Postgres: \`sessions.test.ts\` ("does not see a
+session from another org"), \`keys.test.ts\` ("refuses a session from another
+organization") and \`integrations.test.ts\` ("does not list an integration from
+another org").
+
+**The dead-letter queue for webhooks.** A delivery gives up after eight
+attempts with exponential backoff, which takes long enough that waiting for it
+here would make the script useless. The retry ladder is exercised above; the
+last rung is covered by the test suite.
+
+**WhatsApp itself.** The last hop is the \`simulator\` engine. Nothing on this
+page says anything about how a real number behaves over weeks.
+
 ## Reproducing this
 
 \`\`\`bash
