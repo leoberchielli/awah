@@ -226,8 +226,14 @@ function TopBar({ acoes }: { acoes?: ReactNode }) {
   const { horas, definirHoras } = useFiltro()
   const t = useT()
 
+  /*
+   * On a phone the header is what sticks, because it carries the navigation.
+   * If this bar stuck to the top as well it would land behind the header and
+   * the filter would vanish on scroll. From `sm` up the header is gone and the
+   * spot is free.
+   */
   return (
-    <div className="chrome sticky top-0 z-10 -mx-3 flex flex-wrap items-center justify-between gap-3 border-b border-line/70 px-3 py-3 sm:-mx-5 sm:px-5">
+    <div className="chrome -mx-3 flex flex-wrap items-center justify-between gap-3 border-b border-line/70 px-3 py-3 sm:sticky sm:top-0 sm:z-10 sm:-mx-5 sm:px-5">
       <div className="flex flex-1 flex-wrap items-center gap-2">
         {/* biome-ignore lint/a11y/useSemanticElements: fieldset exige legend visível e traz layout próprio; aqui são botões de alternância, não campos de formulário */}
         <div
