@@ -8,6 +8,8 @@ import { usePostgresAuthState } from '../engines/baileys/auth-state'
 import { CloudApiAdapter } from '../engines/cloud-api/adapter'
 import { clearCloudApiCredentials, loadCloudApiCredentials } from '../engines/cloud-api/credentials'
 import { reconnectDelayMs } from '../engines/disconnect'
+import { SimulatorAdapter } from '../engines/simulator/adapter'
+import { DEFAULT_SCENARIO, scenarioForSessionName } from '../engines/simulator/scenario'
 import type { EngineAdapter, EngineEvent } from '../engines/types'
 
 import { badRequest, conflict, notFound } from '../lib/errors'
@@ -196,7 +198,11 @@ export class SessionManager {
     const session = await repo.findById(sessionId)
     if (!session) throw notFound('Session not found.')
 
-    if (session.engine !== 'baileys' && session.engine !== 'cloud_api') {
+    if (
+      session.engine !== 'baileys' &&
+      session.engine !== 'cloud_api' &&
+      session.engine !== 'simulator'
+    ) {
       throw badRequest(
         `Engine "${session.engine}" is not implemented yet. Available in this version: baileys, cloud_api.`,
       )
@@ -226,7 +232,17 @@ export class SessionManager {
     let adapter: EngineAdapter
     let clearAuth: () => Promise<void>
 
-    if (session.engine === 'cloud_api') {
+    if (session.engine === 'simulator') {
+      /*
+       * There is no credential and nothing to persist: the scenario is picked
+       * from the session name, so a run is set up by naming the session rather
+       * than by adding a config surface that only exists for testing. A name
+       * that matches no scenario gets the healthy one.
+       */
+      const scenario = scenarioForSessionName(session.name)
+      adapter = new SimulatorAdapter({ sessionId, onEvent, scenario })
+      clearAuth = async () => {}
+    } else if (session.engine === 'cloud_api') {
       /**
        * The official engine has no pairing and no socket: the link is the
        * token, and it is configured before the start. With no credentials there
@@ -594,12 +610,29 @@ export class SessionManager {
         const now = new Date()
         const session = await repo.findById(sessionId)
 
+        /*
+         * A simulator session may declare itself older than it is.
+         *
+         * The warm-up curve reads this stamp, so without it every simulated
+         * number is a day-zero number and the caps stay at 5% — which is the
+         * correct answer for a number paired a minute ago, and makes it
+         * impossible to exercise anything downstream of the budget. The guard
+         * on the engine is what keeps it honest: no real session can reach it,
+         * so nothing here can hand a Baileys or Cloud API number an age it did
+         * not earn.
+         */
+        const ageDays =
+          session?.engine === 'simulator'
+            ? (scenarioForSessionName(session.name).ageDays ?? DEFAULT_SCENARIO.ageDays)
+            : 0
+        const pairedAt = ageDays > 0 ? new Date(now.getTime() - ageDays * 86_400_000) : now
+
         await repo.setStatus(sessionId, 'connected', {
           phoneNumber: event.phoneNumber,
           lastConnectedAt: now,
           ownerNodeId: this.deps.nodeId,
           // Session age feeds the warm-up curve: only stamped on the 1st pairing.
-          ...(session?.pairedAt ? {} : { pairedAt: now }),
+          ...(session?.pairedAt ? {} : { pairedAt }),
         })
 
         await repo.recordEvent({

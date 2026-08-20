@@ -14,6 +14,46 @@ const OWN_SECRETS = {
   COOKIE_SECRET: 'x'.repeat(48),
 }
 
+/**
+ * The simulator is not a WhatsApp client: it accepts every send and reports it
+ * delivered without anything reaching a phone. Left on in production it fails
+ * silently, looks healthy on every screen, and is discovered by the customer
+ * who never got an answer — which is why the process refuses to start instead
+ * of warning.
+ */
+describe('the simulator engine in production', () => {
+  it('is off by default', () => {
+    expect(loadEnv({ ...BASE, ...OWN_SECRETS }).SIMULATOR_ENABLED).toBe(false)
+  })
+
+  it('is allowed outside production', () => {
+    expect(() =>
+      loadEnv({ ...BASE, NODE_ENV: 'development', SIMULATOR_ENABLED: 'true' }),
+    ).not.toThrow()
+  })
+
+  it('brings the process down in production', () => {
+    expect(() =>
+      loadEnv({ ...BASE, ...OWN_SECRETS, NODE_ENV: 'production', SIMULATOR_ENABLED: 'true' }),
+    ).toThrow(/SIMULATOR_ENABLED/)
+  })
+
+  it('the message says what the danger actually is', () => {
+    try {
+      loadEnv({ ...BASE, ...OWN_SECRETS, NODE_ENV: 'production', SIMULATOR_ENABLED: 'true' })
+      expect.unreachable('should have thrown')
+    } catch (error) {
+      const message = (error as Error).message
+      expect(message).toContain('not a WhatsApp client')
+      expect(message).toContain('delivered')
+    }
+  })
+
+  it('production with the flag off starts normally', () => {
+    expect(() => loadEnv({ ...BASE, ...OWN_SECRETS, NODE_ENV: 'production' })).not.toThrow()
+  })
+})
+
 describe('development secrets', () => {
   it('pass outside production', () => {
     expect(() => loadEnv({ ...BASE, NODE_ENV: 'development' })).not.toThrow()

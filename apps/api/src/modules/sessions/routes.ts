@@ -8,7 +8,7 @@ import { saveCloudApiCredentials } from '../../engines/cloud-api/credentials'
 import { badRequest, conflict, notFound } from '../../lib/errors'
 import { SessionRepository } from '../../repos/sessions'
 
-const engineField = z.enum(['baileys', 'cloud_api', 'wwebjs', 'whatsmeow'])
+const engineField = z.enum(['baileys', 'cloud_api', 'wwebjs', 'whatsmeow', 'simulator'])
 
 const sessionSchema = z.object({
   id: z.string(),
@@ -96,6 +96,24 @@ export async function sessionRoutes(app: FastifyInstance) {
     },
     async () => ({
       engines: [
+        ...(app.env.SIMULATOR_ENABLED
+          ? [
+              {
+                engine: 'simulator' as const,
+                available: true,
+                capabilities: {
+                  qrPairing: true,
+                  codePairing: true,
+                  groups: true,
+                  channels: false,
+                  presence: true,
+                  reactions: true,
+                  editMessage: true,
+                  freeformMessaging: true,
+                },
+              },
+            ]
+          : []),
         {
           engine: 'baileys' as const,
           available: true,
@@ -149,6 +167,17 @@ export async function sessionRoutes(app: FastifyInstance) {
     async (request, reply) => {
       const auth = requireAuth(request)
       const repo = new SessionRepository(app.db, auth.orgId)
+
+      /*
+       * The simulator is refused unless it was asked for at boot. Reaching it
+       * by guessing the enum value would give an org a session that accepts
+       * every send and reports it delivered without a phone involved.
+       */
+      if (request.body.engine === 'simulator' && !app.env.SIMULATOR_ENABLED) {
+        throw badRequest(
+          'The simulator engine is off. Start the instance with SIMULATOR_ENABLED=true to use it — never in production.',
+        )
+      }
 
       const existing = await repo.list()
       if (existing.some((s) => s.name === request.body.name)) {

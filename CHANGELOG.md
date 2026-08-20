@@ -189,7 +189,22 @@ v1.0, once the whole thing has been exercised against real traffic.
 
 ### Notes
 
-Nothing beyond pairing has been exercised end to end against a real number. The
-QR is generated and the socket connects; the delivery funnel, the risk engine
-limits under load and failover with a connected session have not been through a
-real device yet.
+The delivery funnel, the risk engine under load and the retry path have now been
+exercised end to end — against a simulated number, not a real one.
+
+A `simulator` engine sits behind the same `EngineAdapter` contract as Baileys and
+the Cloud API, so everything upstream of the last hop runs unchanged: the outbox
+ordering, the sliding-window budget, the warm-up curve, the human jitter, the ACK
+reconciliation and the webhook fan-out. A 300-message run over three sessions
+produced 209 sends, 208 deliveries, 310 inbound messages, 1,834 budget holds and
+5 engine refusals that the outbox retried and delivered. None of those paths had
+ever run before.
+
+What that does *not* cover is the last hop itself. Baileys' own protocol
+behaviour — real ACK semantics, real disconnect codes, what WhatsApp actually
+does to a number sending at these rates — still has not been through a real
+device, and a simulator cannot answer it by construction.
+
+`SIMULATOR_ENABLED` refuses to boot under `NODE_ENV=production`: a fake engine
+left on accepts every send and reports it delivered with nothing reaching a
+phone, and nothing on the dashboard would look wrong.

@@ -7,7 +7,26 @@ import { pgEnum } from 'drizzle-orm/pg-core'
 export const memberRole = pgEnum('member_role', ['viewer', 'operator', 'admin', 'owner'])
 
 /** EngineAdapter implementations (spec §5). */
-export const engineType = pgEnum('engine_type', ['baileys', 'cloud_api', 'wwebjs', 'whatsmeow'])
+export const engineType = pgEnum('engine_type', [
+  'baileys',
+  'cloud_api',
+  'wwebjs',
+  'whatsmeow',
+  /**
+   * Not a WhatsApp client: a stand-in that behaves like one.
+   *
+   * It exists because the delivery funnel, the risk engine under load and
+   * failover with a connected session cannot be exercised without a paired
+   * phone, and those are exactly the paths that matter when they break. It sits
+   * behind the same `EngineAdapter` contract, so everything upstream of the
+   * adapter runs for real.
+   *
+   * Refused unless `SIMULATOR_ENABLED` is on, and that flag refuses to boot
+   * under `NODE_ENV=production` — a fake engine in production sends messages
+   * nowhere while the dashboard reports them delivered.
+   */
+  'simulator',
+])
 
 /**
  * External tools the gateway feeds.

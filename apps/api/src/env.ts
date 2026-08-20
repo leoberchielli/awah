@@ -157,6 +157,20 @@ const envSchema = z.object({
    */
   RISK_ENGINE_ENABLED: boolish.default(true),
 
+  // ---- simulator ----
+  /**
+   * Allows sessions on the `simulator` engine, which is not a WhatsApp client.
+   *
+   * It exists so the delivery funnel, the risk engine under load and failover
+   * with a connected session can be exercised without a paired phone. The flag
+   * refuses to boot under `NODE_ENV=production`, and that refusal is the whole
+   * point: a fake engine left on in production accepts every send, reports
+   * every one delivered, and puts nothing on anybody's phone. That failure is
+   * silent, looks healthy on the dashboard, and is only discovered by the
+   * customer who never got an answer.
+   */
+  SIMULATOR_ENABLED: boolish.default(false),
+
   // ---- dashboard ----
   /**
    * Where the panel's files live. Empty, the API looks in `public`,
@@ -216,6 +230,17 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
     )
       .filter(([, value]) => DEV_SECRETS.has(value))
       .map(([name]) => name)
+
+    if (env.SIMULATOR_ENABLED) {
+      throw new Error(
+        [
+          'SIMULATOR_ENABLED is on and NODE_ENV is production.',
+          'The simulator is not a WhatsApp client: it accepts every send and',
+          'reports it delivered without anything reaching a phone. Nothing in',
+          'the dashboard would look wrong.',
+        ].join('\n'),
+      )
+    }
 
     if (weak.length > 0) {
       throw new Error(
