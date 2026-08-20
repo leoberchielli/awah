@@ -3,7 +3,7 @@
 *[Português](CHANGELOG.pt-BR.md)*
 
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
-The project follows [SemVer](https://semver.org/lang/pt-BR/) from v1.0 onward.
+The project follows [SemVer](https://semver.org/) from v1.0 onward.
 
 ## [Unreleased]
 
@@ -67,9 +67,18 @@ v1.0, once the whole thing has been exercised against real traffic.
 
 - React dashboard served by the API itself, on the same origin — this is what
   allows an `httpOnly` cookie instead of a token in `localStorage`.
-- Three screens: operations, business and sessions, with the window and filter
-  in the URL.
+- Six screens: operations, business, sessions, integrations, keys and users,
+  with the window and filter in the URL.
+- API keys are issued, scoped and revoked from the panel. The token appears
+  exactly once, and a scope that reaches no session is refused with the reason.
+- Members are added, promoted and removed from the panel. The last owner cannot
+  be demoted or removed, and the panel says so before the server has to.
 - Light, dark and system themes.
+- Glass surfaces on the chrome and the cards, over an ambient layer that gives
+  the blur something to refract. It stops at the large, few surfaces: list rows,
+  pills and table cells stay opaque, because `backdrop-filter` on hundreds of
+  elements is what turns "modern" into "sluggish". Contrast was measured on
+  every screen in both themes; the worst pair is 4.62 against a 4.5 minimum.
 
 **SDK**
 
@@ -129,6 +138,24 @@ v1.0, once the whole thing has been exercised against real traffic.
   validating one validates the other with the same SDK function.
 - Test button that sends a sample event and shows status, timing, raw body and
   what would have been sent.
+
+**Language**
+
+- The panel ships in ten languages — English, Portuguese, Spanish, Hindi,
+  Indonesian, Arabic, French, German, Russian and Turkish — picked from the
+  menu, each written in its own language. Arabic flips the layout to RTL.
+- Catalogs are typed as a `Partial` of the English one and load on demand, one
+  chunk each: a partial translation compiles and ships, and an eleventh language
+  costs nothing to anyone who does not pick it. `pnpm i18n:check` reports
+  coverage and fails on a lost placeholder — the mistake that makes a number
+  disappear at runtime with nothing else to catch it.
+- Numbers, dates and durations come from `Intl`, not from the catalog, so they
+  follow the reader's language. This is what a catalog cannot express: Arabic
+  needs four plural forms for a count and Russian three, and a single string
+  holds one.
+- English is the default of the platform, the documentation and the source. The
+  API messages, the OpenAPI schemas, every code comment and every identifier are
+  in English; the Portuguese documentation sits alongside as a translation.
 
 **Distribution**
 

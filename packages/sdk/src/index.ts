@@ -1,4 +1,4 @@
-export { Awah, type SendText as EnviarTexto } from './client'
+export { Awah, type SendText } from './client'
 export { AwahConnectionError, AwahError } from './errors'
 export type { AwahOptions } from './http'
 export type {
@@ -11,7 +11,7 @@ export type {
   KpiDelivery,
   KpiRisk,
   KpiSessions,
-  KpiWindow as JanelaKpi,
+  KpiWindow,
   OutboxMessage,
   OutboxStatus,
   RiskSnapshot,

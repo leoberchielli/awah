@@ -67,8 +67,21 @@ quando o conjunto estiver exercitado contra tráfego real.
 
 - Dashboard React servido pela própria API, na mesma origem — é o que permite
   cookie `httpOnly` em vez de token no `localStorage`.
-- Três telas: operação, negócio e sessões, com janela e filtro na URL.
+- Seis telas: operação, negócio, sessões, integrações, chaves e usuários, com
+  janela e filtro na URL.
+- Chaves de API são emitidas, escopadas e revogadas pelo painel. O token
+  aparece uma vez só, e escopo que não alcança sessão nenhuma é recusado com o
+  motivo.
+- Membros são adicionados, promovidos e removidos pelo painel. O último dono
+  não pode ser rebaixado nem removido, e o painel avisa antes de o servidor
+  precisar recusar.
 - Tema claro, escuro e do sistema.
+- Vidro no cromo e nos cartões, sobre uma camada ambiente que dá ao desfoque o
+  que refratar. O efeito para nas superfícies grandes e poucas: linha de lista,
+  pílula e célula de tabela continuam opacas, porque `backdrop-filter` em
+  centenas de elementos é o que transforma "moderno" em "travado". O contraste
+  foi medido nas telas nos dois temas; o pior par dá 4,62 contra um mínimo de
+  4,5.
 
 **SDK**
 
@@ -126,6 +139,24 @@ quando o conjunto estiver exercitado contra tráfego real.
   outro com a mesma função do SDK.
 - Botão de teste que manda um evento de exemplo e mostra status, tempo, corpo
   cru e o que seria enviado.
+
+**Idioma**
+
+- O painel vem em dez idiomas — inglês, português, espanhol, hindi, indonésio,
+  árabe, francês, alemão, russo e turco — escolhidos no menu, cada um escrito
+  no próprio idioma. O árabe vira o layout para RTL.
+- Os catálogos são tipados como `Partial` do inglês e carregam sob demanda, um
+  chunk cada: tradução parcial compila e vai ao ar, e um décimo primeiro idioma
+  não custa nada a quem não o escolhe. `pnpm i18n:check` mostra a cobertura e
+  falha em placeholder perdido — o erro que faz um número sumir em tempo de
+  execução sem nada mais para pegá-lo.
+- Número, data e duração vêm do `Intl`, não do catálogo, e por isso seguem o
+  idioma de quem lê. É o que o catálogo não consegue expressar: o árabe precisa
+  de quatro formas de plural para uma contagem e o russo de três, e uma string
+  só guarda uma.
+- O inglês é o padrão da plataforma, da documentação e do código. As mensagens
+  da API, os schemas do OpenAPI, todo comentário e todo identificador estão em
+  inglês; a documentação em português fica ao lado, como tradução.
 
 **Distribuição**
 
