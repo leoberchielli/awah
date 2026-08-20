@@ -1,4 +1,4 @@
-import { AreaSerie, BarrasHorizontais } from '../components/charts'
+import { AreaSeries, BarrasHorizontais } from '../components/charts'
 import { SessionFilter, Shell, useFilter } from '../components/Shell'
 import { Card, Empty, Skeleton, Stat } from '../components/ui'
 import { useQuery } from '../hooks/useQuery'
@@ -23,39 +23,39 @@ const KEY_BY_KIND: Record<string, TranslationKey> = {
 }
 
 /** An unknown type shows raw: better the protocol's name than a wrong label. */
-function kindLabel(t: Translate, tipo: string): string {
-  const key = KEY_BY_KIND[tipo]
-  return key ? t(key) : tipo
+function kindLabel(t: Translate, type: string): string {
+  const key = KEY_BY_KIND[type]
+  return key ? t(key) : type
 }
 
-export function Negocio() {
+export function Business() {
   const t = useT()
   const { query } = useFilter()
 
   const sessions = useQuery<{ sessions: SessionRow[] }>('/v1/sessions', 0)
-  const negocio = useQuery<KpiBusiness>(`/v1/kpi/business?${query}`, POLL_MS)
+  const business = useQuery<KpiBusiness>(`/v1/kpi/business?${query}`, POLL_MS)
 
   return (
-    <Shell acoes={<SessionFilter sessions={sessions.data?.sessions ?? []} />}>
+    <Shell actions={<SessionFilter sessions={sessions.data?.sessions ?? []} />}>
       <div className="flex flex-col gap-4">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="card p-4">
             <Stat
               label={t('business.activeChats')}
-              value={negocio.data ? num(negocio.data.activeChats) : '—'}
+              value={business.data ? num(business.data.activeChats) : '—'}
               hint={t('business.activeChatsHint')}
             />
           </div>
           <div className="card p-4">
             <Stat
               label={t('business.responseRate')}
-              value={negocio.data ? pct(negocio.data.responseRate) : '—'}
+              value={business.data ? pct(business.data.responseRate) : '—'}
               tone={
-                !negocio.data
+                !business.data
                   ? 'neutral'
-                  : negocio.data.responseRate >= 0.9
+                  : business.data.responseRate >= 0.9
                     ? 'ok'
-                    : negocio.data.responseRate >= 0.7
+                    : business.data.responseRate >= 0.7
                       ? 'warn'
                       : 'crit'
               }
@@ -65,15 +65,15 @@ export function Negocio() {
           <div className="card p-4">
             <Stat
               label={t('business.firstReplyMedian')}
-              value={segundos(negocio.data?.firstResponseSeconds.p50 ?? null)}
+              value={formatSeconds(business.data?.firstResponseSeconds.p50 ?? null)}
               hint={t('business.firstReplyMedianHint')}
             />
           </div>
           <div className="card p-4">
             <Stat
               label={t('business.firstReplyP95')}
-              value={segundos(negocio.data?.firstResponseSeconds.p95 ?? null)}
-              tone={(negocio.data?.firstResponseSeconds.p95 ?? 0) > 3600 ? 'warn' : 'neutral'}
+              value={formatSeconds(business.data?.firstResponseSeconds.p95 ?? null)}
+              tone={(business.data?.firstResponseSeconds.p95 ?? 0) > 3600 ? 'warn' : 'neutral'}
               hint={t('business.firstReplyP95Hint')}
             />
           </div>
@@ -85,10 +85,10 @@ export function Negocio() {
             hint={t('business.volumeHint')}
             className="lg:col-span-2"
           >
-            {negocio.data ? (
-              <AreaSerie
-                series={negocio.data.volume}
-                visuais={[
+            {business.data ? (
+              <AreaSeries
+                series={business.data.volume}
+                styles={[
                   { key: 'messages.inbound', label: t('business.inbound'), color: 'var(--ok)' },
                   {
                     key: 'messages.outbound',
@@ -104,10 +104,10 @@ export function Negocio() {
           </Card>
 
           <Card title={t('business.messageTypes')} hint={t('business.messageTypesHint')}>
-            {negocio.data ? (
+            {business.data ? (
               <BarrasHorizontais
                 height={240}
-                dados={negocio.data.byType.slice(0, 8).map((entry) => ({
+                data={business.data.byType.slice(0, 8).map((entry) => ({
                   label: kindLabel(t, entry.type),
                   value: entry.count,
                 }))}
@@ -119,8 +119,8 @@ export function Negocio() {
         </div>
 
         <Card title={t('business.busiestChats')} hint={t('business.busiestChatsHint')}>
-          {negocio.data ? (
-            <TabelaDeChats rows={negocio.data.topChats} />
+          {business.data ? (
+            <ChatsTable rows={business.data.topChats} />
           ) : (
             <Skeleton className="h-40" />
           )}
@@ -130,14 +130,14 @@ export function Negocio() {
   )
 }
 
-function TabelaDeChats({ rows }: { rows: KpiBusiness['topChats'] }) {
+function ChatsTable({ rows }: { rows: KpiBusiness['topChats'] }) {
   const t = useT()
 
   if (rows.length === 0) {
     return <Empty>{t('business.noChats')}</Empty>
   }
 
-  const maior = Math.max(...rows.map((l) => l.messages), 1)
+  const max = Math.max(...rows.map((l) => l.messages), 1)
 
   return (
     <ul className="flex flex-col">
@@ -152,7 +152,7 @@ function TabelaDeChats({ rows }: { rows: KpiBusiness['topChats'] }) {
           <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-2">
             <span
               className="block h-full rounded-full bg-accent"
-              style={{ width: `${(row.messages / maior) * 100}%` }}
+              style={{ width: `${(row.messages / max) * 100}%` }}
             />
           </span>
           <span className="w-14 shrink-0 text-right font-mono text-sm text-ink tnum">
@@ -168,7 +168,7 @@ function TabelaDeChats({ rows }: { rows: KpiBusiness['topChats'] }) {
 }
 
 /** The p50 arrives in seconds and is almost never readable that way. */
-function segundos(value: number | null): string {
+function formatSeconds(value: number | null): string {
   if (value === null) return '—'
   if (value < 60) return `${Math.round(value)} s`
   if (value < 3600) return `${(value / 60).toFixed(1)} min`

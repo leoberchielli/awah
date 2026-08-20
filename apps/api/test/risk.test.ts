@@ -22,9 +22,9 @@ describe('curva de warmup', () => {
 
   /** An interpolated ramp, not a step: volume must not jump from one day to the next. */
   it('interpola entre os marcos', () => {
-    const meio = warmupFactor(2)
-    expect(meio).toBeGreaterThan(warmupFactor(1))
-    expect(meio).toBeLessThan(warmupFactor(3))
+    const mid = warmupFactor(2)
+    expect(mid).toBeGreaterThan(warmupFactor(1))
+    expect(mid).toBeLessThan(warmupFactor(3))
   })
 
   it('trata idade inválida como sessão nova', () => {
@@ -52,20 +52,20 @@ describe('curva de warmup', () => {
 })
 
 describe('idade da sessão', () => {
-  const agora = new Date('2026-08-18T12:00:00Z')
+  const nowMs = new Date('2026-08-18T12:00:00Z')
 
   it('conta em dias fracionários', () => {
-    expect(sessionAgeInDays(new Date('2026-08-17T12:00:00Z'), agora)).toBe(1)
-    expect(sessionAgeInDays(new Date('2026-08-18T00:00:00Z'), agora)).toBe(0.5)
+    expect(sessionAgeInDays(new Date('2026-08-17T12:00:00Z'), nowMs)).toBe(1)
+    expect(sessionAgeInDays(new Date('2026-08-18T00:00:00Z'), nowMs)).toBe(0.5)
   })
 
   /** With no pairing there is no history to justify volume. */
   it('sessão nunca pareada tem idade zero', () => {
-    expect(sessionAgeInDays(null, agora)).toBe(0)
+    expect(sessionAgeInDays(null, nowMs)).toBe(0)
   })
 
   it('data futura não vira idade negativa', () => {
-    expect(sessionAgeInDays(new Date('2026-09-01T00:00:00Z'), agora)).toBe(0)
+    expect(sessionAgeInDays(new Date('2026-09-01T00:00:00Z'), nowMs)).toBe(0)
   })
 })
 
@@ -120,26 +120,26 @@ describe('score de risco', () => {
 
   /** Low volume is not blasting, even with no replies — 5 messages unanswered is normal. */
   it('não pune volume pequeno sem resposta', () => {
-    const fator = computeScore({ ...base, outbound24h: 5, inbound24h: 0 }).factors.find(
+    const factor = computeScore({ ...base, outbound24h: 5, inbound24h: 0 }).factors.find(
       (f) => f.name === 'conversa_unilateral',
     )
-    expect(fator?.points).toBe(0)
+    expect(factor?.points).toBe(0)
   })
 
   it('penaliza muitos contatos novos', () => {
     const score = computeScore({ ...base, newContacts24h: 100, newContactsLimit: 100 })
-    const fator = score.factors.find((f) => f.name === 'contatos_novos')
-    expect(fator?.points).toBe(25)
+    const factor = score.factors.find((f) => f.name === 'contatos_novos')
+    expect(factor?.points).toBe(25)
   })
 
   it('penaliza falha de entrega alta', () => {
     const score = computeScore({ ...base, outbound24h: 100, deliveryFailureRate: 0.3 })
-    const fator = score.factors.find((f) => f.name === 'falha_de_entrega')
-    expect(fator?.points).toBe(25)
+    const factor = score.factors.find((f) => f.name === 'falha_de_entrega')
+    expect(factor?.points).toBe(25)
   })
 
   it('nunca ultrapassa 100', () => {
-    const pior = computeScore({
+    const worst = computeScore({
       outbound24h: 5000,
       inbound24h: 0,
       newContacts24h: 500,
@@ -148,17 +148,17 @@ describe('score de risco', () => {
       minuteUsage: 50,
       minuteLimit: 12,
     })
-    expect(pior.value).toBeLessThanOrEqual(100)
-    expect(pior.value).toBeGreaterThan(80)
+    expect(worst.value).toBeLessThanOrEqual(100)
+    expect(worst.value).toBeGreaterThan(80)
   })
 
   /** A bare number from 0 to 100 helps nobody decide what to change. */
   it('explica cada fator', () => {
     const score = computeScore({ ...base, outbound24h: 200, inbound24h: 5 })
     expect(score.factors).toHaveLength(4)
-    for (const fator of score.factors) {
-      expect(fator.detail.length).toBeGreaterThan(0)
-      expect(fator.points).toBeLessThanOrEqual(fator.max)
+    for (const factor of score.factors) {
+      expect(factor.detail.length).toBeGreaterThan(0)
+      expect(factor.points).toBeLessThanOrEqual(factor.max)
     }
   })
 })
@@ -199,14 +199,14 @@ describe('jitter humano', () => {
 
   it('o freio do score aumenta a espera', () => {
     const normal = humanDelayMs({ throttleFactor: 1, random: () => 0.5 })
-    const freado = humanDelayMs({ throttleFactor: 0.25, random: () => 0.5 })
-    expect(freado).toBeGreaterThan(normal * 3)
+    const throttled = humanDelayMs({ throttleFactor: 0.25, random: () => 0.5 })
+    expect(throttled).toBeGreaterThan(normal * 3)
   })
 
   /** A uniform interval would produce a regular pattern — exactly what we avoid. */
   it('produz valores variados', () => {
-    const amostras = new Set(Array.from({ length: 50 }, () => humanDelayMs()))
-    expect(amostras.size).toBeGreaterThan(40)
+    const samples = new Set(Array.from({ length: 50 }, () => humanDelayMs()))
+    expect(samples.size).toBeGreaterThan(40)
   })
 
   it('log-normal só devolve positivos', () => {

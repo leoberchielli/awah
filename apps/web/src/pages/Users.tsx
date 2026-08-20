@@ -64,11 +64,11 @@ function Convite({ viewerRole, aoConvidar }: { viewerRole: Role; aoConvidar: () 
   const [error, setError] = useState<string | null>(null)
 
   /** Nobody promotes above their own role — the server refuses either way. */
-  const disponiveis = PAPEIS.filter((p) => roleAtLeast(viewerRole, p.value))
+  const available = PAPEIS.filter((p) => roleAtLeast(viewerRole, p.value))
   const passwordTooShort = password.length > 0 && password.length < 12
 
-  async function convidar(evento: FormEvent) {
-    evento.preventDefault()
+  async function convidar(event: FormEvent) {
+    event.preventDefault()
     setBusy(true)
     setError(null)
 
@@ -142,7 +142,7 @@ function Convite({ viewerRole, aoConvidar }: { viewerRole: Role; aoConvidar: () 
             onChange={(e) => setRole(e.target.value as Role)}
             className="rounded-md border border-line bg-surface-2 px-3 py-2 text-sm text-ink"
           >
-            {disponiveis.map((p) => (
+            {available.map((p) => (
               <option key={p.value} value={p.value}>
                 {t(p.label)}
               </option>
@@ -195,10 +195,10 @@ function MemberRow({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const disponiveis = PAPEIS.filter((p) => roleAtLeast(viewerRole, p.value))
+  const available = PAPEIS.filter((p) => roleAtLeast(viewerRole, p.value))
   const locked = lastOwner || !canEdit
 
-  async function agir(action: () => Promise<unknown>) {
+  async function run(action: () => Promise<unknown>) {
     setBusy(true)
     setError(null)
     try {
@@ -231,11 +231,11 @@ function MemberRow({
           value={member.role}
           disabled={busy || locked}
           onChange={(e) =>
-            agir(() => patch(`/v1/org/members/${member.userId}`, { role: e.target.value }))
+            run(() => patch(`/v1/org/members/${member.userId}`, { role: e.target.value }))
           }
           className="rounded-md border border-line bg-surface px-2 py-1.5 text-xs text-ink disabled:opacity-50"
         >
-          {disponiveis.map((p) => (
+          {available.map((p) => (
             <option key={p.value} value={p.value}>
               {t(p.label)}
             </option>
@@ -254,7 +254,7 @@ function MemberRow({
             <button
               type="button"
               disabled={busy}
-              onClick={() => agir(() => del(`/v1/org/members/${member.userId}`))}
+              onClick={() => run(() => del(`/v1/org/members/${member.userId}`))}
               className="rounded-md bg-crit px-2.5 py-1.5 text-xs font-medium text-on-fill disabled:opacity-50"
             >
               {busy ? t('users.removing') : t('common.confirm')}

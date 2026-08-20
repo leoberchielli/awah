@@ -86,22 +86,22 @@ export class MetricsAggregator {
      * everything after the error" for "I lost only the one that broke, and I
      * know which".
      */
-    const etapas: Array<[string, () => Promise<void>]> = [
+    const steps: Array<[string, () => Promise<void>]> = [
       ['volume', () => this.messageVolume(hours)],
       ['status', () => this.statusTrail(hours)],
       ['latencia', () => this.deliveryLatency(hours)],
       ['sessoes', () => this.sessionEvents(hours)],
       ['risco', () => this.riskDecisions(hours)],
-      ['webhooks', () => this.entregaDeWebhooks(hours)],
+      ['webhooks', () => this.webhookDeliveries(hours)],
       ['contatos', () => this.newContacts(hours)],
     ]
 
     try {
-      for (const [name, executar] of etapas) {
+      for (const [name, run] of steps) {
         try {
-          await executar()
+          await run()
         } catch (error) {
-          this.deps.logger.error({ err: error, etapa: name }, 'failed to aggregate metric')
+          this.deps.logger.error({ err: error, step: name }, 'failed to aggregate metric')
         }
       }
     } finally {
@@ -222,7 +222,7 @@ export class MetricsAggregator {
   }
 
   /** Webhook deliveries by outcome. `session_id` stays null: it is an org metric. */
-  private async entregaDeWebhooks(hours: number): Promise<void> {
+  private async webhookDeliveries(hours: number): Promise<void> {
     await this.deps.db.execute(sql`
       INSERT INTO metrics_hourly (org_id, session_id, bucket, metric, value)
       SELECT org_id, NULL::uuid, date_trunc('hour', created_at),

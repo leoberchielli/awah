@@ -17,13 +17,9 @@ import {
   saveIntegration,
   type TypebotConfig,
 } from '../../integrations/config'
-import {
-  EVENTO_DE_TESTE,
-  HttpConnector,
-  HttpConnectorError,
-} from '../../integrations/http/connector'
+import { HttpConnector, HttpConnectorError, TEST_EVENT } from '../../integrations/http/connector'
 import { findLinkByExternal } from '../../integrations/links'
-import { derivarDoLink, TypebotClient } from '../../integrations/typebot/client'
+import { deriveFromLink, TypebotClient } from '../../integrations/typebot/client'
 import { randomToken, safeEqual } from '../../lib/crypto'
 import { badRequest, forbidden, notFound } from '../../lib/errors'
 import { OutboxRepository } from '../../repos/outbox'
@@ -61,7 +57,7 @@ export async function integrationRoutes(app: FastifyInstance) {
      * the wrong moment to find out the URL was wrong.
      */
     if (kind === 'http') {
-      const result = await new HttpConnector(config as HttpConfig).send(EVENTO_DE_TESTE)
+      const result = await new HttpConnector(config as HttpConfig).send(TEST_EVENT)
 
       if (result.diagnosis) {
         return {
@@ -78,8 +74,8 @@ export async function integrationRoutes(app: FastifyInstance) {
     }
 
     if (kind === 'chatwoot') {
-      const cliente = new ChatwootClient(config as ChatwootConfig)
-      const inbox = await cliente.verify()
+      const client = new ChatwootClient(config as ChatwootConfig)
+      const inbox = await client.verify()
 
       if (inbox.channelType !== 'Channel::Api') {
         throw badRequest(
@@ -103,32 +99,29 @@ export async function integrationRoutes(app: FastifyInstance) {
    * with neither, whoever is integrating takes on the manual setup on the
    * other side.
    */
-  async function prepareInbox(
-    bruto: Record<string, unknown>,
-    webhookUrl: string,
-  ): Promise<unknown> {
-    const parcial = {
-      baseUrl: String(bruto.baseUrl ?? ''),
-      accountId: Number(bruto.accountId ?? 0),
-      apiAccessToken: String(bruto.apiAccessToken ?? ''),
+  async function prepareInbox(raw: Record<string, unknown>, webhookUrl: string): Promise<unknown> {
+    const partial = {
+      baseUrl: String(raw.baseUrl ?? ''),
+      accountId: Number(raw.accountId ?? 0),
+      apiAccessToken: String(raw.apiAccessToken ?? ''),
     }
 
-    if (!parcial.baseUrl || !parcial.accountId || !parcial.apiAccessToken) {
-      return bruto.inboxId
+    if (!partial.baseUrl || !partial.accountId || !partial.apiAccessToken) {
+      return raw.inboxId
     }
 
-    const cliente = new ChatwootClient(parcial as ChatwootConfig)
+    const client = new ChatwootClient(partial as ChatwootConfig)
 
     try {
-      if (typeof bruto.createInbox === 'string' && bruto.createInbox.trim()) {
-        const created = await cliente.createInboxFor(bruto.createInbox.trim(), webhookUrl)
-        bruto.webhookConfigurado = true
+      if (typeof raw.createInbox === 'string' && raw.createInbox.trim()) {
+        const created = await client.createInboxFor(raw.createInbox.trim(), webhookUrl)
+        raw.webhookConfigurado = true
         return created.id
       }
 
-      if (bruto.inboxId && bruto.apontarWebhook !== false) {
-        await cliente.apontarWebhook(Number(bruto.inboxId), webhookUrl)
-        bruto.webhookConfigurado = true
+      if (raw.inboxId && raw.apontarWebhook !== false) {
+        await client.setInboxWebhook(Number(raw.inboxId), webhookUrl)
+        raw.webhookConfigurado = true
       }
     } catch (error) {
       /**
@@ -144,7 +137,7 @@ export async function integrationRoutes(app: FastifyInstance) {
       throw error
     }
 
-    return bruto.inboxId
+    return raw.inboxId
   }
 
   route.get(
@@ -216,7 +209,7 @@ export async function integrationRoutes(app: FastifyInstance) {
     async (request) => {
       const { baseUrl, apiAccessToken, accountId } = request.body
 
-      const cliente = new ChatwootClient({
+      const client = new ChatwootClient({
         baseUrl: baseUrl.replace(/\/+$/, ''),
         accountId: accountId ?? 0,
         apiAccessToken,
@@ -224,7 +217,7 @@ export async function integrationRoutes(app: FastifyInstance) {
 
       let accounts: Awaited<ReturnType<ChatwootClient['accounts']>>
       try {
-        accounts = await cliente.accounts()
+        accounts = await client.accounts()
       } catch (error) {
         if (error instanceof ChatwootError && error.status === 401) {
           throw badRequest('Chatwoot rejected this token. Check that you copied the whole value.')
@@ -238,7 +231,7 @@ export async function integrationRoutes(app: FastifyInstance) {
 
       if (!accountId) return { accounts, inboxes: null }
 
-      const inboxes = await cliente.inboxes()
+      const inboxes = await client.inboxes()
 
       return {
         accounts,
@@ -291,12 +284,12 @@ export async function integrationRoutes(app: FastifyInstance) {
       const config = httpConfigSchema.parse(request.body)
 
       try {
-        const result = await new HttpConnector(config).send(EVENTO_DE_TESTE)
+        const result = await new HttpConnector(config).send(TEST_EVENT)
 
         return {
           ok: result.diagnosis === null,
           ...result,
-          sentPayload: EVENTO_DE_TESTE as unknown as Record<string, unknown>,
+          sentPayload: TEST_EVENT as unknown as Record<string, unknown>,
         }
       } catch (error) {
         /**
@@ -314,7 +307,7 @@ export async function integrationRoutes(app: FastifyInstance) {
             error instanceof Error
               ? error.message
               : 'Could not reach that URL. Check that it is reachable from the gateway server.',
-          sentPayload: EVENTO_DE_TESTE as unknown as Record<string, unknown>,
+          sentPayload: TEST_EVENT as unknown as Record<string, unknown>,
         }
       }
     },
@@ -350,7 +343,7 @@ export async function integrationRoutes(app: FastifyInstance) {
       const session = await new SessionRepository(app.db, auth.orgId).findById(sessionId)
       if (!session) throw notFound('Session not found.')
 
-      const bruto = { ...request.body }
+      const raw = { ...request.body }
 
       /**
        * The id is minted before the write.
@@ -361,7 +354,7 @@ export async function integrationRoutes(app: FastifyInstance) {
        */
       const integrationId = randomUUID()
 
-      if (kind === 'typebot' && typeof bruto.shareUrl === 'string') {
+      if (kind === 'typebot' && typeof raw.shareUrl === 'string') {
         /**
          * The share link instead of two fields.
          *
@@ -371,11 +364,11 @@ export async function integrationRoutes(app: FastifyInstance) {
          * someone who just published a flow.
          */
         try {
-          Object.assign(bruto, derivarDoLink(bruto.shareUrl))
+          Object.assign(raw, deriveFromLink(raw.shareUrl))
         } catch (error) {
           throw badRequest(error instanceof Error ? error.message : 'Invalid flow link.')
         }
-        bruto.shareUrl = undefined
+        raw.shareUrl = undefined
       }
 
       /**
@@ -386,11 +379,11 @@ export async function integrationRoutes(app: FastifyInstance) {
        * that choice to whoever is integrating would produce "chatwoot" as the
        * token.
        */
-      if (kind === 'chatwoot' && !bruto.webhookToken) {
-        bruto.webhookToken = randomToken(24)
+      if (kind === 'chatwoot' && !raw.webhookToken) {
+        raw.webhookToken = randomToken(24)
       }
 
-      const webhookUrl = `${base()}/webhooks/chatwoot/${integrationId}/${bruto.webhookToken}`
+      const webhookUrl = `${base()}/webhooks/chatwoot/${integrationId}/${raw.webhookToken}`
 
       /**
        * Creates or reuses the inbox, and points the webhook by itself.
@@ -401,10 +394,10 @@ export async function integrationRoutes(app: FastifyInstance) {
        * other tab.
        */
       if (kind === 'chatwoot') {
-        bruto.inboxId = await prepareInbox(bruto, webhookUrl)
+        raw.inboxId = await prepareInbox(raw, webhookUrl)
       }
 
-      const config = parseConfig(kind, bruto)
+      const config = parseConfig(kind, raw)
       const { detail } = await verify(kind, config)
 
       const integration = await saveIntegration(app.db, encryptionKey, {
@@ -424,7 +417,7 @@ export async function integrationRoutes(app: FastifyInstance) {
          * is.
          */
         webhookUrl:
-          kind === 'chatwoot' && !bruto.webhookConfigurado
+          kind === 'chatwoot' && !raw.webhookConfigurado
             ? `${base()}/webhooks/chatwoot/${integration.id}/${(config as ChatwootConfig).webhookToken}`
             : null,
       })
@@ -483,9 +476,9 @@ export async function integrationRoutes(app: FastifyInstance) {
         throw forbidden('Invalid webhook token.')
       }
 
-      const evento = request.body as EventoChatwoot
+      const event = request.body as ChatwootEvent
 
-      if (evento?.account?.id !== undefined && Number(evento.account.id) !== config.accountId) {
+      if (event?.account?.id !== undefined && Number(event.account.id) !== config.accountId) {
         throw forbidden('Event from another Chatwoot account.')
       }
 
@@ -495,7 +488,7 @@ export async function integrationRoutes(app: FastifyInstance) {
         integration.row.id,
         integration.row.orgId,
         integration.row.sessionId,
-        evento,
+        event,
       ).catch((error) => {
         app.log.error({ err: error, integrationId }, 'failed to process Chatwoot event')
       })
@@ -505,7 +498,7 @@ export async function integrationRoutes(app: FastifyInstance) {
   )
 }
 
-interface EventoChatwoot {
+interface ChatwootEvent {
   event?: string
   id?: number | string
   content?: string | null
@@ -529,30 +522,30 @@ async function processar(
   integrationId: string,
   orgId: string,
   sessionId: string,
-  evento: EventoChatwoot,
+  event: ChatwootEvent,
 ): Promise<void> {
-  if (evento?.event !== 'message_created') return
+  if (event?.event !== 'message_created') return
 
   // Only an agent reply leaves here. 'incoming' is what we created ourselves.
-  if (String(evento.message_type) !== 'outgoing' && Number(evento.message_type) !== 1) return
+  if (String(event.message_type) !== 'outgoing' && Number(event.message_type) !== 1) return
 
   // An internal note is the team talking about the customer, not to them.
-  if (evento.private) return
+  if (event.private) return
 
   /**
    * A `source_id` present means the message was born on WhatsApp and we created
    * it in Chatwoot. Sending it back would be the classic echo loop.
    */
-  if (evento.source_id) return
+  if (event.source_id) return
 
-  const conteudo = (evento.content ?? '').trim()
-  if (!conteudo) return
+  const content = (event.content ?? '').trim()
+  if (!content) return
 
-  const conversationId = evento.conversation?.id
+  const conversationId = event.conversation?.id
   if (conversationId === undefined) return
 
-  const vinculo = await findLinkByExternal(app.db, integrationId, String(conversationId))
-  if (!vinculo) {
+  const link = await findLinkByExternal(app.db, integrationId, String(conversationId))
+  if (!link) {
     app.log.warn(
       { integrationId, conversationId },
       'Chatwoot reply with no matching conversation in the gateway',
@@ -562,16 +555,16 @@ async function processar(
 
   await new OutboxRepository(app.db, orgId).enqueue({
     sessionId,
-    chatId: vinculo.chatId,
+    chatId: link.chatId,
     /**
      * The Chatwoot message id is the idempotency key.
      *
      * Chatwoot redelivers a webhook when it does not get a 200 in time; without
      * this key, a redelivery would send the same reply to the customer twice.
      */
-    clientMessageId: `chatwoot:${evento.id}`,
+    clientMessageId: `chatwoot:${event.id}`,
     type: 'text',
-    payload: { text: conteudo },
+    payload: { text: content },
     maxAttempts: app.env.OUTBOX_MAX_ATTEMPTS,
   })
 }

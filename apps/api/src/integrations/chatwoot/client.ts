@@ -57,17 +57,17 @@ export class ChatwootClient {
     this.timeoutMs = options?.timeoutMs ?? 15_000
   }
 
-  private request<T>(caminho: string, init?: RequestInit): Promise<T> {
-    return this.absoluto<T>(`/api/v1/accounts/${this.config.accountId}${caminho}`, init)
+  private request<T>(path: string, init?: RequestInit): Promise<T> {
+    return this.requestAbsolute<T>(`/api/v1/accounts/${this.config.accountId}${path}`, init)
   }
 
   /** The profile does not live under `/accounts/{id}` — hence the two paths. */
-  private async absoluto<T>(caminho: string, init?: RequestInit): Promise<T> {
+  private async requestAbsolute<T>(path: string, init?: RequestInit): Promise<T> {
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), this.timeoutMs)
 
     try {
-      const resposta = await this.fetchImpl(`${this.config.baseUrl}${caminho}`, {
+      const response = await this.fetchImpl(`${this.config.baseUrl}${path}`, {
         ...init,
         signal: controller.signal,
         headers: {
@@ -77,18 +77,15 @@ export class ChatwootClient {
         },
       })
 
-      const text = await resposta.text()
+      const text = await response.text()
       const body = text ? safeJson(text) : null
 
-      if (!resposta.ok) {
-        const detalhe =
+      if (!response.ok) {
+        const detail =
           (body as { message?: string; error?: string })?.message ??
           (body as { error?: string })?.error ??
           text.slice(0, 200)
-        throw new ChatwootError(
-          resposta.status,
-          `Chatwoot responded ${resposta.status}: ${detalhe}`,
-        )
+        throw new ChatwootError(response.status, `Chatwoot responded ${response.status}: ${detail}`)
       }
 
       return body as T
@@ -105,22 +102,22 @@ export class ChatwootClient {
    * knows the answer — you just have to ask.
    */
   async accounts(): Promise<Array<{ id: number; name: string; role: string }>> {
-    const perfil = await this.absoluto<{
+    const profile = await this.requestAbsolute<{
       accounts?: Array<{ id?: number; name?: string; role?: string }>
     }>('/api/v1/profile')
 
-    return (perfil?.accounts ?? [])
+    return (profile?.accounts ?? [])
       .filter((c): c is { id: number; name?: string; role?: string } => typeof c.id === 'number')
       .map((c) => ({ id: c.id, name: c.name ?? `Conta ${c.id}`, role: c.role ?? 'agent' }))
   }
 
   /** Existing inboxes, so one can be reused instead of creating another. */
   async inboxes(): Promise<Array<{ id: number; name: string; channelType: string }>> {
-    const resposta = await this.request<{
+    const response = await this.request<{
       payload?: Array<{ id?: number; name?: string; channel_type?: string }>
     }>('/inboxes')
 
-    return (resposta?.payload ?? [])
+    return (response?.payload ?? [])
       .filter(
         (c): c is { id: number; name?: string; channel_type?: string } => typeof c.id === 'number',
       )
@@ -152,7 +149,7 @@ export class ChatwootClient {
   }
 
   /** Points the webhook of an inbox that already existed. */
-  async apontarWebhook(inboxId: number, webhookUrl: string): Promise<void> {
+  async setInboxWebhook(inboxId: number, webhookUrl: string): Promise<void> {
     await this.request(`/inboxes/${inboxId}`, {
       method: 'PATCH',
       body: JSON.stringify({ channel: { webhook_url: webhookUrl } }),
@@ -166,7 +163,7 @@ export class ChatwootClient {
     )
 
     return {
-      inboxName: inbox?.name ?? '(sem nome)',
+      inboxName: inbox?.name ?? '(no name)',
       channelType: inbox?.channel_type ?? 'desconhecido',
     }
   }
@@ -198,16 +195,16 @@ export class ChatwootClient {
         }),
       })
 
-      const extraido = this.extractContact(created)
-      if (extraido) return extraido
+      const extracted = this.extractContact(created)
+      if (extracted) return extracted
     } catch (error) {
       // A 422 here is a race: another process created it since the search.
       if (!(error instanceof ChatwootError) || error.status !== 422) throw error
     }
 
-    const depois = await this.findContact(input.identifier)
-    if (!depois) throw new ChatwootError(500, 'contact created but not found in Chatwoot')
-    return depois
+    const after = await this.findContact(input.identifier)
+    if (!after) throw new ChatwootError(500, 'contact created but not found in Chatwoot')
+    return after
   }
 
   private async findContact(identifier: string): Promise<ChatwootContact | null> {
@@ -215,9 +212,9 @@ export class ChatwootClient {
       `/contacts/search?q=${encodeURIComponent(identifier)}`,
     )
 
-    for (const candidato of result?.payload ?? []) {
-      const extraido = this.extractContact({ payload: candidato })
-      if (extraido) return extraido
+    for (const candidate of result?.payload ?? []) {
+      const extracted = this.extractContact({ payload: candidate })
+      if (extracted) return extracted
     }
 
     return null
@@ -230,8 +227,8 @@ export class ChatwootClient {
    * `contact_inbox` for each. Taking the first from the list would open the
    * conversation in the wrong inbox.
    */
-  private extractContact(resposta: ContactResponse): ChatwootContact | null {
-    const contact = resposta.payload?.contact ?? resposta.payload
+  private extractContact(response: ContactResponse): ChatwootContact | null {
+    const contact = response.payload?.contact ?? response.payload
     const contactId = contact?.id
     if (!contactId) return null
 
@@ -243,8 +240,8 @@ export class ChatwootClient {
     return { contactId, sourceId: fromInbox.source_id }
   }
 
-  async criarConversa(input: { sourceId: string; contactId: number }): Promise<string> {
-    const conversa = await this.request<{ id?: number }>('/conversations', {
+  async createConversation(input: { sourceId: string; contactId: number }): Promise<string> {
+    const conversation = await this.request<{ id?: number }>('/conversations', {
       method: 'POST',
       body: JSON.stringify({
         source_id: input.sourceId,
@@ -253,8 +250,8 @@ export class ChatwootClient {
       }),
     })
 
-    if (!conversa?.id) throw new ChatwootError(500, 'Chatwoot did not return a conversation id')
-    return String(conversa.id)
+    if (!conversation?.id) throw new ChatwootError(500, 'Chatwoot did not return a conversation id')
+    return String(conversation.id)
   }
 
   /**

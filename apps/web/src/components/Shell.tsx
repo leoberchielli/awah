@@ -6,16 +6,16 @@ import { post } from '../lib/api'
 import { windowLabel } from '../lib/format'
 import { roleAtLeast, useMe } from '../lib/sessao'
 import {
-  IconeLua,
-  IconeMonitor,
-  IconeNegocio,
-  IconePessoas,
-  IconePulso,
-  IconeSol,
+  BusinessIcon,
   KeyIcon,
+  MonitorIcon,
+  MoonIcon,
+  PeopleIcon,
   PlugIcon,
+  PulseIcon,
   SessionIcon,
   SignOutIcon,
+  SunIcon,
 } from './icons'
 import { LanguagePicker } from './LanguagePicker'
 import { cx } from './ui'
@@ -39,8 +39,8 @@ export const WINDOWS = [
  */
 export function useFilter() {
   const [params, setParams] = useSearchParams()
-  const bruto = Number(params.get('horas') ?? 24)
-  const hours = WINDOWS.some((j) => j.hours === bruto) ? bruto : 24
+  const raw = Number(params.get('horas') ?? 24)
+  const hours = WINDOWS.some((j) => j.hours === raw) ? raw : 24
   const session = params.get('sessao')
 
   return {
@@ -62,21 +62,21 @@ export function useFilter() {
   }
 }
 
-interface Aba {
+interface Tab {
   to: string
   key: TranslationKey
-  Icone: (props: { width?: number; height?: number }) => ReactNode
+  Icon: (props: { width?: number; height?: number }) => ReactNode
   /** Minimum role for the tab to exist. Absent, it applies to everyone. */
   floor?: 'admin'
 }
 
-const ABAS: Aba[] = [
-  { to: '/operations', key: 'nav.operation', Icone: IconePulso },
-  { to: '/business', key: 'nav.business', Icone: IconeNegocio },
-  { to: '/sessions', key: 'nav.sessions', Icone: SessionIcon },
-  { to: '/integrations', key: 'nav.integrations', Icone: PlugIcon },
-  { to: '/keys', key: 'nav.keys', Icone: KeyIcon, floor: 'admin' },
-  { to: '/users', key: 'nav.users', Icone: IconePessoas },
+const TABS: Tab[] = [
+  { to: '/operations', key: 'nav.operation', Icon: PulseIcon },
+  { to: '/business', key: 'nav.business', Icon: BusinessIcon },
+  { to: '/sessions', key: 'nav.sessions', Icon: SessionIcon },
+  { to: '/integrations', key: 'nav.integrations', Icon: PlugIcon },
+  { to: '/keys', key: 'nav.keys', Icon: KeyIcon, floor: 'admin' },
+  { to: '/users', key: 'nav.users', Icon: PeopleIcon },
 ]
 
 /**
@@ -86,19 +86,19 @@ const ABAS: Aba[] = [
  * transparency, it is a door painted on the wall. Authorization stays with the
  * server.
  */
-function useAbas() {
+function useTabs() {
   const me = useMe()
-  return ABAS.filter((aba) => !aba.floor || roleAtLeast(me.role, aba.floor))
+  return TABS.filter((tab) => !tab.floor || roleAtLeast(me.role, tab.floor))
 }
 
-export function Shell({ children, acoes }: { children: ReactNode; acoes?: ReactNode }) {
+export function Shell({ children, actions }: { children: ReactNode; actions?: ReactNode }) {
   return (
     <div className="min-h-dvh bg-ground">
       <div className="mx-auto flex w-full max-w-[1400px] px-3 sm:px-5">
         <Rail />
         <div className="min-w-0 flex-1 py-4 sm:pl-5">
           <CabecalhoMovel />
-          <TopBar acoes={acoes} />
+          <TopBar actions={actions} />
           <main className="mt-4 pb-12">{children}</main>
         </div>
       </div>
@@ -116,13 +116,13 @@ export function Shell({ children, acoes }: { children: ReactNode; acoes?: ReactN
  */
 function CabecalhoMovel() {
   const { search } = useLocation()
-  const abas = useAbas()
+  const tabs = useTabs()
   const t = useT()
 
   return (
     <div className="chrome sticky top-0 z-20 -mx-3 mb-3 flex flex-col gap-3 px-3 py-3 sm:hidden">
       <div className="flex items-center justify-between">
-        <Marca />
+        <Brand />
         <button
           type="button"
           onClick={async () => {
@@ -137,7 +137,7 @@ function CabecalhoMovel() {
       </div>
 
       <nav aria-label={t('common.sections')} className="flex gap-1 overflow-x-auto">
-        {abas.map(({ to, key, Icone }) => (
+        {tabs.map(({ to, key, Icon }) => (
           <NavLink
             key={to}
             to={{ pathname: to, search }}
@@ -150,7 +150,7 @@ function CabecalhoMovel() {
               )
             }
           >
-            <Icone width={15} height={15} />
+            <Icon width={15} height={15} />
             {t(key)}
           </NavLink>
         ))}
@@ -161,7 +161,7 @@ function CabecalhoMovel() {
 
 function Rail() {
   const { search } = useLocation()
-  const abas = useAbas()
+  const tabs = useTabs()
   const t = useT()
 
   return (
@@ -170,10 +170,10 @@ function Rail() {
       className="chrome sticky top-0 z-20 hidden h-dvh w-48 shrink-0 flex-col gap-1 border-e border-line/70 py-5 pe-4 sm:flex"
     >
       <div className="mb-5 px-2">
-        <Marca />
+        <Brand />
       </div>
 
-      {abas.map(({ to, key, Icone }) => (
+      {tabs.map(({ to, key, Icon }) => (
         <NavLink
           key={to}
           to={{ pathname: to, search }}
@@ -186,7 +186,7 @@ function Rail() {
             )
           }
         >
-          <Icone />
+          <Icon />
           {t(key)}
         </NavLink>
       ))}
@@ -211,7 +211,7 @@ function Rail() {
   )
 }
 
-export function Marca() {
+export function Brand() {
   return (
     <span className="flex items-center gap-2">
       <span
@@ -225,7 +225,7 @@ export function Marca() {
   )
 }
 
-function TopBar({ acoes }: { acoes?: ReactNode }) {
+function TopBar({ actions }: { actions?: ReactNode }) {
   const { hours, setHours } = useFilter()
   const t = useT()
 
@@ -244,24 +244,24 @@ function TopBar({ acoes }: { acoes?: ReactNode }) {
           aria-label={t('common.timeWindow')}
           className="flex overflow-hidden rounded-lg border border-line/70 bg-surface/60 backdrop-blur-sm"
         >
-          {WINDOWS.map((opcao) => (
+          {WINDOWS.map((option) => (
             <button
-              key={opcao.hours}
+              key={option.hours}
               type="button"
-              onClick={() => setHours(opcao.hours)}
-              aria-pressed={hours === opcao.hours}
+              onClick={() => setHours(option.hours)}
+              aria-pressed={hours === option.hours}
               className={cx(
                 'px-2.5 py-1.5 font-mono text-xs transition-colors',
-                hours === opcao.hours
+                hours === option.hours
                   ? 'bg-accent-soft font-medium text-accent'
                   : 'text-muted hover:text-ink',
               )}
             >
-              {windowLabel(opcao.value, opcao.unit)}
+              {windowLabel(option.value, option.unit)}
             </button>
           ))}
         </div>
-        {acoes}
+        {actions}
       </div>
 
       <div className="flex items-center gap-2">
@@ -277,9 +277,9 @@ function ThemeToggle() {
   const t = useT()
 
   const options = [
-    { value: 'light' as const, Icone: IconeSol, key: 'common.themeLight' as const },
-    { value: 'system' as const, Icone: IconeMonitor, key: 'common.themeSystem' as const },
-    { value: 'dark' as const, Icone: IconeLua, key: 'common.themeDark' as const },
+    { value: 'light' as const, Icon: SunIcon, key: 'common.themeLight' as const },
+    { value: 'system' as const, Icon: MonitorIcon, key: 'common.themeSystem' as const },
+    { value: 'dark' as const, Icon: MoonIcon, key: 'common.themeDark' as const },
   ]
 
   return (
@@ -289,7 +289,7 @@ function ThemeToggle() {
       aria-label={t('common.theme')}
       className="flex overflow-hidden rounded-lg border border-line/70 bg-surface/60 backdrop-blur-sm"
     >
-      {options.map(({ value, Icone, key }) => (
+      {options.map(({ value, Icon, key }) => (
         <button
           key={value}
           type="button"
@@ -302,7 +302,7 @@ function ThemeToggle() {
             theme === value ? 'bg-accent-soft text-accent' : 'text-muted hover:text-ink',
           )}
         >
-          <Icone width={15} height={15} />
+          <Icon width={15} height={15} />
         </button>
       ))}
     </div>
@@ -319,7 +319,7 @@ export function SessionFilter({ sessions }: { sessions: Array<{ id: string; name
       <span className="sr-only">{t('common.filterBySession')}</span>
       <select
         value={session ?? ''}
-        onChange={(evento) => setSession(evento.target.value || null)}
+        onChange={(event) => setSession(event.target.value || null)}
         className="rounded-lg border border-line/70 bg-surface/60 px-2 py-[7px] text-xs text-ink backdrop-blur-sm"
       >
         <option value="">{t('common.allSessions')}</option>

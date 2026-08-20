@@ -47,8 +47,8 @@ describe.skipIf(!hasInfra)('auth state no Postgres', () => {
 
     await first.saveCreds()
 
-    const segunda = await usePostgresAuthState({ db, sessionId: otherSession, encryptionKey })
-    expect(segunda.isNew).toBe(false)
+    const second = await usePostgresAuthState({ db, sessionId: otherSession, encryptionKey })
+    expect(second.isNew).toBe(false)
   })
 
   it('persiste e relê as credenciais entre instâncias', async () => {

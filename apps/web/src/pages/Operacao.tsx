@@ -1,4 +1,4 @@
-import { AreaSerie, BarrasHorizontais, Funil, SeriesPoint } from '../components/charts'
+import { AreaSeries, BarrasHorizontais, Funnel, SeriesPoint } from '../components/charts'
 import { SessionFilter, Shell, useFilter } from '../components/Shell'
 import { Card, Empty, Pill, Skeleton, Stat } from '../components/ui'
 import { useQuery } from '../hooks/useQuery'
@@ -15,51 +15,51 @@ export function Operations() {
   const { query } = useFilter()
 
   const sessions = useQuery<{ sessions: SessionRow[] }>('/v1/sessions', POLL_MS)
-  const entrega = useQuery<KpiDelivery>(`/v1/kpi/delivery?${query}`, POLL_MS)
+  const delivery = useQuery<KpiDelivery>(`/v1/kpi/delivery?${query}`, POLL_MS)
   const risk = useQuery<KpiRisk>(`/v1/kpi/risk?${query}`, POLL_MS)
-  const saude = useQuery<KpiSessions>(`/v1/kpi/sessions?${query}`, POLL_MS)
+  const health = useQuery<KpiSessions>(`/v1/kpi/sessions?${query}`, POLL_MS)
 
   const list = sessions.data?.sessions ?? []
   const connected = list.filter((s) => s.status === 'connected').length
   const wantsToRun = list.filter((s) => s.desiredState === 'running').length
 
   return (
-    <Shell acoes={<SessionFilter sessions={list} />}>
+    <Shell actions={<SessionFilter sessions={list} />}>
       <div className="flex flex-col gap-4">
-        <FaixaDeResumo
+        <SummaryStrip
           connected={connected}
           wantsToRun={wantsToRun}
-          entrega={entrega.data}
+          delivery={delivery.data}
           risk={risk.data}
-          loading={!entrega.settled}
+          loading={!delivery.settled}
         />
 
         <div className="grid gap-4 lg:grid-cols-3">
           <Card title={t('ops.funnel')} hint={t('ops.funnelHint')} className="lg:col-span-1">
-            {entrega.data ? (
-              <Funil
-                etapas={[
+            {delivery.data ? (
+              <Funnel
+                steps={[
                   {
                     label: t('ops.funnel.sent'),
-                    value: entrega.data.funnel.sent,
+                    value: delivery.data.funnel.sent,
                     color: 'var(--accent)',
                   },
                   {
                     label: t('ops.funnel.delivered'),
-                    value: entrega.data.funnel.delivered,
+                    value: delivery.data.funnel.delivered,
                     color: 'var(--ok)',
                   },
                   {
                     label: t('ops.funnel.read'),
-                    value: entrega.data.funnel.read,
+                    value: delivery.data.funnel.read,
                     color: 'var(--ok)',
                   },
                   {
                     label: t('ops.funnel.failed'),
-                    value: entrega.data.funnel.failed,
+                    value: delivery.data.funnel.failed,
                     color: 'var(--crit)',
                     // Failed is measured against what was sent, not against what was read.
-                    base: entrega.data.funnel.sent,
+                    base: delivery.data.funnel.sent,
                   },
                 ]}
               />
@@ -73,10 +73,10 @@ export function Operations() {
             hint={t('ops.throughputHint')}
             className="lg:col-span-2"
           >
-            {entrega.data ? (
-              <AreaSerie
-                series={entrega.data.throughput}
-                visuais={[
+            {delivery.data ? (
+              <AreaSeries
+                series={delivery.data.throughput}
+                styles={[
                   { key: 'messages.outbound', label: 'Enviadas', color: 'var(--accent)' },
                   { key: 'messages.inbound', label: 'Recebidas', color: 'var(--ok)' },
                 ]}
@@ -90,25 +90,25 @@ export function Operations() {
 
         <div className="grid gap-4 lg:grid-cols-3">
           <Card title={t('ops.queue')} hint={t('ops.queueHint')}>
-            {entrega.data ? (
+            {delivery.data ? (
               <div className="grid grid-cols-2 gap-4">
                 <Stat
                   label={t('ops.queued')}
-                  value={num(entrega.data.queue.queued)}
-                  tone={entrega.data.queue.queued > 500 ? 'warn' : 'neutral'}
+                  value={num(delivery.data.queue.queued)}
+                  tone={delivery.data.queue.queued > 500 ? 'warn' : 'neutral'}
                 />
-                <Stat label={t('ops.sending')} value={num(entrega.data.queue.sending)} />
+                <Stat label={t('ops.sending')} value={num(delivery.data.queue.sending)} />
                 <Stat
                   label={t('ops.dead')}
-                  value={num(entrega.data.queue.dead)}
-                  tone={entrega.data.queue.dead > 0 ? 'crit' : 'neutral'}
+                  value={num(delivery.data.queue.dead)}
+                  tone={delivery.data.queue.dead > 0 ? 'crit' : 'neutral'}
                   hint={t('ops.deadHint')}
                 />
                 <Stat
                   label={t('ops.deadWebhooks')}
-                  value={num(entrega.data.webhooks.dead)}
-                  tone={entrega.data.webhooks.dead > 0 ? 'warn' : 'neutral'}
-                  hint={t('ops.webhooksDelivered', { n: num(entrega.data.webhooks.delivered) })}
+                  value={num(delivery.data.webhooks.dead)}
+                  tone={delivery.data.webhooks.dead > 0 ? 'warn' : 'neutral'}
+                  hint={t('ops.webhooksDelivered', { n: num(delivery.data.webhooks.delivered) })}
                 />
               </div>
             ) : (
@@ -120,7 +120,7 @@ export function Operations() {
             {risk.data ? (
               <BarrasHorizontais
                 height={180}
-                dados={[
+                data={[
                   {
                     label: t('ops.decision.allowed'),
                     value: risk.data.decisions.allowed,
@@ -152,9 +152,9 @@ export function Operations() {
             {risk.data ? (
               <SeriesPoint
                 series={risk.data.scoreSeries}
-                visuais={[{ key: 'risk.score.avg', label: 'Score médio', color: 'var(--warn)' }]}
+                styles={[{ key: 'risk.score.avg', label: 'Average score', color: 'var(--warn)' }]}
                 height={180}
-                dominio={[0, 100]}
+                domain={[0, 100]}
               />
             ) : (
               <Skeleton className="h-44" />
@@ -163,8 +163,8 @@ export function Operations() {
         </div>
 
         <Card title={t('ops.sessionHealth')} hint={t('ops.sessionHealthHint')}>
-          {saude.data ? (
-            <TabelaDeSaude rows={saude.data.sessions} />
+          {health.data ? (
+            <HealthTable rows={health.data.sessions} />
           ) : (
             <Skeleton className="h-40" />
           )}
@@ -174,16 +174,16 @@ export function Operations() {
   )
 }
 
-function FaixaDeResumo({
+function SummaryStrip({
   connected,
   wantsToRun,
-  entrega,
+  delivery,
   risk,
   loading,
 }: {
   connected: number
   wantsToRun: number
-  entrega: KpiDelivery | null
+  delivery: KpiDelivery | null
   risk: KpiRisk | null
   loading: boolean
 }) {
@@ -200,8 +200,8 @@ function FaixaDeResumo({
     )
   }
 
-  const taxa = entrega?.funnel.deliveryRate ?? 0
-  const p95 = entrega?.latencyMs.p95 ?? null
+  const deliveryRate = delivery?.funnel.deliveryRate ?? 0
+  const p95 = delivery?.latencyMs.p95 ?? null
   const held = risk?.decisions.held ?? 0
 
   return (
@@ -217,11 +217,11 @@ function FaixaDeResumo({
       <div className="card p-4">
         <Stat
           label={t('ops.deliveryRate')}
-          value={pct(taxa)}
-          tone={taxa >= 0.95 ? 'ok' : taxa >= 0.85 ? 'warn' : 'crit'}
+          value={pct(deliveryRate)}
+          tone={deliveryRate >= 0.95 ? 'ok' : deliveryRate >= 0.85 ? 'warn' : 'crit'}
           hint={t('ops.ofTotal', {
-            delivered: num(entrega?.funnel.delivered ?? 0),
-            sent: num(entrega?.funnel.sent ?? 0),
+            delivered: num(delivery?.funnel.delivered ?? 0),
+            sent: num(delivery?.funnel.sent ?? 0),
           })}
         />
       </div>
@@ -236,9 +236,9 @@ function FaixaDeResumo({
       <div className="card p-4">
         <Stat
           label={t('ops.inQueue')}
-          value={num(entrega?.queue.queued ?? 0)}
-          tone={(entrega?.queue.queued ?? 0) > 500 ? 'warn' : 'neutral'}
-          hint={t('ops.sendingNow', { n: num(entrega?.queue.sending ?? 0) })}
+          value={num(delivery?.queue.queued ?? 0)}
+          tone={(delivery?.queue.queued ?? 0) > 500 ? 'warn' : 'neutral'}
+          hint={t('ops.sendingNow', { n: num(delivery?.queue.sending ?? 0) })}
         />
       </div>
       <div className="card p-4">
@@ -253,7 +253,7 @@ function FaixaDeResumo({
   )
 }
 
-function TabelaDeSaude({ rows }: { rows: KpiSessions['sessions'] }) {
+function HealthTable({ rows }: { rows: KpiSessions['sessions'] }) {
   const t = useT()
 
   if (rows.length === 0) {

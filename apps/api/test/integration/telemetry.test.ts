@@ -9,7 +9,7 @@ import { createApiKey, createSession, type SeededOrg, seedOrg } from './helpers'
 
 const hasInfra = Boolean(process.env.DATABASE_URL && process.env.REDIS_URL)
 
-const silencioso = { info: () => {}, warn: () => {}, error: () => {} }
+const silent = { info: () => {}, warn: () => {}, error: () => {} }
 
 describe.skipIf(!hasInfra)('telemetria', () => {
   let handle: ReturnType<typeof createDb>
@@ -97,7 +97,7 @@ describe.skipIf(!hasInfra)('telemetria', () => {
 
     await new MetricsAggregator({
       db,
-      logger: silencioso,
+      logger: silent,
       intervalMs: 999_999,
       lookbackHours: 6,
     }).aggregate()
@@ -156,7 +156,7 @@ describe.skipIf(!hasInfra)('telemetria', () => {
     it('reprocessar a mesma janela não duplica nada', async () => {
       await new MetricsAggregator({
         db,
-        logger: silencioso,
+        logger: silent,
         intervalMs: 999_999,
         lookbackHours: 6,
       }).aggregate()
@@ -248,8 +248,8 @@ describe.skipIf(!hasInfra)('telemetria', () => {
       // viewer reaches metrics:read; the route must not be open to the unauthenticated.
       expect(res.statusCode).toBe(200)
 
-      const anonima = await app.inject({ method: 'GET', url: '/v1/kpi/delivery' })
-      expect(anonima.statusCode).toBe(401)
+      const anonymous = await app.inject({ method: 'GET', url: '/v1/kpi/delivery' })
+      expect(anonymous.statusCode).toBe(401)
     })
   })
 

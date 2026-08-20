@@ -107,7 +107,7 @@ describe.skipIf(!hasInfra)('rotas de sessão', () => {
   })
 
   describe('credenciais da Cloud API', () => {
-    async function criarOficial(): Promise<string> {
+    async function createOfficialSession(): Promise<string> {
       const created = await app.inject({
         method: 'POST',
         url: '/v1/sessions',
@@ -117,7 +117,7 @@ describe.skipIf(!hasInfra)('rotas de sessão', () => {
       return created.json().id
     }
 
-    const credenciais = {
+    const credentials = {
       phoneNumberId: '109876543210987',
       accessToken: 'EAAG'.padEnd(48, 'x'),
       verifyToken: 'segredo-do-handshake',
@@ -125,17 +125,17 @@ describe.skipIf(!hasInfra)('rotas de sessão', () => {
     }
 
     it('guarda e devolve a URL do webhook', async () => {
-      const sessionId = await criarOficial()
+      const sessionId = await createOfficialSession()
 
-      const salvo = await app.inject({
+      const saved = await app.inject({
         method: 'PUT',
         url: `/v1/sessions/${sessionId}/credentials`,
         headers: auth(org.token),
-        payload: credenciais,
+        payload: credentials,
       })
 
-      expect(salvo.statusCode).toBe(200)
-      expect(salvo.json().webhookUrl).toContain(`/webhooks/meta/${sessionId}`)
+      expect(saved.statusCode).toBe(200)
+      expect(saved.json().webhookUrl).toContain(`/webhooks/meta/${sessionId}`)
     })
 
     /**
@@ -144,37 +144,37 @@ describe.skipIf(!hasInfra)('rotas de sessão', () => {
      * company's name.
      */
     it('não devolve o token em nenhuma leitura da sessão', async () => {
-      const sessionId = await criarOficial()
+      const sessionId = await createOfficialSession()
 
       await app.inject({
         method: 'PUT',
         url: `/v1/sessions/${sessionId}/credentials`,
         headers: auth(org.token),
-        payload: credenciais,
+        payload: credentials,
       })
 
-      const lida = await app.inject({
+      const readBack = await app.inject({
         method: 'GET',
         url: `/v1/sessions/${sessionId}`,
         headers: auth(org.token),
       })
 
-      expect(lida.body).not.toContain(credenciais.accessToken)
-      expect(lida.body).not.toContain(credenciais.appSecret)
+      expect(readBack.body).not.toContain(credentials.accessToken)
+      expect(readBack.body).not.toContain(credentials.appSecret)
     })
 
     it('recusa credenciais da Meta em sessão do Baileys', async () => {
       const sessionId = await createSession(app.db, org.orgId)
 
-      const resposta = await app.inject({
+      const response = await app.inject({
         method: 'PUT',
         url: `/v1/sessions/${sessionId}/credentials`,
         headers: auth(org.token),
-        payload: credenciais,
+        payload: credentials,
       })
 
-      expect(resposta.statusCode).toBe(400)
-      expect(resposta.json().error.message).toMatch(/cloud_api/)
+      expect(response.statusCode).toBe(400)
+      expect(response.json().error.message).toMatch(/cloud_api/)
     })
   })
 
@@ -224,34 +224,34 @@ describe.skipIf(!hasInfra)('rotas de sessão', () => {
 
   describe('isolamento entre organizações', () => {
     it('não enxerga sessão de outra org', async () => {
-      const outra = await seedOrg(app.db)
-      const alheia = await createSession(app.db, outra.orgId)
+      const other = await seedOrg(app.db)
+      const foreign = await createSession(app.db, other.orgId)
 
       try {
         const response = await app.inject({
           method: 'GET',
-          url: `/v1/sessions/${alheia}`,
+          url: `/v1/sessions/${foreign}`,
           headers: auth(org.token),
         })
 
         expect(response.statusCode).toBe(404)
       } finally {
-        await outra.cleanup()
+        await other.cleanup()
       }
     })
   })
 
   describe('escopo de sessão da chave', () => {
-    let permitida: string
-    let proibida: string
-    let escopado: string
+    let allowed: string
+    let forbidden: string
+    let scopedKey: string
 
     beforeAll(async () => {
-      permitida = await createSession(app.db, org.orgId)
-      proibida = await createSession(app.db, org.orgId)
-      escopado = await createApiKey(app.db, org.orgId, {
+      allowed = await createSession(app.db, org.orgId)
+      forbidden = await createSession(app.db, org.orgId)
+      scopedKey = await createApiKey(app.db, org.orgId, {
         role: 'operator',
-        sessionScope: [permitida],
+        sessionScope: [allowed],
       })
     })
 
@@ -259,11 +259,11 @@ describe.skipIf(!hasInfra)('rotas de sessão', () => {
       const response = await app.inject({
         method: 'GET',
         url: '/v1/sessions',
-        headers: auth(escopado),
+        headers: auth(scopedKey),
       })
 
       const ids = response.json().sessions.map((s: { id: string }) => s.id)
-      expect(ids).toEqual([permitida])
+      expect(ids).toEqual([allowed])
     })
 
     /**
@@ -274,8 +274,8 @@ describe.skipIf(!hasInfra)('rotas de sessão', () => {
     it('esconde sessão fora do escopo com 404, não 403', async () => {
       const response = await app.inject({
         method: 'GET',
-        url: `/v1/sessions/${proibida}`,
-        headers: auth(escopado),
+        url: `/v1/sessions/${forbidden}`,
+        headers: auth(scopedKey),
       })
 
       expect(response.statusCode).toBe(404)
@@ -285,8 +285,8 @@ describe.skipIf(!hasInfra)('rotas de sessão', () => {
     it('bloqueia operar sessão fora do escopo', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: `/v1/sessions/${proibida}/stop`,
-        headers: auth(escopado),
+        url: `/v1/sessions/${forbidden}/stop`,
+        headers: auth(scopedKey),
       })
 
       expect(response.statusCode).toBe(404)
@@ -295,8 +295,8 @@ describe.skipIf(!hasInfra)('rotas de sessão', () => {
     it('permite operar a sessão do escopo', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: `/v1/sessions/${permitida}/stop`,
-        headers: auth(escopado),
+        url: `/v1/sessions/${allowed}/stop`,
+        headers: auth(scopedKey),
       })
 
       expect(response.statusCode).toBe(200)
@@ -306,7 +306,7 @@ describe.skipIf(!hasInfra)('rotas de sessão', () => {
       const response = await app.inject({
         method: 'POST',
         url: '/v1/sessions',
-        headers: auth(escopado),
+        headers: auth(scopedKey),
         payload: { name: 'nao-deveria', engine: 'baileys' },
       })
 
@@ -345,20 +345,20 @@ describe.skipIf(!hasInfra)('primeira execução', () => {
    * way out buried in a curl command in the README.
    */
   it('responde sem credencial nenhuma', async () => {
-    const resposta = await app.inject({ method: 'GET', url: '/v1/auth/bootstrap' })
+    const response = await app.inject({ method: 'GET', url: '/v1/auth/bootstrap' })
 
-    expect(resposta.statusCode).toBe(200)
-    expect(resposta.json()).toHaveProperty('needsSetup')
-    expect(resposta.json()).toHaveProperty('openRegistration')
+    expect(response.statusCode).toBe(200)
+    expect(response.json()).toHaveProperty('needsSetup')
+    expect(response.json()).toHaveProperty('openRegistration')
   })
 
   it('diz que já foi inicializada quando existe organização', async () => {
-    const resposta = await app.inject({ method: 'GET', url: '/v1/auth/bootstrap' })
-    expect(resposta.json().needsSetup).toBe(false)
+    const response = await app.inject({ method: 'GET', url: '/v1/auth/bootstrap' })
+    expect(response.json().needsSetup).toBe(false)
   })
 
   it('o registro fica fechado depois da primeira organização', async () => {
-    const resposta = await app.inject({
+    const response = await app.inject({
       method: 'POST',
       url: '/v1/auth/register',
       payload: {
@@ -369,6 +369,6 @@ describe.skipIf(!hasInfra)('primeira execução', () => {
       },
     })
 
-    expect(resposta.statusCode).toBe(403)
+    expect(response.statusCode).toBe(403)
   })
 })

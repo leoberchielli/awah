@@ -43,7 +43,7 @@ export interface IntegrationDispatcherDeps {
 
 /** Three attempts over ~7 s cover a container restart on the other side. */
 const MAX_ATTEMPTS = 3
-const ESPERA_BASE_MS = 500
+const RETRY_BASE_MS = 500
 
 /**
  * Carries what arrives from WhatsApp to the tools wired to the session.
@@ -114,20 +114,20 @@ export class IntegrationDispatcher {
     integration: LoadedIntegration<'chatwoot'>,
     message: IncomingMessage,
   ): Promise<void> {
-    const cliente = this.criarChatwoot(integration.config)
+    const client = this.createChatwoot(integration.config)
     const number = digitsOnly(message.chatId)
 
-    const vinculo = await tentar(MAX_ATTEMPTS, async () => {
-      const existente = await findLink(this.deps.db, integration.row.id, message.chatId)
-      if (existente) return existente
+    const link = await retry(MAX_ATTEMPTS, async () => {
+      const existing = await findLink(this.deps.db, integration.row.id, message.chatId)
+      if (existing) return existing
 
-      const contact = await cliente.ensureContact({
+      const contact = await client.ensureContact({
         identifier: number,
         phoneNumber: `+${number}`,
         name: integration.config.fallbackName,
       })
 
-      const conversationId = await cliente.criarConversa({
+      const conversationId = await client.createConversation({
         sourceId: contact.sourceId,
         contactId: contact.contactId,
       })
@@ -140,9 +140,9 @@ export class IntegrationDispatcher {
       })
     })
 
-    await tentar(MAX_ATTEMPTS, () =>
-      cliente.buildIncomingMessage({
-        conversationId: vinculo.externalConversationId,
+    await retry(MAX_ATTEMPTS, () =>
+      client.buildIncomingMessage({
+        conversationId: link.externalConversationId,
         content: message.body ?? '',
         // The WhatsApp id travels along: it is what the webhook coming back
         // uses to recognise what came from here and not echo it straight back.
@@ -168,41 +168,41 @@ export class IntegrationDispatcher {
     if (humanHandoffKeyword && text.toLowerCase() === humanHandoffKeyword.toLowerCase()) {
       await expireLink(this.deps.db, integration.row.id, message.chatId)
       if (humanHandoffReply) {
-        await this.enfileirar(message, integration.row.id, [humanHandoffReply])
+        await this.enqueueReplies(message, integration.row.id, [humanHandoffReply])
       }
       return
     }
 
-    const cliente = this.criarTypebot(integration.config)
-    const vinculo = await findLink(this.deps.db, integration.row.id, message.chatId)
+    const client = this.createTypebot(integration.config)
+    const link = await findLink(this.deps.db, integration.row.id, message.chatId)
 
-    let turno: Awaited<ReturnType<TypebotClient['iniciar']>>
+    let turn: Awaited<ReturnType<TypebotClient['start']>>
 
-    if (vinculo) {
+    if (link) {
       try {
-        turno = await cliente.continuar(vinculo.externalConversationId, text)
+        turn = await client.resume(link.externalConversationId, text)
       } catch (error) {
         // A dead session over there restarts, instead of stranding the contact.
         if (!(error instanceof TypebotError) || !error.sessaoExpirada) throw error
-        turno = await cliente.iniciar(text)
+        turn = await client.start(text)
       }
     } else {
-      turno = await cliente.iniciar(text)
+      turn = await client.start(text)
     }
 
-    if (turno.sessionId) {
+    if (turn.sessionId) {
       await upsertLink(this.deps.db, {
         integrationId: integration.row.id,
         chatId: message.chatId,
-        externalConversationId: turno.sessionId,
+        externalConversationId: turn.sessionId,
         // A finished flow keeps no session: the next message starts over.
-        expiresAt: turno.awaitingReply
+        expiresAt: turn.awaitingReply
           ? new Date(Date.now() + sessionTtlMinutes * 60_000)
           : new Date(),
       })
     }
 
-    await this.enfileirar(message, integration.row.id, turno.texts)
+    await this.enqueueReplies(message, integration.row.id, turn.texts)
   }
 
   /**
@@ -217,10 +217,10 @@ export class IntegrationDispatcher {
     integration: LoadedIntegration<'http'>,
     message: IncomingMessage,
   ): Promise<void> {
-    const conector = this.criarHttp(integration.config)
+    const connector = this.createHttp(integration.config)
 
-    const result = await tentar(MAX_ATTEMPTS, () =>
-      conector.send({
+    const result = await retry(MAX_ATTEMPTS, () =>
+      connector.send({
         event: 'message.received',
         data: {
           sessionId: message.sessionId,
@@ -246,7 +246,7 @@ export class IntegrationDispatcher {
       throw new Error(result.diagnosis)
     }
 
-    await this.enfileirar(message, integration.row.id, result.replies)
+    await this.enqueueReplies(message, integration.row.id, result.replies)
   }
 
   /**
@@ -256,7 +256,7 @@ export class IntegrationDispatcher {
    * per-conversation ordering, the risk engine and redelivery. A Typebot wired
    * straight into Meta has none of that — it fires and hopes.
    */
-  private async enfileirar(
+  private async enqueueReplies(
     message: IncomingMessage,
     integrationId: string,
     texts: string[],
@@ -265,7 +265,7 @@ export class IntegrationDispatcher {
 
     const repo = new OutboxRepository(this.deps.db, message.orgId)
 
-    for (const [indice, text] of texts.entries()) {
+    for (const [index, text] of texts.entries()) {
       await repo.enqueue({
         sessionId: message.sessionId,
         chatId: message.chatId,
@@ -276,7 +276,7 @@ export class IntegrationDispatcher {
          * halfway through — the outbox recognises the duplicate and the
          * customer does not get the reply twice.
          */
-        clientMessageId: `${integrationId}:${message.engineMessageId}:${indice}`,
+        clientMessageId: `${integrationId}:${message.engineMessageId}:${index}`,
         type: 'text',
         payload: { text: text },
         maxAttempts: this.deps.maxAttempts,
@@ -284,15 +284,15 @@ export class IntegrationDispatcher {
     }
   }
 
-  private criarChatwoot(config: ChatwootConfig): ChatwootClient {
+  private createChatwoot(config: ChatwootConfig): ChatwootClient {
     return this.deps.chatwootFactory?.(config) ?? new ChatwootClient(config)
   }
 
-  private criarTypebot(config: TypebotConfig): TypebotClient {
+  private createTypebot(config: TypebotConfig): TypebotClient {
     return this.deps.typebotFactory?.(config) ?? new TypebotClient(config)
   }
 
-  private criarHttp(config: HttpConfig): HttpConnector {
+  private createHttp(config: HttpConfig): HttpConnector {
     return this.deps.httpFactory?.(config) ?? new HttpConnector(config)
   }
 }
@@ -304,10 +304,10 @@ export class IntegrationDispatcher {
  * that does not exist. Retrying produces the same refusal three times and
  * delays recording the error the operator needs to see.
  */
-async function tentar<T>(vezes: number, action: () => Promise<T>): Promise<T> {
+async function retry<T>(attempts: number, action: () => Promise<T>): Promise<T> {
   let last: unknown
 
-  for (let i = 0; i < vezes; i++) {
+  for (let i = 0; i < attempts; i++) {
     try {
       return await action()
     } catch (error) {
@@ -318,9 +318,9 @@ async function tentar<T>(vezes: number, action: () => Promise<T>): Promise<T> {
           error instanceof TypebotError ||
           error instanceof HttpConnectorError) &&
         error.isPermanente
-      if (permanente || i === vezes - 1) break
+      if (permanente || i === attempts - 1) break
 
-      await new Promise((resolve) => setTimeout(resolve, ESPERA_BASE_MS * 2 ** i))
+      await new Promise((resolve) => setTimeout(resolve, RETRY_BASE_MS * 2 ** i))
     }
   }
 

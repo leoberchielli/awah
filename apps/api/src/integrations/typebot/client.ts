@@ -41,14 +41,14 @@ interface TypebotMessage {
   }
 }
 
-interface RespostaChat {
+interface ChatResponse {
   sessionId?: string
   messages?: TypebotMessage[]
   /** Present when the flow expects an answer. Absent means the flow is over. */
   input?: { type?: string } | null
 }
 
-export interface TurnoDeFluxo {
+export interface FlowTurn {
   sessionId: string | null
   texts: string[]
   /** False when the flow has finished and expects nothing more. */
@@ -75,12 +75,12 @@ export class TypebotClient {
     this.timeoutMs = options?.timeoutMs ?? 20_000
   }
 
-  private async request<T>(caminho: string, body: unknown): Promise<T> {
+  private async request<T>(path: string, body: unknown): Promise<T> {
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), this.timeoutMs)
 
     try {
-      const resposta = await this.fetchImpl(`${this.config.baseUrl}/api/v1${caminho}`, {
+      const response = await this.fetchImpl(`${this.config.baseUrl}/api/v1${path}`, {
         method: 'POST',
         signal: controller.signal,
         headers: {
@@ -92,12 +92,12 @@ export class TypebotClient {
         body: JSON.stringify(body),
       })
 
-      const text = await resposta.text()
+      const text = await response.text()
       const parsed = text ? safeJson(text) : null
 
-      if (!resposta.ok) {
-        const detalhe = (parsed as { message?: string })?.message ?? text.slice(0, 200)
-        throw new TypebotError(resposta.status, `Typebot responded ${resposta.status}: ${detalhe}`)
+      if (!response.ok) {
+        const detail = (parsed as { message?: string })?.message ?? text.slice(0, 200)
+        throw new TypebotError(response.status, `Typebot responded ${response.status}: ${detail}`)
       }
 
       return parsed as T
@@ -108,34 +108,34 @@ export class TypebotClient {
 
   /** Validates the address and the flow before saving the integration. */
   async verify(): Promise<void> {
-    await this.iniciar()
+    await this.start()
   }
 
-  async iniciar(message?: string): Promise<TurnoDeFluxo> {
-    const resposta = await this.request<RespostaChat>(
+  async start(message?: string): Promise<FlowTurn> {
+    const response = await this.request<ChatResponse>(
       `/typebots/${encodeURIComponent(this.config.typebotId)}/startChat`,
       { message: message, isStreamEnabled: false },
     )
 
-    return interpretar(resposta)
+    return toFlowTurn(response)
   }
 
-  async continuar(sessionId: string, message: string): Promise<TurnoDeFluxo> {
-    const resposta = await this.request<RespostaChat>(
+  async resume(sessionId: string, message: string): Promise<FlowTurn> {
+    const response = await this.request<ChatResponse>(
       `/sessions/${encodeURIComponent(sessionId)}/continueChat`,
       { message: message },
     )
 
-    return { ...interpretar(resposta), sessionId }
+    return { ...toFlowTurn(response), sessionId }
   }
 }
 
-function interpretar(resposta: RespostaChat): TurnoDeFluxo {
+function toFlowTurn(response: ChatResponse): FlowTurn {
   return {
-    sessionId: resposta.sessionId ?? null,
-    texts: (resposta.messages ?? []).map(toText).filter((t): t is string => Boolean(t)),
+    sessionId: response.sessionId ?? null,
+    texts: (response.messages ?? []).map(toText).filter((t): t is string => Boolean(t)),
     // With no `input`, the flow is over and the next message starts from zero.
-    awaitingReply: Boolean(resposta.input),
+    awaitingReply: Boolean(response.input),
   }
 }
 
@@ -148,7 +148,7 @@ function interpretar(resposta: RespostaChat): TurnoDeFluxo {
  */
 function toText(message: TypebotMessage): string | null {
   if (message.content?.richText?.length) {
-    const text = message.content.richText.map(achatar).join('\n').trim()
+    const text = message.content.richText.map(flatten).join('\n').trim()
     return text || null
   }
 
@@ -158,9 +158,9 @@ function toText(message: TypebotMessage): string | null {
   return null
 }
 
-function achatar(bloco: RichTextBlock): string {
-  if (bloco.text) return bloco.text
-  return (bloco.children ?? []).map(achatar).join('')
+function flatten(block: RichTextBlock): string {
+  if (block.text) return block.text
+  return (block.children ?? []).map(flatten).join('')
 }
 
 function safeJson(text: string): unknown {
@@ -179,7 +179,7 @@ function safeJson(text: string): unknown {
  * both, and it is what is on the clipboard of someone who has just published a
  * flow.
  */
-export function derivarDoLink(link: string): { baseUrl: string; typebotId: string } {
+export function deriveFromLink(link: string): { baseUrl: string; typebotId: string } {
   let url: URL
   try {
     url = new URL(link.trim())
@@ -187,7 +187,7 @@ export function derivarDoLink(link: string): { baseUrl: string; typebotId: strin
     throw new Error('That does not look like a URL. Paste the share link of your flow.')
   }
 
-  const partes = url.pathname.split('/').filter(Boolean)
+  const segments = url.pathname.split('/').filter(Boolean)
 
   /**
    * The editor URL carries the internal id, which the Chat API does not accept.
@@ -196,13 +196,13 @@ export function derivarDoLink(link: string): { baseUrl: string; typebotId: strin
    * the editor's address bar instead of the share link. Without this check the
    * integration is accepted and only fails later, on a customer's first message.
    */
-  if (partes[0] === 'typebots' || url.hostname.startsWith('app.')) {
+  if (segments[0] === 'typebots' || url.hostname.startsWith('app.')) {
     throw new Error(
       'That is the editor link, which uses the internal flow id. Publish the flow and use the share link — under Share, in Typebot.',
     )
   }
 
-  const typebotId = partes[0]
+  const typebotId = segments[0]
   if (!typebotId) {
     throw new Error(
       'Could not find the flow id in that link. It must end with the flow name, like https://typebot.io/my-flow.',

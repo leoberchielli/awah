@@ -6,7 +6,7 @@ import { runMigrations } from './migrate'
 async function main() {
   const url = process.env.DATABASE_URL
   if (!url) {
-    console.error('DATABASE_URL não está definida.')
+    console.error('DATABASE_URL is not set.')
     process.exit(1)
   }
 

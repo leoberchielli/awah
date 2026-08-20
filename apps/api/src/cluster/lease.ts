@@ -88,13 +88,13 @@ export class SessionLease {
     if (sessionIds.length === 0) return new Map()
 
     const values = await this.redis.mget(sessionIds.map((id) => this.key(id)))
-    const mapa = new Map<string, string>()
+    const map = new Map<string, string>()
 
     sessionIds.forEach((id, index) => {
       const owner = values[index]
-      if (owner) mapa.set(id, owner)
+      if (owner) map.set(id, owner)
     })
 
-    return mapa
+    return map
   }
 }

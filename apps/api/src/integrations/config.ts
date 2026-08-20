@@ -264,12 +264,12 @@ export async function findIntegrationById(
 }
 
 export async function deleteIntegration(db: Database, orgId: string, id: string): Promise<boolean> {
-  const removidas = await db
+  const removed = await db
     .delete(schema.integrations)
     .where(and(eq(schema.integrations.id, id), eq(schema.integrations.orgId, orgId)))
     .returning({ id: schema.integrations.id })
 
-  return removidas.length > 0
+  return removed.length > 0
 }
 
 /** Records the last failure so the panel can explain the silence. */

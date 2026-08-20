@@ -22,7 +22,7 @@ describe.skipIf(!hasInfra)('webhook da Cloud API', () => {
   let org: SeededOrg
   let sessionId: string
 
-  function assinar(body: string): string {
+  function sign(body: string): string {
     return `sha256=${createHmac('sha256', APP_SECRET).update(body).digest('hex')}`
   }
 
@@ -72,47 +72,47 @@ describe.skipIf(!hasInfra)('webhook da Cloud API', () => {
 
   describe('handshake de verificação', () => {
     it('devolve o desafio quando o token confere', async () => {
-      const resposta = await app.inject({
+      const response = await app.inject({
         method: 'GET',
         url: `/webhooks/meta/${sessionId}?hub.mode=subscribe&hub.verify_token=${VERIFY_TOKEN}&hub.challenge=1234567890`,
       })
 
-      expect(resposta.statusCode).toBe(200)
-      expect(resposta.body).toBe('1234567890')
+      expect(response.statusCode).toBe(200)
+      expect(response.body).toBe('1234567890')
     })
 
     /** Without this, anyone could point another account's webhook at us. */
     it('recusa token de verificação errado', async () => {
-      const resposta = await app.inject({
+      const response = await app.inject({
         method: 'GET',
         url: `/webhooks/meta/${sessionId}?hub.mode=subscribe&hub.verify_token=errado&hub.challenge=1234`,
       })
 
-      expect(resposta.statusCode).toBe(403)
+      expect(response.statusCode).toBe(403)
     })
 
     it('não confirma a existência de sessão desconhecida', async () => {
-      const resposta = await app.inject({
+      const response = await app.inject({
         method: 'GET',
         url: `/webhooks/meta/${randomUUID()}?hub.mode=subscribe&hub.verify_token=${VERIFY_TOKEN}&hub.challenge=1`,
       })
 
-      expect(resposta.statusCode).toBe(404)
+      expect(response.statusCode).toBe(404)
     })
   })
 
   describe('recebimento de eventos', () => {
     it('recusa evento sem assinatura', async () => {
-      const resposta = await send({ entry: [] })
-      expect(resposta.statusCode).toBe(403)
+      const response = await send({ entry: [] })
+      expect(response.statusCode).toBe(403)
     })
 
     it('recusa assinatura de outro segredo', async () => {
       const body = { entry: [] }
-      const forjada = `sha256=${createHmac('sha256', 'outro-segredo').update(JSON.stringify(body)).digest('hex')}`
+      const forged = `sha256=${createHmac('sha256', 'outro-segredo').update(JSON.stringify(body)).digest('hex')}`
 
-      const resposta = await send(body, forjada)
-      expect(resposta.statusCode).toBe(403)
+      const response = await send(body, forged)
+      expect(response.statusCode).toBe(403)
     })
 
     it('persiste a mensagem recebida e responde 200', async () => {
@@ -139,11 +139,11 @@ describe.skipIf(!hasInfra)('webhook da Cloud API', () => {
         ],
       }
 
-      const resposta = await send(body, assinar(JSON.stringify(body)))
-      expect(resposta.statusCode).toBe(200)
+      const response = await send(body, sign(JSON.stringify(body)))
+      expect(response.statusCode).toBe(200)
 
       // Processing is asynchronous on purpose: Meta does not wait for it.
-      const gravada = await wait(async () => {
+      const recorded = await wait(async () => {
         const [row] = await app.db
           .select({ body: schema.messages.body, direction: schema.messages.direction })
           .from(schema.messages)
@@ -157,8 +157,8 @@ describe.skipIf(!hasInfra)('webhook da Cloud API', () => {
         return row ?? null
       })
 
-      expect(gravada?.body).toBe('olá pela oficial')
-      expect(gravada?.direction).toBe('inbound')
+      expect(recorded?.body).toBe('olá pela oficial')
+      expect(recorded?.direction).toBe('inbound')
     })
 
     /**
@@ -168,27 +168,27 @@ describe.skipIf(!hasInfra)('webhook da Cloud API', () => {
      * raw buffer being checked.
      */
     it('confere a assinatura sobre os bytes crus, não sobre o JSON reserializado', async () => {
-      const cru = '{ "entry" :  [ ] }'
+      const raw = '{ "entry" :  [ ] }'
 
-      const resposta = await app.inject({
+      const response = await app.inject({
         method: 'POST',
         url: `/webhooks/meta/${sessionId}`,
         headers: {
           'content-type': 'application/json',
-          'x-hub-signature-256': assinar(cru),
+          'x-hub-signature-256': sign(raw),
         },
-        payload: cru,
+        payload: raw,
       })
 
-      expect(resposta.statusCode).toBe(200)
+      expect(response.statusCode).toBe(200)
     })
   })
 })
 
 /** Waits for an async condition without pinning the test to a fixed sleep. */
-async function wait<T>(consulta: () => Promise<T | null>, attempts = 40): Promise<T | null> {
+async function wait<T>(query: () => Promise<T | null>, attempts = 40): Promise<T | null> {
   for (let i = 0; i < attempts; i++) {
-    const result = await consulta()
+    const result = await query()
     if (result) return result
     await new Promise((resolve) => setTimeout(resolve, 50))
   }

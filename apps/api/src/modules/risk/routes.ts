@@ -121,9 +121,9 @@ export async function riskRoutes(app: FastifyInstance) {
       const session = await repo.findById(request.params.id)
       if (!session) throw notFound('Session not found.')
 
-      const atuais = await app.risk.snapshot(request.params.id)
+      const current = await app.risk.snapshot(request.params.id)
       const limits = {
-        ...(atuais?.baseLimits ?? DEFAULT_LIMITS),
+        ...(current?.baseLimits ?? DEFAULT_LIMITS),
         ...request.body,
       }
 

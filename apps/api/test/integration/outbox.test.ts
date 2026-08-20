@@ -44,11 +44,11 @@ describe.skipIf(!hasInfra)('fila de envio', () => {
     it('não duplica o mesmo clientMessageId', async () => {
       const id = randomUUID()
       const first = await enqueue('5511900000001@s.whatsapp.net', 'oi', id)
-      const segunda = await enqueue('5511900000001@s.whatsapp.net', 'oi de novo', id)
+      const second = await enqueue('5511900000001@s.whatsapp.net', 'oi de novo', id)
 
       expect(first.created).toBe(true)
-      expect(segunda.created).toBe(false)
-      expect(segunda.row.id).toBe(first.row.id)
+      expect(second.created).toBe(false)
+      expect(second.row.id).toBe(first.row.id)
 
       const all = await repo.list()
       expect(all).toHaveLength(1)
@@ -60,8 +60,8 @@ describe.skipIf(!hasInfra)('fila de envio', () => {
       await enqueue('5511900000002@s.whatsapp.net', 'texto original', id)
       const repetido = await enqueue('5511900000002@s.whatsapp.net', 'texto diferente', id)
 
-      const persistido = await repo.findByClientId(id)
-      expect(persistido?.id).toBe(repetido.row.id)
+      const persisted = await repo.findByClientId(id)
+      expect(persisted?.id).toBe(repetido.row.id)
     })
   })
 
@@ -76,11 +76,11 @@ describe.skipIf(!hasInfra)('fila de envio', () => {
       await enqueue(chat, 'mensagem 2')
       await enqueue(chat, 'mensagem 3')
 
-      const reservados = await claimOutbox(db, [sessionId], 10)
+      const claimed = await claimOutbox(db, [sessionId], 10)
 
-      expect(reservados).toHaveLength(1)
-      expect(reservados[0]?.id).toBe(first.row.id)
-      expect(reservados[0]?.payload.text).toBe('mensagem 1')
+      expect(claimed).toHaveLength(1)
+      expect(claimed[0]?.id).toBe(first.row.id)
+      expect(claimed[0]?.payload.text).toBe('mensagem 1')
     })
 
     it('não libera a próxima enquanto a anterior está saindo', async () => {
@@ -90,23 +90,23 @@ describe.skipIf(!hasInfra)('fila de envio', () => {
 
       await claimOutbox(db, [sessionId], 10)
       // The first is still 'sending'; the second cycle must pick up nothing.
-      const segundoCiclo = await claimOutbox(db, [sessionId], 10)
+      const secondCycle = await claimOutbox(db, [sessionId], 10)
 
-      expect(segundoCiclo).toHaveLength(0)
+      expect(secondCycle).toHaveLength(0)
     })
 
     it('libera a seguinte depois que a anterior conclui', async () => {
       const chat = '5511933333333@s.whatsapp.net'
       await enqueue(chat, 'primeira')
-      const segunda = await enqueue(chat, 'segunda')
+      const second = await enqueue(chat, 'segunda')
 
-      const [reservada] = await claimOutbox(db, [sessionId], 10)
-      if (!reservada) throw new Error('nada reservado')
-      await markSent(db, reservada.id, 'ENGINE-1')
+      const [claimed] = await claimOutbox(db, [sessionId], 10)
+      if (!claimed) throw new Error('nada reservado')
+      await markSent(db, claimed.id, 'ENGINE-1')
 
       const next = await claimOutbox(db, [sessionId], 10)
       expect(next).toHaveLength(1)
-      expect(next[0]?.id).toBe(segunda.row.id)
+      expect(next[0]?.id).toBe(second.row.id)
     })
 
     /** Distinct chats do not block each other — this is the §4.2 parallelism. */
@@ -115,8 +115,8 @@ describe.skipIf(!hasInfra)('fila de envio', () => {
       await enqueue('5511955555555@s.whatsapp.net', 'para B')
       await enqueue('5511966666666@s.whatsapp.net', 'para C')
 
-      const reservados = await claimOutbox(db, [sessionId], 10)
-      expect(reservados).toHaveLength(3)
+      const claimed = await claimOutbox(db, [sessionId], 10)
+      expect(claimed).toHaveLength(3)
     })
   })
 
@@ -169,9 +169,9 @@ describe.skipIf(!hasInfra)('fila de envio', () => {
         await markFailed(db, row.id, `falha ${i + 1}`, 0)
       }
 
-      const morta = await repo.findById(row.id)
-      expect(morta?.status).toBe('dead')
-      expect(morta?.attempts).toBe(2)
+      const dead = await repo.findById(row.id)
+      expect(dead?.status).toBe('dead')
+      expect(dead?.attempts).toBe(2)
     })
 
     it('reprocessa um envio morto zerando as tentativas', async () => {
@@ -188,10 +188,10 @@ describe.skipIf(!hasInfra)('fila de envio', () => {
       expect((await repo.findById(row.id))?.status).toBe('dead')
 
       expect(await repo.retry(row.id)).toBe(true)
-      const revivida = await repo.findById(row.id)
-      expect(revivida?.status).toBe('queued')
-      expect(revivida?.attempts).toBe(0)
-      expect(revivida?.lastError).toBeNull()
+      const revived = await repo.findById(row.id)
+      expect(revived?.status).toBe('queued')
+      expect(revived?.attempts).toBe(0)
+      expect(revived?.lastError).toBeNull()
     })
 
     /** A session that is down is not a delivery failure: released, no attempt spent. */
@@ -227,8 +227,8 @@ describe.skipIf(!hasInfra)('fila de envio', () => {
       expect(await recoverStuck(db, 60_000)).toBe(1)
       expect((await repo.findById(job.id))?.status).toBe('queued')
 
-      const reservado = await claimOutbox(db, [sessionId], 10)
-      expect(reservado).toHaveLength(1)
+      const claimed = await claimOutbox(db, [sessionId], 10)
+      expect(claimed).toHaveLength(1)
     })
 
     it('não mexe em envio recente', async () => {

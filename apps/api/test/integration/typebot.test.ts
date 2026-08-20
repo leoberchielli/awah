@@ -21,16 +21,16 @@ describe.skipIf(!hasInfra)('fluxo do Typebot', () => {
   let integrationId: string
   let encryptionKey: Buffer
 
-  let caminhos: string[]
+  let paths: string[]
 
   /** A flow that always answers and always waits for the next message. */
-  function fetchDoTypebot(resposta?: unknown): typeof fetch {
+  function fetchDoTypebot(response?: unknown): typeof fetch {
     return vi.fn(async (url: string | URL) => {
-      caminhos.push(String(url))
+      paths.push(String(url))
 
       return new Response(
         JSON.stringify(
-          resposta ?? {
+          response ?? {
             sessionId: 'sess-do-fluxo',
             input: { type: 'text input' },
             messages: [
@@ -106,7 +106,7 @@ describe.skipIf(!hasInfra)('fluxo do Typebot', () => {
   })
 
   beforeEach(() => {
-    caminhos = []
+    paths = []
   })
 
   afterAll(async () => {
@@ -116,26 +116,26 @@ describe.skipIf(!hasInfra)('fluxo do Typebot', () => {
 
   it('inicia o fluxo na primeira mensagem e continua na segunda', async () => {
     await receive('oi')
-    expect(caminhos[0]).toContain('/startChat')
+    expect(paths[0]).toContain('/startChat')
 
-    const vinculo = await findLink(app.db, integrationId, CHAT_ID)
-    expect(vinculo?.externalConversationId).toBe('sess-do-fluxo')
+    const link = await findLink(app.db, integrationId, CHAT_ID)
+    expect(link?.externalConversationId).toBe('sess-do-fluxo')
 
-    caminhos = []
+    paths = []
     await receive('quero saber o preço')
 
     /**
      * Restarting the flow on every message would erase everything the customer
      * had already answered — they would be stuck on the first question forever.
      */
-    expect(caminhos[0]).toContain('/sessions/sess-do-fluxo/continueChat')
+    expect(paths[0]).toContain('/sessions/sess-do-fluxo/continueChat')
   })
 
   it('a resposta do fluxo entra pela mesma fila de qualquer envio', async () => {
     const id = await receive('oi de novo')
 
-    const enfileirada = (await queue()).find((l) => l.clientMessageId.includes(id))
-    expect((enfileirada?.payload as { text?: string })?.text).toBe('Oi! Sou o robô.')
+    const queued = (await queue()).find((l) => l.clientMessageId.includes(id))
+    expect((queued?.payload as { text?: string })?.text).toBe('Oi! Sou o robô.')
   })
 
   /**
@@ -143,9 +143,9 @@ describe.skipIf(!hasInfra)('fluxo do Typebot', () => {
    * Meta: the flow's reply inherits per-chat ordering, the risk engine and
    * redelivery.
    */
-  it('processar o mesmo evento duas vezes não duplica a resposta', async () => {
+  it('processar o mesmo event duas vezes não duplica a resposta', async () => {
     const engineMessageId = `wamid.${randomUUID()}`
-    const evento = {
+    const event = {
       orgId: org.orgId,
       sessionId,
       chatId: CHAT_ID,
@@ -155,41 +155,41 @@ describe.skipIf(!hasInfra)('fluxo do Typebot', () => {
       occurredAt: new Date(),
     }
 
-    await dispatcher().onReceive(evento)
-    await dispatcher().onReceive(evento)
+    await dispatcher().onReceive(event)
+    await dispatcher().onReceive(event)
 
-    const iguais = (await queue()).filter((l) => l.clientMessageId.includes(engineMessageId))
-    expect(iguais).toHaveLength(1)
+    const duplicates = (await queue()).filter((l) => l.clientMessageId.includes(engineMessageId))
+    expect(duplicates).toHaveLength(1)
   })
 
   describe('escape para atendimento humano', () => {
     it('encerra a sessão de fluxo sem chamar o Typebot', async () => {
       await receive('oi')
-      caminhos = []
+      paths = []
 
       await receive('agent')
 
       // Sending it on to the flow would produce one more automated reply for
       // the very person who asked to stop getting them.
-      expect(caminhos).toHaveLength(0)
+      expect(paths).toHaveLength(0)
       expect(await findLink(app.db, integrationId, CHAT_ID)).toBeNull()
     })
 
     it('reconhece a palavra em qualquer caixa e avisa o cliente', async () => {
       const id = await receive('AGENT')
 
-      const aviso = (await queue()).find((l) => l.clientMessageId.includes(id))
-      expect((aviso?.payload as { text?: string })?.text).toMatch(/team/i)
+      const warning = (await queue()).find((l) => l.clientMessageId.includes(id))
+      expect((warning?.payload as { text?: string })?.text).toMatch(/team/i)
     })
   })
 
   it('fluxo encerrado deixa a próxima mensagem recomeçar do zero', async () => {
-    const encerrado = fetchDoTypebot({
+    const finishedFlow = fetchDoTypebot({
       sessionId: 'sess-terminada',
       messages: [{ type: 'text', content: { richText: [{ children: [{ text: 'Até mais!' }] }] } }],
     })
 
-    await receive('quero encerrar', encerrado)
+    await receive('quero encerrar', finishedFlow)
 
     /**
      * With no `input`, Typebot has said the flow is over. The link is born
@@ -203,8 +203,8 @@ describe.skipIf(!hasInfra)('fluxo do Typebot', () => {
     await receive('oi')
 
     let call = 0
-    const expirando = vi.fn(async (url: string | URL) => {
-      caminhos.push(String(url))
+    const expiringFetch = vi.fn(async (url: string | URL) => {
+      paths.push(String(url))
       call++
 
       // continueChat answers 404: the session died over in Typebot.
@@ -224,13 +224,13 @@ describe.skipIf(!hasInfra)('fluxo do Typebot', () => {
       )
     }) as unknown as typeof fetch
 
-    caminhos = []
-    const id = await receive('e agora?', expirando)
+    paths = []
+    const id = await receive('e agora?', expiringFetch)
 
-    expect(caminhos[0]).toContain('/continueChat')
-    expect(caminhos[1]).toContain('/startChat')
+    expect(paths[0]).toContain('/continueChat')
+    expect(paths[1]).toContain('/startChat')
 
-    const resposta = (await queue()).find((l) => l.clientMessageId.includes(id))
-    expect((resposta?.payload as { text?: string })?.text).toBe('Recomeçando')
+    const response = (await queue()).find((l) => l.clientMessageId.includes(id))
+    expect((response?.payload as { text?: string })?.text).toBe('Recomeçando')
   })
 })

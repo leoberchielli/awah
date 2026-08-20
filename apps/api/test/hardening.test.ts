@@ -5,11 +5,11 @@ const BASE = {
   DATABASE_URL: 'postgres://awah:awah@localhost:5432/awah',
   REDIS_URL: 'redis://localhost:6379',
   ENCRYPTION_KEY: 'YXdhaC1kZXYta2V5LW5vdC1mb3ItcHJvZHVjdGlvbiE=',
-  COOKIE_SECRET: 'awah-dev-cookie-secret-trocar-antes-de-ir-a-producao',
+  COOKIE_SECRET: 'awah-dev-cookie-secret-change-before-production',
 }
 
 /** Real keys, generated for the test — not the ones in the repository. */
-const PROPRIAS = {
+const OWN_SECRETS = {
   ENCRYPTION_KEY: Buffer.from('a'.repeat(32)).toString('base64'),
   COOKIE_SECRET: 'x'.repeat(48),
 }
@@ -45,7 +45,7 @@ describe('segredos de desenvolvimento', () => {
       loadEnv({
         ...BASE,
         NODE_ENV: 'production',
-        ENCRYPTION_KEY: PROPRIAS.ENCRYPTION_KEY,
+        ENCRYPTION_KEY: OWN_SECRETS.ENCRYPTION_KEY,
       })
       expect.unreachable('deveria ter lançado')
     } catch (error) {
@@ -57,7 +57,7 @@ describe('segredos de desenvolvimento', () => {
   })
 
   it('segredos próprios sobem em produção', () => {
-    expect(() => loadEnv({ ...BASE, ...PROPRIAS, NODE_ENV: 'production' })).not.toThrow()
+    expect(() => loadEnv({ ...BASE, ...OWN_SECRETS, NODE_ENV: 'production' })).not.toThrow()
   })
 })
 

@@ -62,9 +62,9 @@ export class MetricsRepository extends TenantRepository {
       grouped.set(row.metric, byMetric)
     }
 
-    return [...grouped.entries()].map(([metric, pontos]) => ({
+    return [...grouped.entries()].map(([metric, points]) => ({
       metric,
-      points: [...pontos.entries()]
+      points: [...points.entries()]
         .sort(([a], [b]) => a - b)
         .map(([bucket, value]) => ({ bucket: new Date(bucket), value })),
     }))

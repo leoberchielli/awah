@@ -6,9 +6,9 @@ import { type TranslationKey, useT } from '../i18n'
 import type { Integration, SessionRow } from '../lib/api'
 import { del } from '../lib/api'
 import { dateTime } from '../lib/format'
-import { AssistenteChatwoot } from './integracoes/AssistenteChatwoot'
-import { AssistenteHttp } from './integracoes/AssistenteHttp'
-import { AssistenteTypebot } from './integracoes/AssistenteTypebot'
+import { ChatwootWizard } from './integracoes/AssistenteChatwoot'
+import { HttpWizard } from './integracoes/AssistenteHttp'
+import { TypebotWizard } from './integracoes/AssistenteTypebot'
 
 const NAMES: Record<Integration['kind'], TranslationKey> = {
   chatwoot: 'integrations.kind.chatwoot',
@@ -46,9 +46,9 @@ export function Integrations() {
         </Card>
 
         <div className="grid items-start gap-4 lg:grid-cols-2">
-          <AssistenteChatwoot sessions={list} onSave={integrations.refetch} />
-          <AssistenteTypebot sessions={list} onSave={integrations.refetch} />
-          <AssistenteHttp sessions={list} onSave={integrations.refetch} />
+          <ChatwootWizard sessions={list} onSave={integrations.refetch} />
+          <TypebotWizard sessions={list} onSave={integrations.refetch} />
+          <HttpWizard sessions={list} onSave={integrations.refetch} />
         </div>
       </div>
     </Shell>
@@ -65,7 +65,7 @@ function IntegrationRow({
   onChange: () => void
 }) {
   const t = useT()
-  const [removendo, setRemovendo] = useState(false)
+  const [removing, setRemoving] = useState(false)
 
   return (
     <li className="flex flex-wrap items-center gap-3 border-b border-line/60 py-3 last:border-0">
@@ -88,9 +88,9 @@ function IntegrationRow({
 
       <button
         type="button"
-        disabled={removendo}
+        disabled={removing}
         onClick={async () => {
-          setRemovendo(true)
+          setRemoving(true)
           await del(`/v1/integrations/${integration.id}`).catch(() => undefined)
           onChange()
         }}

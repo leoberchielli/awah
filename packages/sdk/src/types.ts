@@ -112,7 +112,7 @@ export interface RiskSnapshot {
   throttleFactor: number
 }
 
-export interface Serie {
+export interface Series {
   metric: string
   points: Array<{ bucket: string; value: number }>
 }
@@ -142,18 +142,18 @@ export interface KpiDelivery {
   latencyMs: { p50: number | null; p95: number | null; p99: number | null }
   queue: { queued: number; sending: number; dead: number }
   webhooks: { delivered: number; dead: number }
-  throughput: Serie[]
+  throughput: Series[]
 }
 
 export interface KpiRisk {
   decisions: { allowed: number; delayed: number; throttled: number; held: number }
   newContacts: number
-  scoreSeries: Serie[]
-  holdSeries: Serie[]
+  scoreSeries: Series[]
+  holdSeries: Series[]
 }
 
 export interface KpiBusiness {
-  volume: Serie[]
+  volume: Series[]
   activeChats: number
   responseRate: number
   firstResponseSeconds: { p50: number | null; p95: number | null }

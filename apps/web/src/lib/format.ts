@@ -14,7 +14,7 @@
 
 import { FALLBACK } from '../i18n/registry'
 
-let ativo: string = FALLBACK
+let activeLocale: string = FALLBACK
 
 /**
  * Told by the i18n provider whenever the language changes.
@@ -25,7 +25,7 @@ let ativo: string = FALLBACK
  * at a time, so a module holds it honestly.
  */
 export function setFormatLocale(code: string): void {
-  ativo = code
+  activeLocale = code
   cache.clear()
 }
 
@@ -33,19 +33,19 @@ export function setFormatLocale(code: string): void {
 const cache = new Map<string, Intl.NumberFormat | Intl.RelativeTimeFormat>()
 
 function numFmt(key: string, options: Intl.NumberFormatOptions): Intl.NumberFormat {
-  const k = `${key}:${ativo}`
-  const existente = cache.get(k)
-  if (existente) return existente as Intl.NumberFormat
-  const created = new Intl.NumberFormat(ativo, options)
+  const k = `${key}:${activeLocale}`
+  const existing = cache.get(k)
+  if (existing) return existing as Intl.NumberFormat
+  const created = new Intl.NumberFormat(activeLocale, options)
   cache.set(k, created)
   return created
 }
 
 function relFmt(): Intl.RelativeTimeFormat {
-  const k = `rel:${ativo}`
-  const existente = cache.get(k)
-  if (existente) return existente as Intl.RelativeTimeFormat
-  const created = new Intl.RelativeTimeFormat(ativo, { numeric: 'auto' })
+  const k = `rel:${activeLocale}`
+  const existing = cache.get(k)
+  if (existing) return existing as Intl.RelativeTimeFormat
+  const created = new Intl.RelativeTimeFormat(activeLocale, { numeric: 'auto' })
   cache.set(k, created)
   return created
 }
@@ -57,12 +57,12 @@ export function pct(fraction: number): string {
 }
 
 /** Unit names come from `Intl` too, so `min` is `мин` in Russian and `د` in Arabic. */
-function withUnit(value: number, unit: string, casas = 1): string {
-  return numFmt(`u:${unit}:${casas}`, {
+function withUnit(value: number, unit: string, decimals = 1): string {
+  return numFmt(`u:${unit}:${decimals}`, {
     style: 'unit',
     unit,
     unitDisplay: 'short',
-    maximumFractionDigits: casas,
+    maximumFractionDigits: decimals,
   }).format(value)
 }
 
@@ -113,12 +113,12 @@ export function windowLabel(value: number, unit: 'hour' | 'day'): string {
 
 export function timeOfDay(iso: string | Date): string {
   const data = typeof iso === 'string' ? new Date(iso) : iso
-  return data.toLocaleTimeString(ativo, { hour: '2-digit', minute: '2-digit' })
+  return data.toLocaleTimeString(activeLocale, { hour: '2-digit', minute: '2-digit' })
 }
 
 export function dateTime(iso: string | Date): string {
   const data = typeof iso === 'string' ? new Date(iso) : iso
-  return data.toLocaleString(ativo, {
+  return data.toLocaleString(activeLocale, {
     day: '2-digit',
     month: '2-digit',
     hour: '2-digit',
@@ -134,16 +134,16 @@ export function dateTime(iso: string | Date): string {
  * country and not the reader's: +55 (11) 99350-9185 is how that number is
  * written whoever is looking at it.
  */
-export function telefone(value: string | null): string {
+export function phone(value: string | null): string {
   if (!value) return '—'
-  const digitos = value.replace(/\D/g, '')
-  if (digitos.length === 13 && digitos.startsWith('55')) {
-    return `+55 (${digitos.slice(2, 4)}) ${digitos.slice(4, 9)}-${digitos.slice(9)}`
+  const digits = value.replace(/\D/g, '')
+  if (digits.length === 13 && digits.startsWith('55')) {
+    return `+55 (${digits.slice(2, 4)}) ${digits.slice(4, 9)}-${digits.slice(9)}`
   }
-  if (digitos.length === 12 && digitos.startsWith('55')) {
-    return `+55 (${digitos.slice(2, 4)}) ${digitos.slice(4, 8)}-${digitos.slice(8)}`
+  if (digits.length === 12 && digits.startsWith('55')) {
+    return `+55 (${digits.slice(2, 4)}) ${digits.slice(4, 8)}-${digits.slice(8)}`
   }
-  return `+${digitos}`
+  return `+${digits}`
 }
 
 /**
@@ -155,5 +155,5 @@ export function telefone(value: string | null): string {
 export function chat(chatId: string, rotularGrupo: (id: string) => string): string {
   const withoutSuffix = chatId.replace(/@.*$/, '')
   if (chatId.includes('@g.us')) return rotularGrupo(withoutSuffix.slice(-6))
-  return telefone(withoutSuffix)
+  return phone(withoutSuffix)
 }

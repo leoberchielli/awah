@@ -4,10 +4,10 @@ import { App } from './App'
 import { I18nProvider } from './i18n'
 import './styles.css'
 
-const raiz = document.getElementById('root')
-if (!raiz) throw new Error('#root element not found')
+const root = document.getElementById('root')
+if (!root) throw new Error('#root element not found')
 
-createRoot(raiz).render(
+createRoot(root).render(
   <StrictMode>
     <I18nProvider>
       <App />

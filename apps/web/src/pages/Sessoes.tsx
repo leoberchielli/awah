@@ -5,7 +5,7 @@ import { useQuery } from '../hooks/useQuery'
 import { Rich, type TranslationKey, useT } from '../i18n'
 import type { QrResponse, RiskSnapshot, SessionEvent, SessionRow } from '../lib/api'
 import { ApiError, post } from '../lib/api'
-import { dateTime, num, pct, since, telefone } from '../lib/format'
+import { dateTime, num, pct, phone, since } from '../lib/format'
 import { statusLabel, statusTone } from '../lib/sessionStatus'
 
 const ENGINES: Array<{ value: string; label: TranslationKey }> = [
@@ -13,7 +13,7 @@ const ENGINES: Array<{ value: string; label: TranslationKey }> = [
   { value: 'cloud_api', label: 'engine.cloudApi' },
 ]
 
-const PAREANDO = ['pairing', 'connecting']
+const PAIRING_STATUSES = ['pairing', 'connecting']
 
 export function Sessions() {
   const t = useT()
@@ -21,7 +21,7 @@ export function Sessions() {
   const sessions = useQuery<{ sessions: SessionRow[] }>('/v1/sessions', 4000)
   const list = sessions.data?.sessions ?? []
 
-  const alvo = list.find((s) => s.id === selected) ?? null
+  const selectedSession = list.find((s) => s.id === selected) ?? null
 
   /**
    * A session waiting for a QR takes the whole screen, with nobody having to
@@ -32,19 +32,19 @@ export function Sessions() {
    * hidden behind a selection — as it was — makes the most important step in
    * the product invisible to whoever just pressed "Start".
    */
-  const pareando = list.find((s) => PAREANDO.includes(s.status)) ?? null
+  const pairing = list.find((s) => PAIRING_STATUSES.includes(s.status)) ?? null
 
   return (
     <Shell>
       <div className="flex flex-col gap-4">
-        {pareando && <Pareamento session={pareando} onChange={sessions.refetch} />}
+        {pairing && <PairingCard session={pairing} onChange={sessions.refetch} />}
 
         <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
           <div className="flex min-w-0 flex-col gap-4">
             <Card
               title={t('sessions.title')}
               hint={t('sessions.hint')}
-              action={<NewSession aoCriar={sessions.refetch} />}
+              action={<NewSession onCreate={sessions.refetch} />}
             >
               {!sessions.settled ? (
                 <Skeleton className="h-32" />
@@ -60,7 +60,7 @@ export function Sessions() {
                       session={session}
                       selected={session.id === selected}
                       onSelect={() => setSelected(session.id === selected ? null : session.id)}
-                      aoIniciar={() => setSelected(session.id)}
+                      onStart={() => setSelected(session.id)}
                       onChange={sessions.refetch}
                     />
                   ))}
@@ -68,12 +68,12 @@ export function Sessions() {
               )}
             </Card>
 
-            {alvo && <Timeline sessionId={alvo.id} />}
+            {selectedSession && <Timeline sessionId={selectedSession.id} />}
           </div>
 
           <div className="flex flex-col gap-4">
-            {alvo ? (
-              <RiskPanel sessionId={alvo.id} />
+            {selectedSession ? (
+              <RiskPanel sessionId={selectedSession.id} />
             ) : (
               <Card title={t('sessions.detail')}>
                 <Empty>{t('sessions.detailEmpty')}</Empty>
@@ -87,7 +87,7 @@ export function Sessions() {
 }
 
 /** The pairing step, with the QR and what to do on the phone side by side. */
-function Pareamento({ session, onChange }: { session: SessionRow; onChange: () => void }) {
+function PairingCard({ session, onChange }: { session: SessionRow; onChange: () => void }) {
   const t = useT()
 
   return (
@@ -97,16 +97,16 @@ function Pareamento({ session, onChange }: { session: SessionRow; onChange: () =
       action={<Pill tone="warn">{statusLabel(t, session.status)}</Pill>}
     >
       <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
-        <PainelDeQr sessionId={session.id} />
+        <QrPanel sessionId={session.id} />
 
         <ol className="flex flex-1 flex-col gap-3 text-sm text-muted">
-          <Passo n={1} text={t('pairing.step1')} />
-          <Passo n={2} text={t('pairing.step2')} />
-          <Passo n={3} text={t('pairing.step3')} />
-          <Passo n={4} text={t('pairing.step4')} />
+          <Step n={1} text={t('pairing.step1')} />
+          <Step n={2} text={t('pairing.step2')} />
+          <Step n={3} text={t('pairing.step3')} />
+          <Step n={4} text={t('pairing.step4')} />
 
           <li className="mt-1">
-            <CancelarPareamento sessionId={session.id} onChange={onChange} />
+            <CancelPairing sessionId={session.id} onChange={onChange} />
           </li>
         </ol>
       </div>
@@ -114,7 +114,7 @@ function Pareamento({ session, onChange }: { session: SessionRow; onChange: () =
   )
 }
 
-function Passo({ n, text }: { n: number; text: string }) {
+function Step({ n, text }: { n: number; text: string }) {
   return (
     <li className="flex gap-3">
       <span
@@ -130,13 +130,13 @@ function Passo({ n, text }: { n: number; text: string }) {
   )
 }
 
-function CancelarPareamento({ sessionId, onChange }: { sessionId: string; onChange: () => void }) {
+function CancelPairing({ sessionId, onChange }: { sessionId: string; onChange: () => void }) {
   const t = useT()
   const [busy, setBusy] = useState(false)
 
   return (
     <Button
-      tom="neutro"
+      tone="neutral"
       disabled={busy}
       onClick={async () => {
         setBusy(true)
@@ -154,13 +154,13 @@ function SessionCard({
   session,
   selected,
   onSelect,
-  aoIniciar,
+  onStart,
   onChange,
 }: {
   session: SessionRow
   selected: boolean
   onSelect: () => void
-  aoIniciar: () => void
+  onStart: () => void
   onChange: () => void
 }) {
   const t = useT()
@@ -173,7 +173,7 @@ function SessionCard({
     try {
       await post(`/v1/sessions/${session.id}/${action}`)
       // Whoever pressed Start wants to see what happened to this session.
-      if (action === 'start') aoIniciar()
+      if (action === 'start') onStart()
       onChange()
     } catch (failure) {
       setError(failure instanceof ApiError ? failure.message : t('sessions.commandFailed'))
@@ -189,7 +189,7 @@ function SessionCard({
    * queue keeps accepting messages and nothing goes out. It gets its own
    * highlight.
    */
-  const divergente = session.desiredState === 'running' && !session.running
+  const diverged = session.desiredState === 'running' && !session.running
 
   return (
     <li className="border-b border-line/60 last:border-0">
@@ -205,7 +205,7 @@ function SessionCard({
           <span className="min-w-0 flex-1">
             <span className="block truncate text-sm font-medium text-ink">{session.name}</span>
             <span className="block truncate font-mono text-xs text-muted">
-              {telefone(session.phoneNumber)} · {session.engine}
+              {phone(session.phoneNumber)} · {session.engine}
               {session.ownerNodeId && ` · nó ${session.ownerNodeId.slice(0, 8)}`}
             </span>
           </span>
@@ -214,19 +214,19 @@ function SessionCard({
         <div className="flex items-center gap-2">
           <Pill tone={statusTone(session.status)}>{statusLabel(t, session.status)}</Pill>
 
-          {divergente && <Pill tone="crit">{t('sessions.shouldBeRunning')}</Pill>}
+          {diverged && <Pill tone="crit">{t('sessions.shouldBeRunning')}</Pill>}
 
           {session.running ? (
             <>
               <Button onClick={() => sendCommand('stop')} disabled={busy}>
                 {t('sessions.stop')}
               </Button>
-              <Button onClick={() => sendCommand('logout')} disabled={busy} tom="perigo">
+              <Button onClick={() => sendCommand('logout')} disabled={busy} tone="danger">
                 {t('sessions.logout')}
               </Button>
             </>
           ) : (
-            <Button onClick={() => sendCommand('start')} disabled={busy} tom="primario">
+            <Button onClick={() => sendCommand('start')} disabled={busy} tone="primary">
               {t('sessions.start')}
             </Button>
           )}
@@ -246,20 +246,20 @@ function Button({
   children,
   onClick,
   disabled,
-  tom = 'neutro',
+  tone = 'neutral',
   type = 'button',
 }: {
   children: React.ReactNode
   onClick?: () => void
   disabled?: boolean
-  tom?: 'neutro' | 'primario' | 'perigo'
+  tone?: 'neutral' | 'primary' | 'danger'
   type?: 'button' | 'submit'
 }) {
-  const estilo = {
-    neutro: 'border-line bg-surface text-ink hover:bg-surface-2',
-    primario: 'border-transparent bg-accent text-on-fill hover:opacity-90',
-    perigo: 'border-line bg-surface text-crit hover:bg-surface-2',
-  }[tom]
+  const className = {
+    neutral: 'border-line bg-surface text-ink hover:bg-surface-2',
+    primary: 'border-transparent bg-accent text-on-fill hover:opacity-90',
+    danger: 'border-line bg-surface text-crit hover:bg-surface-2',
+  }[tone]
 
   return (
     <button
@@ -268,7 +268,7 @@ function Button({
       disabled={disabled}
       className={cx(
         'rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors disabled:opacity-50',
-        estilo,
+        className,
       )}
     >
       {children}
@@ -276,36 +276,36 @@ function Button({
   )
 }
 
-function NewSession({ aoCriar }: { aoCriar: () => void }) {
+function NewSession({ onCreate }: { onCreate: () => void }) {
   const t = useT()
-  const [aberto, setAberto] = useState(false)
+  const [isOpen, setIsOpen] = useState(false)
   const [name, setName] = useState('')
   const [engine, setEngine] = useState('baileys')
   const [error, setError] = useState<string | null>(null)
 
-  async function criar(evento: FormEvent) {
-    evento.preventDefault()
+  async function create(event: FormEvent) {
+    event.preventDefault()
     setError(null)
     try {
       await post('/v1/sessions', { name: name, engine })
       setName('')
-      setAberto(false)
-      aoCriar()
+      setIsOpen(false)
+      onCreate()
     } catch (failure) {
       setError(failure instanceof ApiError ? failure.message : t('sessions.createFailed'))
     }
   }
 
-  if (!aberto) {
+  if (!isOpen) {
     return (
-      <Button onClick={() => setAberto(true)} tom="primario">
+      <Button onClick={() => setIsOpen(true)} tone="primary">
         {t('sessions.new')}
       </Button>
     )
   }
 
   return (
-    <form onSubmit={criar} className="flex flex-wrap items-center gap-2">
+    <form onSubmit={create} className="flex flex-wrap items-center gap-2">
       <input
         // biome-ignore lint/a11y/noAutofocus: the form only exists after an explicit click
         autoFocus
@@ -326,10 +326,10 @@ function NewSession({ aoCriar }: { aoCriar: () => void }) {
           </option>
         ))}
       </select>
-      <Button type="submit" tom="primario">
+      <Button type="submit" tone="primary">
         {t('sessions.create')}
       </Button>
-      <Button onClick={() => setAberto(false)}>{t('common.cancel')}</Button>
+      <Button onClick={() => setIsOpen(false)}>{t('common.cancel')}</Button>
       {error && (
         <span role="alert" className="w-full text-xs text-crit">
           {error}
@@ -345,7 +345,7 @@ function NewSession({ aoCriar }: { aoCriar: () => void }) {
  * Fetching every two seconds is what keeps the image on screen the same one
  * WhatsApp will accept — a QR from ten seconds ago has already failed.
  */
-function PainelDeQr({ sessionId }: { sessionId: string }) {
+function QrPanel({ sessionId }: { sessionId: string }) {
   const t = useT()
   const qr = useQuery<QrResponse>(`/v1/sessions/${sessionId}/qr`, 2000)
 
@@ -398,8 +398,8 @@ function RiskPanel({ sessionId }: { sessionId: string }) {
   }
 
   const { score, usage, limits, warmup, throttleFactor } = risk.data
-  const tom: Tone = score.value < 40 ? 'ok' : score.value < 70 ? 'warn' : 'crit'
-  const pontuando = score.factors.filter((fator) => fator.points > 0)
+  const tone: Tone = score.value < 40 ? 'ok' : score.value < 70 ? 'warn' : 'crit'
+  const scoring = score.factors.filter((factor) => factor.points > 0)
 
   return (
     <Card title={t('risk.title')} hint={t('risk.hint')}>
@@ -409,7 +409,7 @@ function RiskPanel({ sessionId }: { sessionId: string }) {
             label={t('risk.score')}
             value={score.value}
             unit="/100"
-            tone={tom === 'ok' ? 'ok' : tom === 'warn' ? 'warn' : 'crit'}
+            tone={tone === 'ok' ? 'ok' : tone === 'warn' ? 'warn' : 'crit'}
           />
           <div className="text-right">
             <span className="eyebrow">{t('risk.warmup')}</span>
@@ -439,16 +439,16 @@ function RiskPanel({ sessionId }: { sessionId: string }) {
         </div>
 
         {/* A factor that scored nothing explains nothing; the heading alone just takes space. */}
-        {pontuando.length > 0 && (
+        {scoring.length > 0 && (
           <div className="flex flex-col gap-1.5">
             <span className="eyebrow">{t('risk.factors')}</span>
             <ul className="flex flex-col gap-1">
-              {pontuando.map((fator) => (
-                <li key={fator.name} className="flex items-baseline justify-between gap-2">
-                  <span className="text-xs text-muted">{fator.detail}</span>
+              {scoring.map((factor) => (
+                <li key={factor.name} className="flex items-baseline justify-between gap-2">
+                  <span className="text-xs text-muted">{factor.detail}</span>
                   <span className="shrink-0 font-mono text-xs text-ink tnum">
-                    +{fator.points}
-                    <span className="text-muted">/{fator.max}</span>
+                    +{factor.points}
+                    <span className="text-muted">/{factor.max}</span>
                   </span>
                 </li>
               ))}
@@ -495,36 +495,36 @@ const TONE_BY_EVENT: Record<string, Tone> = {
 
 function Timeline({ sessionId }: { sessionId: string }) {
   const t = useT()
-  const eventos = useQuery<{ events: SessionEvent[] }>(
+  const events = useQuery<{ events: SessionEvent[] }>(
     `/v1/sessions/${sessionId}/events?limit=40`,
     10_000,
   )
 
   return (
     <Card title={t('events.title')} hint={t('events.hint')}>
-      {!eventos.settled ? (
+      {!events.settled ? (
         <Skeleton className="h-32" />
-      ) : (eventos.data?.events.length ?? 0) === 0 ? (
+      ) : (events.data?.events.length ?? 0) === 0 ? (
         <Empty>{t('events.empty')}</Empty>
       ) : (
         <ol className="flex flex-col">
-          {eventos.data?.events.map((evento) => (
+          {events.data?.events.map((event) => (
             <li
-              key={evento.id}
+              key={event.id}
               className="flex flex-wrap items-center gap-3 border-b border-line/60 py-2 last:border-0"
             >
-              <Pill tone={TONE_BY_EVENT[evento.type] ?? 'hold'}>{evento.type}</Pill>
+              <Pill tone={TONE_BY_EVENT[event.type] ?? 'hold'}>{event.type}</Pill>
               <span className="min-w-0 flex-1 truncate text-xs text-muted">
-                {evento.cause ?? '—'}
-                {evento.rawCode !== null && (
-                  <span className="ml-1.5 font-mono opacity-70">({evento.rawCode})</span>
+                {event.cause ?? '—'}
+                {event.rawCode !== null && (
+                  <span className="ml-1.5 font-mono opacity-70">({event.rawCode})</span>
                 )}
               </span>
               <span
                 className="font-mono text-xs text-muted tnum"
-                title={dateTime(evento.createdAt)}
+                title={dateTime(event.createdAt)}
               >
-                {since(evento.createdAt)}
+                {since(event.createdAt)}
               </span>
             </li>
           ))}

@@ -147,8 +147,8 @@ export class OutboxDispatcher {
   }
 
   private async doDeliver(job: ClaimedJob): Promise<void> {
-    const iniciadoEm = Date.now()
-    const elapsed = () => (Date.now() - iniciadoEm) / 1000
+    const startedAt = Date.now()
+    const elapsed = () => (Date.now() - startedAt) / 1000
     const adapter = this.deps.sessions.adapterFor(job.sessionId)
 
     /**

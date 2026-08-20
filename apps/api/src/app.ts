@@ -13,7 +13,7 @@ import {
 } from 'fastify-type-provider-zod'
 import Redis from 'ioredis'
 import { authPlugin } from './auth/plugin'
-import { dashboardPlugin, ehRotaDoServidor } from './dashboard/plugin'
+import { dashboardPlugin, isServerRoute } from './dashboard/plugin'
 import type { Env } from './env'
 import { AppError } from './lib/errors'
 import { authRoutes } from './modules/auth/routes'
@@ -270,7 +270,7 @@ export async function buildApp(env: Env): Promise<FastifyInstance> {
     const navigation =
       app.spaIndex !== null &&
       (request.method === 'GET' || request.method === 'HEAD') &&
-      !ehRotaDoServidor(request.url) &&
+      !isServerRoute(request.url) &&
       String(request.headers.accept ?? '').includes('text/html')
 
     if (navigation) {

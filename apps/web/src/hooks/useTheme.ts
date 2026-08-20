@@ -4,9 +4,9 @@ export type Theme = 'system' | 'light' | 'dark'
 
 const STORAGE_KEY = 'awah:tema'
 
-function ler(): Theme {
-  const salvo = localStorage.getItem(STORAGE_KEY)
-  return salvo === 'light' || salvo === 'dark' ? salvo : 'system'
+function read(): Theme {
+  const saved = localStorage.getItem(STORAGE_KEY)
+  return saved === 'light' || saved === 'dark' ? saved : 'system'
 }
 
 /**
@@ -17,7 +17,7 @@ function ler(): Theme {
  * who never chose.
  */
 export function useTheme(): [Theme, (next: Theme) => void] {
-  const [theme, setTheme] = useState<Theme>(ler)
+  const [theme, setTheme] = useState<Theme>(read)
 
   useEffect(() => {
     if (theme === 'system') {

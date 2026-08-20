@@ -12,8 +12,8 @@ const startedAt = Date.now()
  * and until now the only way to answer was to open the container. It comes from
  * the Dockerfile via ARG; outside it, `dev`, which is the truth.
  */
-const VERSAO = process.env.AWAH_VERSION ?? 'dev'
-const REVISAO = process.env.AWAH_REVISION ?? 'unknown'
+const VERSION = process.env.AWAH_VERSION ?? 'dev'
+const REVISION = process.env.AWAH_REVISION ?? 'unknown'
 
 export async function healthRoutes(app: FastifyInstance) {
   const route = app.withTypeProvider<ZodTypeProvider>()
@@ -39,8 +39,8 @@ export async function healthRoutes(app: FastifyInstance) {
     },
     async () => ({
       status: 'ok' as const,
-      version: VERSAO,
-      revision: REVISAO,
+      version: VERSION,
+      revision: REVISION,
       nodeId: app.env.NODE_ID,
       uptimeSeconds: Math.floor((Date.now() - startedAt) / 1000),
     }),

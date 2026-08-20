@@ -12,7 +12,7 @@ import { ApiError, put } from '../../lib/api'
  * look for it. The share link carries both, and it is exactly what is on the
  * clipboard of someone who has just published a flow.
  */
-export function AssistenteTypebot({
+export function TypebotWizard({
   sessions,
   onSave,
 }: {
@@ -24,18 +24,18 @@ export function AssistenteTypebot({
   const [shareUrl, setShareUrl] = useState('')
   const [apiToken, setApiToken] = useState('')
   const [humanHandoffKeyword, setPalavra] = useState('agent')
-  const [humanHandoffReply, setResposta] = useState('')
+  const [humanHandoffReply, setHumanHandoffReply] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const [pronto, setPronto] = useState<IntegrationSaved | null>(null)
+  const [ready, setReady] = useState<IntegrationSaved | null>(null)
 
-  async function connect(evento: FormEvent) {
-    evento.preventDefault()
+  async function connect(event: FormEvent) {
+    event.preventDefault()
     setBusy(true)
     setError(null)
 
     try {
-      setPronto(
+      setReady(
         await put<IntegrationSaved>(`/v1/sessions/${sessionId}/integrations/typebot`, {
           shareUrl,
           ...(apiToken.trim() ? { apiToken: apiToken.trim() } : {}),
@@ -51,15 +51,15 @@ export function AssistenteTypebot({
     }
   }
 
-  if (pronto) {
+  if (ready) {
     return (
       <Card title={t('typebot.connected')}>
         <div className="flex flex-col gap-3">
-          <p className="rounded-md bg-ok/10 px-3 py-2 text-sm text-ok">{pronto.detail}</p>
+          <p className="rounded-md bg-ok/10 px-3 py-2 text-sm text-ok">{ready.detail}</p>
           <p className="text-sm text-muted">{t('typebot.connectedHint')}</p>
           <button
             type="button"
-            onClick={() => setPronto(null)}
+            onClick={() => setReady(null)}
             className="self-start rounded-md border border-line bg-surface px-2.5 py-1.5 text-xs font-medium text-ink hover:bg-surface-2"
           >
             {t('wizard.connectAnother')}
@@ -142,7 +142,7 @@ export function AssistenteTypebot({
           <span className="eyebrow">{t('typebot.handoffReply')}</span>
           <input
             value={humanHandoffReply}
-            onChange={(e) => setResposta(e.target.value)}
+            onChange={(e) => setHumanHandoffReply(e.target.value)}
             className="rounded-md border border-line bg-surface-2 px-3 py-2 text-sm text-ink"
           />
           <span className="text-xs text-muted">{t('typebot.handoffReplyHint')}</span>

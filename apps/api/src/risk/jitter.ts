@@ -40,10 +40,10 @@ export function humanDelayMs(options: HumanDelayOptions = {}): number {
     random = Math.random,
   } = options
 
-  const fator = throttleFactor > 0 ? throttleFactor : 0.1
-  const amostra = logNormal(medianMs / fator, sigma, random)
+  const factor = throttleFactor > 0 ? throttleFactor : 0.1
+  const sample = logNormal(medianMs / factor, sigma, random)
 
-  return Math.round(Math.min(Math.max(amostra, 250), maxMs))
+  return Math.round(Math.min(Math.max(sample, 250), maxMs))
 }
 
 /**

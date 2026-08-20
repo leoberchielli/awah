@@ -30,7 +30,7 @@ export interface EngineMessageEvent {
   }
 }
 
-export interface RespostaDoConector {
+export interface ConnectorResponse {
   status: number
   durationMs: number
   /** Texts that became messages. Empty is a valid answer: not every event needs one. */
@@ -68,16 +68,16 @@ export class HttpConnector {
     this.fetchImpl = options?.fetch ?? fetch
   }
 
-  async send(evento: EngineMessageEvent): Promise<RespostaDoConector> {
-    const body = JSON.stringify(evento)
+  async send(event: EngineMessageEvent): Promise<ConnectorResponse> {
+    const body = JSON.stringify(event)
     const timestamp = Math.floor(Date.now() / 1000)
 
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), this.config.timeoutMs)
-    const inicio = Date.now()
+    const startedAt = Date.now()
 
     try {
-      const resposta = await this.fetchImpl(this.config.url, {
+      const response = await this.fetchImpl(this.config.url, {
         method: 'POST',
         signal: controller.signal,
         headers: {
@@ -102,20 +102,20 @@ export class HttpConnector {
         body: body,
       })
 
-      const durationMs = Date.now() - inicio
-      const text = await resposta.text().catch(() => '')
+      const durationMs = Date.now() - startedAt
+      const text = await response.text().catch(() => '')
 
-      if (!resposta.ok) {
+      if (!response.ok) {
         throw new HttpConnectorError(
-          resposta.status,
-          `The platform responded ${resposta.status}: ${text.slice(0, 200)}`,
+          response.status,
+          `The platform responded ${response.status}: ${text.slice(0, 200)}`,
         )
       }
 
-      const { replies, diagnosis } = extrairRespostas(text, this.config.replyPath)
+      const { replies, diagnosis } = extractReplies(text, this.config.replyPath)
 
       return {
-        status: resposta.status,
+        status: response.status,
         durationMs,
         replies,
         raw: text.slice(0, 2000),
@@ -135,18 +135,18 @@ export class HttpConnector {
  * docs asked for `replies` would be rigour that only produces frustration. What
  * **cannot** happen is silence — hence the diagnosis alongside.
  */
-export function extrairRespostas(
+export function extractReplies(
   text: string,
-  caminho?: string,
+  path?: string,
 ): { replies: string[]; diagnosis: string | null } {
-  const limpo = text.trim()
+  const trimmed = text.trim()
 
   // An empty body is legitimate: not every event asks for a message back.
-  if (!limpo) return { replies: [], diagnosis: null }
+  if (!trimmed) return { replies: [], diagnosis: null }
 
   let body: unknown
   try {
-    body = JSON.parse(limpo)
+    body = JSON.parse(trimmed)
   } catch {
     return {
       replies: [],
@@ -155,21 +155,21 @@ export function extrairRespostas(
     }
   }
 
-  const alvo = caminho ? navigate(body, caminho) : body
+  const found = path ? navigate(body, path) : body
 
-  if (alvo === undefined) {
+  if (found === undefined) {
     return {
       replies: [],
-      diagnosis: `Could not find "${caminho}" in the response. Check the configured path.`,
+      diagnosis: `Could not find "${path}" in the response. Check the configured path.`,
     }
   }
 
-  const texts = normalizar(alvo)
+  const texts = normalize(found)
   if (texts.length > 0) return { replies: texts, diagnosis: null }
 
   // An object with no recognised field is almost always a format mistake.
-  if (typeof alvo === 'object' && alvo !== null && !Array.isArray(alvo)) {
-    const keys = Object.keys(alvo as object)
+  if (typeof found === 'object' && found !== null && !Array.isArray(found)) {
+    const keys = Object.keys(found as object)
       .slice(0, 6)
       .join(', ')
     return {
@@ -182,18 +182,18 @@ export function extrairRespostas(
 }
 
 /** Accepts `reply`, `replies`, `text`, an array and a bare string. */
-function normalizar(value: unknown): string[] {
+function normalize(value: unknown): string[] {
   if (typeof value === 'string') {
     const text = value.trim()
     return text ? [text] : []
   }
 
-  if (Array.isArray(value)) return value.flatMap(normalizar)
+  if (Array.isArray(value)) return value.flatMap(normalize)
 
   if (typeof value === 'object' && value !== null) {
-    const objeto = value as Record<string, unknown>
+    const obj = value as Record<string, unknown>
     for (const key of ['replies', 'reply', 'messages', 'message', 'text']) {
-      if (key in objeto) return normalizar(objeto[key])
+      if (key in obj) return normalize(obj[key])
     }
   }
 
@@ -201,13 +201,13 @@ function normalizar(value: unknown): string[] {
 }
 
 /** Dotted path, for anyone who returns the reply nested. */
-function navigate(body: unknown, caminho: string): unknown {
-  return caminho
+function navigate(body: unknown, path: string): unknown {
+  return path
     .split('.')
     .filter(Boolean)
-    .reduce<unknown>((current, parte) => {
+    .reduce<unknown>((current, part) => {
       if (typeof current !== 'object' || current === null) return undefined
-      return (current as Record<string, unknown>)[parte]
+      return (current as Record<string, unknown>)[part]
     }, body)
 }
 
@@ -219,7 +219,7 @@ function navigate(body: unknown, caminho: string): unknown {
  * then just switch it on. The number is the one reserved for documentation, so
  * that nobody ends up answering a stranger.
  */
-export const EVENTO_DE_TESTE: EngineMessageEvent = {
+export const TEST_EVENT: EngineMessageEvent = {
   event: 'message.received',
   data: {
     sessionId: '00000000-0000-0000-0000-000000000000',
@@ -227,7 +227,7 @@ export const EVENTO_DE_TESTE: EngineMessageEvent = {
     chatId: '5511999999999@s.whatsapp.net',
     from: '5511999999999@s.whatsapp.net',
     type: 'text',
-    body: 'Mensagem de teste do AWAH',
+    body: 'Test message from AWAH',
     timestamp: '2026-01-01T12:00:00.000Z',
   },
 }

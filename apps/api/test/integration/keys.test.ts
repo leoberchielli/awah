@@ -27,11 +27,11 @@ describe.skipIf(!hasInfra)('criação de chave de API', () => {
     org = await seedOrg(app.db)
     session = await createSession(app.db, org.orgId)
 
-    const usuario = await seedUser(app.db, org.orgId)
+    const user = await seedUser(app.db, org.orgId)
     const login = await app.inject({
       method: 'POST',
       url: '/v1/auth/login',
-      payload: { email: usuario.email, password: usuario.password },
+      payload: { email: user.email, password: user.password },
     })
     if (login.statusCode !== 200) {
       throw new Error(`login falhou no setup: ${login.statusCode} ${login.body}`)
@@ -45,28 +45,28 @@ describe.skipIf(!hasInfra)('criação de chave de API', () => {
   })
 
   it('cria chave sem escopo, valendo em toda a organização', async () => {
-    const resposta = await app.inject({
+    const response = await app.inject({
       method: 'POST',
       url: '/v1/keys',
       headers: auth(),
       payload: { name: 'sem escopo', role: 'operator' },
     })
 
-    expect(resposta.statusCode).toBe(201)
-    expect(resposta.json().key.sessionScope).toBeNull()
-    expect(resposta.json().token).toMatch(/^awah_/)
+    expect(response.statusCode).toBe(201)
+    expect(response.json().key.sessionScope).toBeNull()
+    expect(response.json().token).toMatch(/^awah_/)
   })
 
   it('cria chave com escopo em sessão que existe', async () => {
-    const resposta = await app.inject({
+    const response = await app.inject({
       method: 'POST',
       url: '/v1/keys',
       headers: auth(),
       payload: { name: 'com escopo', role: 'operator', sessionScope: [session] },
     })
 
-    expect(resposta.statusCode).toBe(201)
-    expect(resposta.json().key.sessionScope).toEqual([session])
+    expect(response.statusCode).toBe(201)
+    expect(response.json().key.sessionScope).toEqual([session])
   })
 
   /**
@@ -76,27 +76,27 @@ describe.skipIf(!hasInfra)('criação de chave de API', () => {
    * session and sends whoever is integrating looking in the wrong place.
    */
   it('recusa escopo apontando para sessão inexistente', async () => {
-    const resposta = await app.inject({
+    const response = await app.inject({
       method: 'POST',
       url: '/v1/keys',
       headers: auth(),
       payload: { name: 'escopo fantasma', role: 'operator', sessionScope: [UUID_DE_EXEMPLO] },
     })
 
-    expect(resposta.statusCode).toBe(400)
-    expect(resposta.json().error.message).toContain(UUID_DE_EXEMPLO)
+    expect(response.statusCode).toBe(400)
+    expect(response.json().error.message).toContain(UUID_DE_EXEMPLO)
   })
 
   it('recusa escopo vazio, que não alcançaria nenhuma sessão', async () => {
-    const resposta = await app.inject({
+    const response = await app.inject({
       method: 'POST',
       url: '/v1/keys',
       headers: auth(),
       payload: { name: 'escopo vazio', role: 'operator', sessionScope: [] },
     })
 
-    expect(resposta.statusCode).toBe(400)
-    expect(resposta.json().error.message).toContain('Omit')
+    expect(response.statusCode).toBe(400)
+    expect(response.json().error.message).toContain('Omit')
   })
 
   /**
@@ -105,21 +105,21 @@ describe.skipIf(!hasInfra)('criação de chave de API', () => {
    * the two cases apart, or it becomes an existence probe across tenants.
    */
   it('recusa sessão de outra organização', async () => {
-    const outra = await seedOrg(app.db)
-    const alheia = await createSession(app.db, outra.orgId)
+    const other = await seedOrg(app.db)
+    const foreign = await createSession(app.db, other.orgId)
 
     try {
-      const resposta = await app.inject({
+      const response = await app.inject({
         method: 'POST',
         url: '/v1/keys',
         headers: auth(),
-        payload: { name: 'escopo alheio', role: 'operator', sessionScope: [alheia] },
+        payload: { name: 'escopo alheio', role: 'operator', sessionScope: [foreign] },
       })
 
-      expect(resposta.statusCode).toBe(400)
-      expect(resposta.json().error.message).toContain(alheia)
+      expect(response.statusCode).toBe(400)
+      expect(response.json().error.message).toContain(foreign)
     } finally {
-      await outra.cleanup()
+      await other.cleanup()
     }
   })
 })

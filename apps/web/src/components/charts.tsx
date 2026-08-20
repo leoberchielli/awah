@@ -14,7 +14,7 @@ import {
   YAxis,
 } from 'recharts'
 import { useT } from '../i18n'
-import type { Serie } from '../lib/api'
+import type { Series } from '../lib/api'
 import { num, timeOfDay } from '../lib/format'
 import { Empty } from './ui'
 
@@ -23,14 +23,14 @@ import { Empty } from './ui'
  * instant with every metric together. The pivot happens here rather than in
  * SQL, because the same endpoint feeds both the chart and the export.
  */
-export function pivotar(series: Serie[]): Array<Record<string, number | string>> {
+export function pivot(series: Series[]): Array<Record<string, number | string>> {
   const byBucket = new Map<string, Record<string, number | string>>()
 
-  for (const serie of series) {
-    for (const ponto of serie.points) {
-      const key = new Date(ponto.bucket).toISOString()
+  for (const metricSeries of series) {
+    for (const point of metricSeries.points) {
+      const key = new Date(point.bucket).toISOString()
       const row = byBucket.get(key) ?? { bucket: key }
-      row[serie.metric] = ponto.value
+      row[metricSeries.metric] = point.value
       byBucket.set(key, row)
     }
   }
@@ -38,7 +38,7 @@ export function pivotar(series: Serie[]): Array<Record<string, number | string>>
   return [...byBucket.values()].sort((a, b) => String(a.bucket).localeCompare(String(b.bucket)))
 }
 
-const eixo = {
+const axis = {
   stroke: 'var(--muted)',
   fontSize: 11,
   tickLine: false,
@@ -58,31 +58,31 @@ const tooltipStyle = {
   itemStyle: { color: 'var(--ink)' },
 } as const
 
-export interface SerieVisual {
+export interface SeriesStyle {
   key: string
   label: string
   color: string
 }
 
-export function AreaSerie({
+export function AreaSeries({
   series,
-  visuais,
+  styles,
   height = 200,
   stacked = false,
 }: {
-  series: Serie[]
-  visuais: SerieVisual[]
+  series: Series[]
+  styles: SeriesStyle[]
   height?: number
   stacked?: boolean
 }) {
-  const dados = pivotar(series)
-  if (dados.length === 0) return <NoData height={height} />
+  const data = pivot(series)
+  if (data.length === 0) return <NoData height={height} />
 
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <AreaChart data={dados} margin={{ top: 4, right: 4, left: -18, bottom: 0 }}>
+      <AreaChart data={data} margin={{ top: 4, right: 4, left: -18, bottom: 0 }}>
         <defs>
-          {visuais.map((v) => (
+          {styles.map((v) => (
             <linearGradient key={v.key} id={`grad-${v.key}`} x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor={v.color} stopOpacity={0.28} />
               <stop offset="100%" stopColor={v.color} stopOpacity={0.02} />
@@ -90,17 +90,17 @@ export function AreaSerie({
           ))}
         </defs>
         <CartesianGrid stroke="var(--line)" strokeDasharray="2 4" vertical={false} />
-        <XAxis dataKey="bucket" tickFormatter={timeOfDay} minTickGap={28} {...eixo} />
-        <YAxis width={48} tickFormatter={num} {...eixo} />
+        <XAxis dataKey="bucket" tickFormatter={timeOfDay} minTickGap={28} {...axis} />
+        <YAxis width={48} tickFormatter={num} {...axis} />
         <Tooltip
           {...tooltipStyle}
           labelFormatter={(value) => timeOfDay(String(value))}
           formatter={(value, name) => [
             num(Number(value)),
-            visuais.find((v) => v.key === name)?.label ?? name,
+            styles.find((v) => v.key === name)?.label ?? name,
           ]}
         />
-        {visuais.map((v) => (
+        {styles.map((v) => (
           <Area
             key={v.key}
             type="monotone"
@@ -121,33 +121,33 @@ export function AreaSerie({
 
 export function SeriesPoint({
   series,
-  visuais,
+  styles,
   height = 200,
-  dominio,
+  domain,
 }: {
-  series: Serie[]
-  visuais: SerieVisual[]
+  series: Series[]
+  styles: SeriesStyle[]
   height?: number
-  dominio?: [number, number]
+  domain?: [number, number]
 }) {
-  const dados = pivotar(series)
-  if (dados.length === 0) return <NoData height={height} />
+  const data = pivot(series)
+  if (data.length === 0) return <NoData height={height} />
 
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <LineChart data={dados} margin={{ top: 4, right: 4, left: -18, bottom: 0 }}>
+      <LineChart data={data} margin={{ top: 4, right: 4, left: -18, bottom: 0 }}>
         <CartesianGrid stroke="var(--line)" strokeDasharray="2 4" vertical={false} />
-        <XAxis dataKey="bucket" tickFormatter={timeOfDay} minTickGap={28} {...eixo} />
-        <YAxis width={44} domain={dominio} tickFormatter={num} {...eixo} />
+        <XAxis dataKey="bucket" tickFormatter={timeOfDay} minTickGap={28} {...axis} />
+        <YAxis width={44} domain={domain} tickFormatter={num} {...axis} />
         <Tooltip
           {...tooltipStyle}
           labelFormatter={(value) => timeOfDay(String(value))}
           formatter={(value, name) => [
             num(Number(value)),
-            visuais.find((v) => v.key === name)?.label ?? name,
+            styles.find((v) => v.key === name)?.label ?? name,
           ]}
         />
-        {visuais.map((v) => (
+        {styles.map((v) => (
           <Line
             key={v.key}
             type="monotone"
@@ -165,27 +165,27 @@ export function SeriesPoint({
 }
 
 export function BarrasHorizontais({
-  dados,
+  data,
   height = 200,
 }: {
-  dados: Array<{ label: string; value: number; color?: string }>
+  data: Array<{ label: string; value: number; color?: string }>
   height?: number
 }) {
-  if (dados.length === 0) return <NoData height={height} />
+  if (data.length === 0) return <NoData height={height} />
 
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <BarChart data={dados} layout="vertical" margin={{ top: 0, right: 12, left: 0, bottom: 0 }}>
+      <BarChart data={data} layout="vertical" margin={{ top: 0, right: 12, left: 0, bottom: 0 }}>
         <CartesianGrid stroke="var(--line)" strokeDasharray="2 4" horizontal={false} />
-        <XAxis type="number" tickFormatter={num} {...eixo} />
-        <YAxis type="category" dataKey="rotulo" width={92} {...eixo} />
+        <XAxis type="number" tickFormatter={num} {...axis} />
+        <YAxis type="category" dataKey="rotulo" width={92} {...axis} />
         <Tooltip
           {...tooltipStyle}
           cursor={{ fill: 'var(--surface-2)' }}
           formatter={(v) => num(Number(v))}
         />
         <Bar dataKey="valor" radius={[0, 4, 4, 0]} isAnimationActive={false} barSize={16}>
-          {dados.map((entry) => (
+          {data.map((entry) => (
             <Cell key={entry.label} fill={entry.color ?? 'var(--accent)'} />
           ))}
         </Bar>
@@ -201,7 +201,7 @@ export function BarrasHorizontais({
  * stages**, and no off-the-shelf type shows that better than bars aligned on
  * the same baseline.
  */
-export interface EtapaDoFunil {
+export interface FunnelStep {
   label: string
   value: number
   color: string
@@ -214,19 +214,19 @@ export interface EtapaDoFunil {
   base?: number
 }
 
-export function Funil({ etapas }: { etapas: EtapaDoFunil[] }) {
-  const topo = Math.max(...etapas.map((e) => e.value), 1)
+export function Funnel({ steps }: { steps: FunnelStep[] }) {
+  const max = Math.max(...steps.map((e) => e.value), 1)
 
   return (
     <ul className="flex flex-col gap-3">
-      {etapas.map((etapa, indice) => {
-        const base = etapa.base ?? etapas[indice - 1]?.value
-        const share = base && base > 0 ? etapa.value / base : null
+      {steps.map((step, index) => {
+        const base = step.base ?? steps[index - 1]?.value
+        const share = base && base > 0 ? step.value / base : null
 
         return (
-          <li key={etapa.label} className="flex flex-col gap-1">
+          <li key={step.label} className="flex flex-col gap-1">
             <div className="flex items-baseline justify-between gap-2 text-xs">
-              <span className="text-muted">{etapa.label}</span>
+              <span className="text-muted">{step.label}</span>
               <span className="flex items-baseline gap-2">
                 {share !== null && (
                   <span className="font-mono text-[11px] text-muted tnum">
@@ -234,7 +234,7 @@ export function Funil({ etapas }: { etapas: EtapaDoFunil[] }) {
                   </span>
                 )}
                 <span className="font-mono text-sm font-medium text-ink tnum">
-                  {num(etapa.value)}
+                  {num(step.value)}
                 </span>
               </span>
             </div>
@@ -242,8 +242,8 @@ export function Funil({ etapas }: { etapas: EtapaDoFunil[] }) {
               <div
                 className="h-full rounded-full transition-[width] duration-500"
                 style={{
-                  width: `${Math.max((etapa.value / topo) * 100, etapa.value > 0 ? 2 : 0)}%`,
-                  background: etapa.color,
+                  width: `${Math.max((step.value / max) * 100, step.value > 0 ? 2 : 0)}%`,
+                  background: step.color,
                 }}
               />
             </div>

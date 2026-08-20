@@ -1,6 +1,6 @@
 import { type FormEvent, useState } from 'react'
 import { LanguagePicker } from '../components/LanguagePicker'
-import { Marca } from '../components/Shell'
+import { Brand } from '../components/Shell'
 import { Rich, useT } from '../i18n'
 import { ApiError, post } from '../lib/api'
 
@@ -24,10 +24,10 @@ export function FirstRun() {
   const [error, setError] = useState<string | null>(null)
   const [sending, setSending] = useState(false)
 
-  const curta = password.length > 0 && password.length < 12
+  const tooShort = password.length > 0 && password.length < 12
 
-  async function criar(evento: FormEvent) {
-    evento.preventDefault()
+  async function create(event: FormEvent) {
+    event.preventDefault()
     setSending(true)
     setError(null)
 
@@ -46,14 +46,14 @@ export function FirstRun() {
       <div className="w-full max-w-md">
         <div className="mb-6 flex flex-col gap-2">
           <div className="flex items-start justify-between gap-3">
-            <Marca />
+            <Brand />
             <LanguagePicker />
           </div>
           <h1 className="text-lg font-semibold text-ink">{t('setup.title')}</h1>
           <p className="text-sm text-muted">{t('setup.hint')}</p>
         </div>
 
-        <form onSubmit={criar} className="card flex flex-col gap-4 p-5">
+        <form onSubmit={create} className="card flex flex-col gap-4 p-5">
           <Field
             id="organizationName"
             label={t('setup.orgName')}
@@ -83,8 +83,8 @@ export function FirstRun() {
             autoComplete="new-password"
             value={password}
             onChange={setPassword}
-            dica={curta ? t('setup.passwordShort') : t('setup.passwordHint')}
-            problema={curta}
+            hint={tooShort ? t('setup.passwordShort') : t('setup.passwordHint')}
+            invalid={tooShort}
           />
 
           {error && (
@@ -95,7 +95,7 @@ export function FirstRun() {
 
           <button
             type="submit"
-            disabled={sending || curta}
+            disabled={sending || tooShort}
             className="rounded-md bg-accent px-3 py-2 text-sm font-medium text-on-fill transition-opacity hover:opacity-90 disabled:opacity-50"
           >
             {sending ? t('setup.submitting') : t('setup.submit')}
@@ -115,16 +115,16 @@ function Field({
   label,
   value,
   onChange,
-  dica,
-  problema,
+  hint,
+  invalid,
   ...resto
 }: {
   id: string
   label: string
   value: string
   onChange: (value: string) => void
-  dica?: string
-  problema?: boolean
+  hint?: string
+  invalid?: boolean
 } & Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'value' | 'id'>) {
   return (
     <label htmlFor={id} className="flex flex-col gap-1.5">
@@ -133,13 +133,11 @@ function Field({
         id={id}
         required
         value={value}
-        onChange={(evento) => onChange(evento.target.value)}
+        onChange={(event) => onChange(event.target.value)}
         className="rounded-md border border-line bg-surface-2 px-3 py-2 text-sm text-ink placeholder:text-muted"
         {...resto}
       />
-      {dica && (
-        <span className={problema ? 'text-xs text-crit' : 'text-xs text-muted'}>{dica}</span>
-      )}
+      {hint && <span className={invalid ? 'text-xs text-crit' : 'text-xs text-muted'}>{hint}</span>}
     </label>
   )
 }

@@ -19,7 +19,7 @@ const boolish = z
  * url" for anyone who had just downloaded the compose file and run
  * `docker compose up -d`.
  */
-const opcional = <T extends z.ZodTypeAny>(schema: T) =>
+const optional = <T extends z.ZodTypeAny>(schema: T) =>
   z.preprocess((v) => (typeof v === 'string' && v.trim() === '' ? undefined : v), schema.optional())
 
 const base64Key = (bytes: number) =>
@@ -42,7 +42,7 @@ const envSchema = z.object({
    * `sessions.owner_node_id` when this replica takes the lease on a session
    * (§4.4).
    */
-  NODE_ID: opcional(z.string().min(1)),
+  NODE_ID: optional(z.string().min(1)),
 
   DATABASE_URL: z.string().min(1),
   DATABASE_POOL_MAX: z.coerce.number().int().positive().default(10),
@@ -57,7 +57,7 @@ const envSchema = z.object({
    * API assumes `http://localhost:PORT` — right on a laptop, wrong behind any
    * proxy.
    */
-  PUBLIC_URL: opcional(z.string().url()).transform((value) => value?.replace(/\/+$/, '')),
+  PUBLIC_URL: optional(z.string().url()).transform((value) => value?.replace(/\/+$/, '')),
 
   /**
    * Whether the `X-Forwarded-*` headers can be trusted.
@@ -76,8 +76,8 @@ const envSchema = z.object({
       const text = value.trim()
       if (['1', 'true', 'yes', 'on'].includes(text.toLowerCase())) return true
       if (['', '0', 'false', 'no', 'off'].includes(text.toLowerCase())) return false
-      const saltos = Number(text)
-      return Number.isInteger(saltos) && saltos > 0 ? saltos : text
+      const hops = Number(text)
+      return Number.isInteger(hops) && hops > 0 ? hops : text
     }),
 
   /**
@@ -143,7 +143,7 @@ const envSchema = z.object({
    * Protects the /metrics endpoint. Without it, anyone who reaches the port
    * reads message volume, session count and operational health.
    */
-  METRICS_TOKEN: opcional(z.string().min(16)),
+  METRICS_TOKEN: optional(z.string().min(16)),
   /** How often the hourly aggregates get materialized. */
   AGGREGATOR_INTERVAL_MS: z.coerce.number().int().min(10_000).default(300_000),
   /** Hours recomputed on each pass, to absorb late ACKs and retries. */
@@ -163,7 +163,7 @@ const envSchema = z.object({
    * `../web/dist` and `apps/web/dist`, in that order, and starts without a
    * panel if it finds none — the API is useful on its own.
    */
-  DASHBOARD_DIR: opcional(z.string().min(1)),
+  DASHBOARD_DIR: optional(z.string().min(1)),
 })
 
 export type Env = z.infer<typeof envSchema> & { NODE_ID: string }
@@ -176,11 +176,16 @@ export type Env = z.infer<typeof envSchema> & { NODE_ID: string }
  * of whoever started up with them. In production the process refuses to be
  * born.
  */
-const SEGREDOS_DE_DESENVOLVIMENTO = new Set([
+/*
+ * These exact strings also live in `docker-compose.yml`, `.github/workflows/ci.yml`
+ * and `test/hardening.test.ts`. Nothing type-checks that coupling: change one
+ * side alone and the guard quietly stops covering the secret it was written for.
+ */
+const DEV_SECRETS = new Set([
   'YXdhaC1kZXYta2V5LW5vdC1mb3ItcHJvZHVjdGlvbiE=',
-  'awah-dev-cookie-secret-trocar-antes-de-ir-a-producao',
+  'awah-dev-cookie-secret-change-before-production',
   'YXdhaC1jaS1rZXktbm90LWZvci1wcm9kdWN0aW9uISE=',
-  'awah-ci-cookie-secret-nao-usar-em-producao',
+  'awah-ci-cookie-secret-do-not-use-in-production',
 ])
 
 /**
@@ -203,19 +208,19 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
   }
 
   if (env.NODE_ENV === 'production') {
-    const fracos = (
+    const weak = (
       [
         ['ENCRYPTION_KEY', env.ENCRYPTION_KEY],
         ['COOKIE_SECRET', env.COOKIE_SECRET],
       ] as const
     )
-      .filter(([, value]) => SEGREDOS_DE_DESENVOLVIMENTO.has(value))
+      .filter(([, value]) => DEV_SECRETS.has(value))
       .map(([name]) => name)
 
-    if (fracos.length > 0) {
+    if (weak.length > 0) {
       throw new Error(
         [
-          `These are the development secrets, published in this repository: ${fracos.join(', ')}.`,
+          `These are the development secrets, published in this repository: ${weak.join(', ')}.`,
           'Generate your own before exposing the instance:',
           '  ENCRYPTION_KEY: openssl rand -base64 32',
           '  COOKIE_SECRET:  openssl rand -base64 48',

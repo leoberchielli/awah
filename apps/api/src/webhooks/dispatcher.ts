@@ -67,7 +67,7 @@ export class WebhookDispatcher {
       if (pending.length === 0) return
       await Promise.allSettled(pending.map((delivery) => this.deliver(delivery)))
     } catch (error) {
-      this.deps.logger.error({ err: error }, 'falha no ciclo de webhooks')
+      this.deps.logger.error({ err: error }, 'webhook cycle failed')
     } finally {
       this.ticking = false
     }
@@ -114,8 +114,8 @@ export class WebhookDispatcher {
     })
     const timestamp = Math.floor(Date.now() / 1000)
 
-    const iniciadoEm = Date.now()
-    const elapsed = () => (Date.now() - iniciadoEm) / 1000
+    const startedAt = Date.now()
+    const elapsed = () => (Date.now() - startedAt) / 1000
 
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), this.deps.requestTimeoutMs)
@@ -150,14 +150,14 @@ export class WebhookDispatcher {
         response.status !== 408 &&
         response.status !== 429
 
-      const desfecho = await this.markFailed(
+      const outcome = await this.markFailed(
         delivery,
         `HTTP ${response.status}`,
         response.status,
         (await response.text().catch(() => '')).slice(0, 1000),
         permanent,
       )
-      this.deps.observeDelivery?.(desfecho, elapsed())
+      this.deps.observeDelivery?.(outcome, elapsed())
     } catch (error) {
       const message =
         error instanceof Error && error.name === 'AbortError'
@@ -166,8 +166,8 @@ export class WebhookDispatcher {
             ? error.message
             : String(error)
 
-      const desfecho = await this.markFailed(delivery, message, null, null, false)
-      this.deps.observeDelivery?.(desfecho, elapsed())
+      const outcome = await this.markFailed(delivery, message, null, null, false)
+      this.deps.observeDelivery?.(outcome, elapsed())
     } finally {
       clearTimeout(timeout)
     }

@@ -102,13 +102,13 @@ export async function apiKeyRoutes(app: FastifyInstance) {
           )
         }
 
-        const existentes = await new SessionRepository(app.db, auth.orgId).list(sessionScope)
-        const conhecidas = new Set(existentes.map((session) => session.id))
-        const ausentes = sessionScope.filter((id) => !conhecidas.has(id))
+        const existing = await new SessionRepository(app.db, auth.orgId).list(sessionScope)
+        const known = new Set(existing.map((session) => session.id))
+        const missing = sessionScope.filter((id) => !known.has(id))
 
-        if (ausentes.length > 0) {
+        if (missing.length > 0) {
           throw badRequest(
-            `Scope points to a session that does not exist in this organization: ${ausentes.join(', ')}.`,
+            `Scope points to a session that does not exist in this organization: ${missing.join(', ')}.`,
           )
         }
       }

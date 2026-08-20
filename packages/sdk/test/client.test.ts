@@ -12,13 +12,13 @@ interface Chamada {
  */
 function fakeFetch(respostas: Array<{ status: number; body?: unknown; headers?: HeadersInit }>) {
   const calls: Chamada[] = []
-  let indice = 0
+  let index = 0
 
   const impl = vi.fn(async (url: string | URL, init?: RequestInit) => {
     calls.push({ url: String(url), init: init ?? {} })
 
-    const programada = respostas[Math.min(indice, respostas.length - 1)]
-    indice++
+    const programada = respostas[Math.min(index, respostas.length - 1)]
+    index++
 
     const status = programada?.status ?? 200
     // O construtor de Response recusa corpo em 204, 205 e 304.
@@ -36,7 +36,7 @@ function fakeFetch(respostas: Array<{ status: number; body?: unknown; headers?: 
   return { impl: impl as unknown as typeof fetch, calls: calls }
 }
 
-function cliente(fetchImpl: typeof fetch, maxRetries = 2) {
+function client(fetchImpl: typeof fetch, maxRetries = 2) {
   return new Awah({
     baseUrl: 'https://awah.exemplo.com/',
     apiKey: 'awah_abc_segredo',
@@ -48,14 +48,14 @@ function cliente(fetchImpl: typeof fetch, maxRetries = 2) {
 describe('montagem da requisição', () => {
   it('descarta a barra final da baseUrl para não gerar barra dupla', async () => {
     const { impl, calls } = fakeFetch([{ status: 200, body: { sessions: [] } }])
-    await cliente(impl).sessions.list()
+    await client(impl).sessions.list()
 
     expect(calls[0]?.url).toBe('https://awah.exemplo.com/v1/sessions')
   })
 
   it('manda a chave como bearer', async () => {
     const { impl, calls } = fakeFetch([{ status: 200, body: { sessions: [] } }])
-    await cliente(impl).sessions.list()
+    await client(impl).sessions.list()
 
     const headers = calls[0]?.init.headers as Record<string, string>
     expect(headers.authorization).toBe('Bearer awah_abc_segredo')
@@ -63,7 +63,7 @@ describe('montagem da requisição', () => {
 
   it('omite parâmetro de query que não foi informado', async () => {
     const { impl, calls } = fakeFetch([{ status: 200, body: {} }])
-    await cliente(impl).kpi.delivery({ hours: 168 })
+    await client(impl).kpi.delivery({ hours: 168 })
 
     expect(calls[0]?.url).toContain('hours=168')
     expect(calls[0]?.url).not.toContain('sessionId')
@@ -77,7 +77,7 @@ describe('idempotência do envio', () => {
    */
   it('gera clientMessageId quando não vem um', async () => {
     const { impl, calls } = fakeFetch([{ status: 202, body: { id: 'x' } }])
-    await cliente(impl).messages.sendText('sessao', { chatId: '5511999999999', text: 'oi' })
+    await client(impl).messages.sendText('sessao', { chatId: '5511999999999', text: 'oi' })
 
     const body = JSON.parse(String(calls[0]?.init.body))
     expect(body.clientMessageId).toBeTruthy()
@@ -86,7 +86,7 @@ describe('idempotência do envio', () => {
 
   it('respeita o clientMessageId de quem chamou', async () => {
     const { impl, calls } = fakeFetch([{ status: 202, body: { id: 'x' } }])
-    await cliente(impl).messages.sendText('sessao', {
+    await client(impl).messages.sendText('sessao', {
       chatId: '5511999999999',
       text: 'oi',
       clientMessageId: 'pedido-4821',
@@ -97,7 +97,7 @@ describe('idempotência do envio', () => {
 
   it('a mesma chave em duas chamadas vai igual nas duas', async () => {
     const { impl, calls } = fakeFetch([{ status: 202, body: { duplicate: false } }])
-    const awah = cliente(impl)
+    const awah = client(impl)
 
     const envio = { chatId: '5511999999999', text: 'oi', clientMessageId: 'pedido-1' }
     await awah.messages.sendText('sessao', envio)
@@ -109,7 +109,7 @@ describe('idempotência do envio', () => {
 
   it('o override de risco vira cabeçalho, não campo do corpo', async () => {
     const { impl, calls } = fakeFetch([{ status: 202, body: {} }])
-    await cliente(impl).messages.sendText('sessao', {
+    await client(impl).messages.sendText('sessao', {
       chatId: '5511999999999',
       text: 'urgente',
       bypassRisk: true,
@@ -128,7 +128,7 @@ describe('política de retentativa', () => {
       { status: 200, body: { sessions: [{ id: 'a' }] } },
     ])
 
-    const result = await cliente(impl).sessions.list()
+    const result = await client(impl).sessions.list()
 
     expect(calls).toHaveLength(2)
     expect(result.sessions).toHaveLength(1)
@@ -143,7 +143,7 @@ describe('política de retentativa', () => {
       { status: 400, body: { error: { code: 'validation_failed', message: 'inválido' } } },
     ])
 
-    await expect(cliente(impl).sessions.list()).rejects.toThrow(/inválido/)
+    await expect(client(impl).sessions.list()).rejects.toThrow(/inválido/)
     expect(calls).toHaveLength(1)
   })
 
@@ -152,14 +152,14 @@ describe('política de retentativa', () => {
       { status: 401, body: { error: { code: 'unauthorized', message: 'chave inválida' } } },
     ])
 
-    await expect(cliente(impl).sessions.list()).rejects.toMatchObject({ isAuth: true })
+    await expect(client(impl).sessions.list()).rejects.toMatchObject({ isAuth: true })
     expect(calls).toHaveLength(1)
   })
 
   it('desiste depois do teto de tentativas', async () => {
     const { impl, calls } = fakeFetch([{ status: 500, body: {} }])
 
-    await expect(cliente(impl, 2).sessions.list()).rejects.toBeInstanceOf(AwahError)
+    await expect(client(impl, 2).sessions.list()).rejects.toBeInstanceOf(AwahError)
     expect(calls).toHaveLength(3)
   })
 
@@ -169,7 +169,7 @@ describe('política de retentativa', () => {
       { status: 200, body: { sessions: [] } },
     ])
 
-    await cliente(impl).sessions.list()
+    await client(impl).sessions.list()
     expect(calls).toHaveLength(2)
   })
 
@@ -181,7 +181,7 @@ describe('política de retentativa', () => {
       return new Response(JSON.stringify({ sessions: [] }), { status: 200 })
     })
 
-    await cliente(impl as unknown as typeof fetch).sessions.list()
+    await client(impl as unknown as typeof fetch).sessions.list()
     expect(attempts).toBe(2)
   })
 })
@@ -196,7 +196,7 @@ describe('erros', () => {
     ])
 
     try {
-      await cliente(impl).sessions.start('abc')
+      await client(impl).sessions.start('abc')
       expect.unreachable('deveria ter lançado')
     } catch (error) {
       expect(error).toBeInstanceOf(AwahError)
@@ -208,7 +208,7 @@ describe('erros', () => {
   it('sobrevive a resposta fora do envelope', async () => {
     const { impl } = fakeFetch([{ status: 502, body: 'gateway ruim' }])
 
-    await expect(cliente(impl, 0).sessions.list()).rejects.toMatchObject({
+    await expect(client(impl, 0).sessions.list()).rejects.toMatchObject({
       code: 'unknown',
       status: 502,
     })
@@ -216,7 +216,7 @@ describe('erros', () => {
 
   it('204 vira undefined, não erro de parse', async () => {
     const { impl } = fakeFetch([{ status: 204 }])
-    await expect(cliente(impl).sessions.delete('abc')).resolves.toBeUndefined()
+    await expect(client(impl).sessions.delete('abc')).resolves.toBeUndefined()
   })
 })
 

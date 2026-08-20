@@ -3,7 +3,7 @@ import { CloudApiAdapter } from '../src/engines/cloud-api/adapter'
 import type { CloudApiCredentials } from '../src/engines/cloud-api/credentials'
 import type { EngineEvent } from '../src/engines/types'
 
-const credenciais: CloudApiCredentials = {
+const credentials: CloudApiCredentials = {
   phoneNumberId: '123456789',
   accessToken: 'token-de-teste-bem-longo-aqui',
   verifyToken: 'verificacao',
@@ -11,7 +11,7 @@ const credenciais: CloudApiCredentials = {
   graphVersion: 'v21.0',
 }
 
-function resposta(body: unknown, ok = true, status = 200): Response {
+function response(body: unknown, ok = true, status = 200): Response {
   return {
     ok,
     status,
@@ -19,15 +19,15 @@ function resposta(body: unknown, ok = true, status = 200): Response {
   } as Response
 }
 
-function montar(fetchImpl: typeof fetch) {
-  const eventos: EngineEvent[] = []
+function makeAdapter(fetchImpl: typeof fetch) {
+  const events: EngineEvent[] = []
   const adapter = new CloudApiAdapter({
     sessionId: 'sessao-teste',
-    credentials: credenciais,
-    onEvent: (evento) => eventos.push(evento),
+    credentials: credentials,
+    onEvent: (event) => events.push(event),
     fetchImpl,
   })
-  return { adapter, eventos }
+  return { adapter, events: events }
 }
 
 describe('capacidades da engine oficial', () => {
@@ -36,7 +36,7 @@ describe('capacidades da engine oficial', () => {
    * exist so the difference shows up before the migration, not after.
    */
   it('declara o que não faz', () => {
-    const { adapter } = montar(vi.fn())
+    const { adapter } = makeAdapter(vi.fn())
 
     expect(adapter.capabilities.groups).toBe(false)
     expect(adapter.capabilities.qrPairing).toBe(false)
@@ -46,7 +46,7 @@ describe('capacidades da engine oficial', () => {
   })
 
   it('não tem QR nem código de pareamento', async () => {
-    const { adapter } = montar(vi.fn())
+    const { adapter } = makeAdapter(vi.fn())
 
     expect(adapter.currentQr()).toBeNull()
     await expect(adapter.requestPairingCode()).rejects.toThrow(/pairing/i)
@@ -55,7 +55,7 @@ describe('capacidades da engine oficial', () => {
   /** Presence does not exist in the Cloud API; ignoring it beats failing a send. */
   it('presença é silenciosamente ignorada', async () => {
     const calls = vi.fn()
-    const { adapter } = montar(calls)
+    const { adapter } = makeAdapter(calls)
 
     await expect(adapter.sendPresence()).resolves.toBeUndefined()
     expect(calls).not.toHaveBeenCalled()
@@ -64,14 +64,14 @@ describe('capacidades da engine oficial', () => {
 
 describe('conexão', () => {
   it('valida as credenciais e reporta o número', async () => {
-    const fetchImpl = vi.fn(async () => resposta({ display_phone_number: '+55 11 99999-9999' }))
-    const { adapter, eventos } = montar(fetchImpl as unknown as typeof fetch)
+    const fetchImpl = vi.fn(async () => response({ display_phone_number: '+55 11 99999-9999' }))
+    const { adapter, events } = makeAdapter(fetchImpl as unknown as typeof fetch)
 
     await adapter.connect()
 
     expect(adapter.isReady()).toBe(true)
-    expect(eventos).toContainEqual({ type: 'paired', phoneNumber: '5511999999999' })
-    expect(eventos).toContainEqual({ type: 'status', status: 'connected' })
+    expect(events).toContainEqual({ type: 'paired', phoneNumber: '5511999999999' })
+    expect(events).toContainEqual({ type: 'status', status: 'connected' })
   })
 
   /**
@@ -81,40 +81,40 @@ describe('conexão', () => {
    */
   it('recusa credencial inválida antes de qualquer envio', async () => {
     const fetchImpl = vi.fn(async () =>
-      resposta({ error: { message: 'Invalid OAuth access token' } }, false, 401),
+      response({ error: { message: 'Invalid OAuth access token' } }, false, 401),
     )
-    const { adapter, eventos } = montar(fetchImpl as unknown as typeof fetch)
+    const { adapter, events } = makeAdapter(fetchImpl as unknown as typeof fetch)
 
     await expect(adapter.connect()).rejects.toThrow(/rejected the credentials/i)
     expect(adapter.isReady()).toBe(false)
 
-    const closing = eventos.find((e) => e.type === 'closed')
+    const closing = events.find((e) => e.type === 'closed')
     expect(closing).toMatchObject({ shouldReconnect: false, loggedOut: true })
   })
 
   it('token expirado não fica reconectando em laço', async () => {
-    const fetchImpl = vi.fn(async () => resposta({ error: { message: 'expired' } }, false, 403))
-    const { adapter, eventos } = montar(fetchImpl as unknown as typeof fetch)
+    const fetchImpl = vi.fn(async () => response({ error: { message: 'expired' } }, false, 403))
+    const { adapter, events } = makeAdapter(fetchImpl as unknown as typeof fetch)
 
     await expect(adapter.connect()).rejects.toThrow()
-    const closing = eventos.find((e) => e.type === 'closed')
+    const closing = events.find((e) => e.type === 'closed')
     expect(closing).toMatchObject({ shouldReconnect: false })
   })
 })
 
 describe('envio', () => {
   it('recusa envio antes de conectar', async () => {
-    const { adapter } = montar(vi.fn())
+    const { adapter } = makeAdapter(vi.fn())
     await expect(adapter.sendText('5511999999999', 'oi')).rejects.toThrow(/not connected/i)
   })
 
   it('envia e devolve o id da Meta', async () => {
     const fetchImpl = vi.fn(async (_url: string, init?: RequestInit) => {
-      if (!init?.method) return resposta({ display_phone_number: '5511999999999' })
-      return resposta({ messages: [{ id: 'wamid.ABC123' }] })
+      if (!init?.method) return response({ display_phone_number: '5511999999999' })
+      return response({ messages: [{ id: 'wamid.ABC123' }] })
     })
 
-    const { adapter } = montar(fetchImpl as unknown as typeof fetch)
+    const { adapter } = makeAdapter(fetchImpl as unknown as typeof fetch)
     await adapter.connect()
 
     const result = await adapter.sendText('5511988887777@s.whatsapp.net', 'olá')
@@ -125,12 +125,12 @@ describe('envio', () => {
   it('converte JID para o formato da Meta', async () => {
     let sentBody: Record<string, unknown> = {}
     const fetchImpl = vi.fn(async (_url: string, init?: RequestInit) => {
-      if (!init?.method) return resposta({ display_phone_number: '551199999999' })
+      if (!init?.method) return response({ display_phone_number: '551199999999' })
       sentBody = JSON.parse(String(init.body))
-      return resposta({ messages: [{ id: 'wamid.X' }] })
+      return response({ messages: [{ id: 'wamid.X' }] })
     })
 
-    const { adapter } = montar(fetchImpl as unknown as typeof fetch)
+    const { adapter } = makeAdapter(fetchImpl as unknown as typeof fetch)
     await adapter.connect()
     await adapter.sendText('5511988887777@s.whatsapp.net', 'oi')
 
@@ -145,11 +145,11 @@ describe('envio', () => {
    */
   it('traduz a janela de 24 h encerrada', async () => {
     const fetchImpl = vi.fn(async (_url: string, init?: RequestInit) => {
-      if (!init?.method) return resposta({ display_phone_number: '551199999999' })
-      return resposta({ error: { code: 131047, message: 'Re-engagement message' } }, false, 400)
+      if (!init?.method) return response({ display_phone_number: '551199999999' })
+      return response({ error: { code: 131047, message: 'Re-engagement message' } }, false, 400)
     })
 
-    const { adapter } = montar(fetchImpl as unknown as typeof fetch)
+    const { adapter } = makeAdapter(fetchImpl as unknown as typeof fetch)
     await adapter.connect()
 
     await expect(adapter.sendText('5511988887777', 'oi')).rejects.toThrow(/24 h window/i)
@@ -157,15 +157,15 @@ describe('envio', () => {
 
   it('propaga a mensagem de erro da Meta', async () => {
     const fetchImpl = vi.fn(async (_url: string, init?: RequestInit) => {
-      if (!init?.method) return resposta({ display_phone_number: '551199999999' })
-      return resposta(
+      if (!init?.method) return response({ display_phone_number: '551199999999' })
+      return response(
         { error: { message: 'Recipient phone number not in allowed list' } },
         false,
         400,
       )
     })
 
-    const { adapter } = montar(fetchImpl as unknown as typeof fetch)
+    const { adapter } = makeAdapter(fetchImpl as unknown as typeof fetch)
     await adapter.connect()
 
     await expect(adapter.sendText('5511988887777', 'oi')).rejects.toThrow(/allowed list/i)
@@ -175,10 +175,10 @@ describe('envio', () => {
     const urls: string[] = []
     const fetchImpl = vi.fn(async (url: string) => {
       urls.push(url)
-      return resposta({ display_phone_number: '551199999999' })
+      return response({ display_phone_number: '551199999999' })
     })
 
-    const { adapter } = montar(fetchImpl as unknown as typeof fetch)
+    const { adapter } = makeAdapter(fetchImpl as unknown as typeof fetch)
     await adapter.connect()
 
     expect(urls[0]).toContain('/v21.0/123456789')

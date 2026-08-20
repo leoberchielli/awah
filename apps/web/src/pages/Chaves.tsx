@@ -9,14 +9,14 @@ import { dateTime, since } from '../lib/format'
 import { roleAtLeast, useMe } from '../lib/sessao'
 import { statusLabel } from '../lib/sessionStatus'
 
-const PAPEIS: Array<{ value: Role; label: TranslationKey; resumo: TranslationKey }> = [
-  { value: 'viewer', label: 'keys.role.viewer', resumo: 'keys.role.viewerSummary' },
-  { value: 'operator', label: 'keys.role.operator', resumo: 'keys.role.operatorSummary' },
-  { value: 'admin', label: 'keys.role.admin', resumo: 'keys.role.adminSummary' },
-  { value: 'owner', label: 'keys.role.owner', resumo: 'keys.role.ownerSummary' },
+const PAPEIS: Array<{ value: Role; label: TranslationKey; summary: TranslationKey }> = [
+  { value: 'viewer', label: 'keys.role.viewer', summary: 'keys.role.viewerSummary' },
+  { value: 'operator', label: 'keys.role.operator', summary: 'keys.role.operatorSummary' },
+  { value: 'admin', label: 'keys.role.admin', summary: 'keys.role.adminSummary' },
+  { value: 'owner', label: 'keys.role.owner', summary: 'keys.role.ownerSummary' },
 ]
 
-const VALIDADES: Array<{ value: string; key: TranslationKey; n?: number }> = [
+const EXPIRY_OPTIONS: Array<{ value: string; key: TranslationKey; n?: number }> = [
   { value: '', key: 'keys.expiry.never' },
   { value: '30', key: 'keys.expiry.days', n: 30 },
   { value: '90', key: 'keys.expiry.days', n: 90 },
@@ -44,10 +44,10 @@ export function Keys() {
   return (
     <Shell>
       <div className="flex flex-col gap-4">
-        <Emissor
+        <KeyIssuer
           sessions={sessions.data?.sessions ?? []}
           viewerRole={me.role}
-          aoEmitir={keys.refetch}
+          onIssue={keys.refetch}
         />
 
         <Card title={t('keys.list.title')} hint={t('keys.list.hint')}>
@@ -73,56 +73,56 @@ export function Keys() {
   )
 }
 
-function Emissor({
+function KeyIssuer({
   sessions,
   viewerRole,
-  aoEmitir,
+  onIssue,
 }: {
   sessions: SessionRow[]
   viewerRole: Role
-  aoEmitir: () => void
+  onIssue: () => void
 }) {
   const t = useT()
   const [name, setName] = useState('')
   const [role, setRole] = useState<Role>('operator')
   const [limitToSessions, setLimitToSessions] = useState(false)
-  const [escolhidas, setEscolhidas] = useState<string[]>([])
-  const [validade, setValidade] = useState('')
+  const [picked, setPicked] = useState<string[]>([])
+  const [expiry, setExpiry] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [emitida, setIssued] = useState<ApiKeyCreated | null>(null)
+  const [issued, setIssued] = useState<ApiKeyCreated | null>(null)
 
   /** Nobody issues a key more powerful than their own role — the server refuses. */
-  const disponiveis = PAPEIS.filter((p) => roleAtLeast(viewerRole, p.value))
-  const emptyScope = limitToSessions && escolhidas.length === 0
+  const available = PAPEIS.filter((p) => roleAtLeast(viewerRole, p.value))
+  const emptyScope = limitToSessions && picked.length === 0
 
-  function alternar(id: string) {
-    setEscolhidas((current) =>
+  function toggle(id: string) {
+    setPicked((current) =>
       current.includes(id) ? current.filter((x) => x !== id) : [...current, id],
     )
   }
 
-  async function emitir(evento: FormEvent) {
-    evento.preventDefault()
+  async function issue(event: FormEvent) {
+    event.preventDefault()
     setBusy(true)
     setError(null)
 
     try {
-      const resposta = await post<ApiKeyCreated>('/v1/keys', {
+      const response = await post<ApiKeyCreated>('/v1/keys', {
         name: name.trim(),
         role: role,
         // Left out on purpose when the key covers the whole organization: an
         // empty list would mean "reaches nothing", which is a different thing.
-        ...(limitToSessions ? { sessionScope: escolhidas } : {}),
-        ...(validade ? { expiresInDays: Number(validade) } : {}),
+        ...(limitToSessions ? { sessionScope: picked } : {}),
+        ...(expiry ? { expiresInDays: Number(expiry) } : {}),
       })
 
-      setIssued(resposta)
+      setIssued(response)
       setName('')
-      setEscolhidas([])
+      setPicked([])
       setLimitToSessions(false)
-      setValidade('')
-      aoEmitir()
+      setExpiry('')
+      onIssue()
     } catch (failure) {
       setError(failure instanceof ApiError ? failure.message : t('keys.failed'))
     } finally {
@@ -130,13 +130,13 @@ function Emissor({
     }
   }
 
-  if (emitida) {
-    return <TokenRecemNascido emitida={emitida} onClose={() => setIssued(null)} />
+  if (issued) {
+    return <IssuedToken issued={issued} onClose={() => setIssued(null)} />
   }
 
   return (
     <Card title={t('keys.issue.title')} hint={t('keys.issue.hint')}>
-      <form onSubmit={emitir} className="flex flex-col gap-3">
+      <form onSubmit={issue} className="flex flex-col gap-3">
         <label className="flex flex-col gap-1.5">
           <span className="eyebrow">{t('keys.field.name')}</span>
           <input
@@ -158,9 +158,9 @@ function Emissor({
             onChange={(e) => setRole(e.target.value as Role)}
             className="rounded-md border border-line bg-surface-2 px-3 py-2 text-sm text-ink"
           >
-            {disponiveis.map((p) => (
+            {available.map((p) => (
               <option key={p.value} value={p.value}>
-                {t(p.label)} — {t(p.resumo)}
+                {t(p.label)} — {t(p.summary)}
               </option>
             ))}
           </select>
@@ -208,8 +208,8 @@ function Emissor({
                   <label key={session.id} className="flex items-center gap-2 text-sm text-ink">
                     <input
                       type="checkbox"
-                      checked={escolhidas.includes(session.id)}
-                      onChange={() => alternar(session.id)}
+                      checked={picked.includes(session.id)}
+                      onChange={() => toggle(session.id)}
                     />
                     <span>{session.name}</span>
                     <span className="text-xs text-muted">{statusLabel(t, session.status)}</span>
@@ -223,11 +223,11 @@ function Emissor({
         <label className="flex flex-col gap-1.5">
           <span className="eyebrow">{t('keys.field.expiry')}</span>
           <select
-            value={validade}
-            onChange={(e) => setValidade(e.target.value)}
+            value={expiry}
+            onChange={(e) => setExpiry(e.target.value)}
             className="rounded-md border border-line bg-surface-2 px-3 py-2 text-sm text-ink"
           >
-            {VALIDADES.map((v) => (
+            {EXPIRY_OPTIONS.map((v) => (
               <option key={v.value} value={v.value}>
                 {t(v.key, v.n ? { n: v.n } : undefined)}
               </option>
@@ -267,19 +267,19 @@ function Emissor({
  * becoming a discreet notice in the corner — and why it does not disappear on
  * its own.
  */
-function TokenRecemNascido({ emitida, onClose }: { emitida: ApiKeyCreated; onClose: () => void }) {
+function IssuedToken({ issued, onClose }: { issued: ApiKeyCreated; onClose: () => void }) {
   const t = useT()
-  const [copia, setCopia] = useState<'parado' | 'copiado' | 'falhou'>('parado')
+  const [copyState, setCopyState] = useState<'parado' | 'copiado' | 'falhou'>('parado')
 
   return (
-    <Card title={t('keys.created.title', { name: emitida.key.name })}>
+    <Card title={t('keys.created.title', { name: issued.key.name })}>
       <div className="flex flex-col gap-3">
         <p className="rounded-md bg-warn/10 px-3 py-2 text-sm text-warn">
           {t('keys.created.warning')}
         </p>
 
         <code className="block overflow-x-auto rounded-md border border-line bg-surface-2 px-3 py-2 font-mono text-xs break-all text-ink">
-          {emitida.token}
+          {issued.token}
         </code>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -287,17 +287,17 @@ function TokenRecemNascido({ emitida, onClose }: { emitida: ApiKeyCreated; onClo
             type="button"
             onClick={async () => {
               try {
-                await navigator.clipboard.writeText(emitida.token)
-                setCopia('copiado')
+                await navigator.clipboard.writeText(issued.token)
+                setCopyState('copiado')
               } catch {
                 // The clipboard needs a secure context and permission; without
                 // it the text above stays selectable, which is the way out.
-                setCopia('falhou')
+                setCopyState('falhou')
               }
             }}
             className="rounded-md bg-accent px-3 py-2 text-sm font-medium text-on-fill transition-opacity hover:opacity-90"
           >
-            {copia === 'copiado' ? t('keys.created.copied') : t('keys.created.copy')}
+            {copyState === 'copiado' ? t('keys.created.copied') : t('keys.created.copy')}
           </button>
 
           <button
@@ -308,7 +308,7 @@ function TokenRecemNascido({ emitida, onClose }: { emitida: ApiKeyCreated; onClo
             {t('keys.created.done')}
           </button>
 
-          {copia === 'falhou' && (
+          {copyState === 'falhou' && (
             <span className="text-xs text-muted">{t('keys.created.copyFailed')}</span>
           )}
         </div>
@@ -334,16 +334,16 @@ function KeyRow({
   const [confirming, setConfirming] = useState(false)
   const [busy, setBusy] = useState(false)
 
-  const expirada = Boolean(apiKey.expiresAt && new Date(apiKey.expiresAt) < new Date())
-  const morta = Boolean(apiKey.revokedAt) || expirada
+  const expired = Boolean(apiKey.expiresAt && new Date(apiKey.expiresAt) < new Date())
+  const dead = Boolean(apiKey.revokedAt) || expired
 
-  const estado: { tone: Tone; key: TranslationKey } = apiKey.revokedAt
+  const state: { tone: Tone; key: TranslationKey } = apiKey.revokedAt
     ? { tone: 'hold', key: 'keys.state.revoked' }
-    : expirada
+    : expired
       ? { tone: 'warn', key: 'keys.state.expired' }
       : { tone: 'ok', key: 'keys.state.active' }
 
-  const alcance = apiKey.sessionScope
+  const scope = apiKey.sessionScope
     ? apiKey.sessionScope.map((id) => sessions.find((s) => s.id === id)?.name ?? id).join(', ')
     : t('keys.scope.whole')
 
@@ -352,13 +352,13 @@ function KeyRow({
       <span className="min-w-0 flex-1">
         <span
           className={
-            morta ? 'block text-sm text-muted line-through' : 'block text-sm font-medium text-ink'
+            dead ? 'block text-sm text-muted line-through' : 'block text-sm font-medium text-ink'
           }
         >
           {apiKey.name}
         </span>
         <span className="block truncate text-xs text-muted">
-          <code className="font-mono">{apiKey.prefix}</code> · {alcance} ·{' '}
+          <code className="font-mono">{apiKey.prefix}</code> · {scope} ·{' '}
           {apiKey.lastUsedAt
             ? t('keys.usedAgo', { when: since(apiKey.lastUsedAt) })
             : t('keys.neverUsed')}
@@ -368,7 +368,7 @@ function KeyRow({
         </span>
       </span>
 
-      <Pill tone={estado.tone}>{t(estado.key)}</Pill>
+      <Pill tone={state.tone}>{t(state.key)}</Pill>
 
       {!apiKey.revokedAt &&
         (confirming ? (

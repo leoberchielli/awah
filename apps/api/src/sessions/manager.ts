@@ -470,14 +470,14 @@ export class SessionManager {
     // The receiving node writes the intent, so it holds even if routing fails.
     await this.repo(orgId).setDesiredState(sessionId, 'stopped')
 
-    const resposta = await this.deps.commands.send({
+    const response = await this.deps.commands.send({
       sessionId,
       orgId,
       command: options?.logout ? 'logout' : 'stop',
     })
 
-    if (!resposta.ok) {
-      throw conflict(`Failed to forward the command to node ${owner}: ${resposta.error}`)
+    if (!response.ok) {
+      throw conflict(`Failed to forward the command to node ${owner}: ${response.error}`)
     }
   }
 
@@ -496,18 +496,18 @@ export class SessionManager {
       throw badRequest('Start the session before requesting a pairing code.')
     }
 
-    const resposta = await this.deps.commands.send({
+    const response = await this.deps.commands.send({
       sessionId,
       orgId,
       command: 'pairing-code',
       payload: { phoneNumber },
     })
 
-    if (!resposta.ok) {
-      throw conflict(`Failed to forward the command to node ${owner}: ${resposta.error}`)
+    if (!response.ok) {
+      throw conflict(`Failed to forward the command to node ${owner}: ${response.error}`)
     }
 
-    const code = (resposta.result as { code?: unknown } | undefined)?.code
+    const code = (response.result as { code?: unknown } | undefined)?.code
     if (typeof code !== 'string') {
       throw conflict('The owner node returned an unexpected response.')
     }

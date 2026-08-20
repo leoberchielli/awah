@@ -119,14 +119,14 @@ export interface SessionRow {
   runningHere: boolean
 }
 
-export interface Ponto {
+export interface Point {
   bucket: string
   value: number
 }
 
-export interface Serie {
+export interface Series {
   metric: string
-  points: Ponto[]
+  points: Point[]
 }
 
 export interface KpiSessions {
@@ -154,18 +154,18 @@ export interface KpiDelivery {
   latencyMs: { p50: number | null; p95: number | null; p99: number | null }
   queue: { queued: number; sending: number; dead: number }
   webhooks: { delivered: number; dead: number }
-  throughput: Serie[]
+  throughput: Series[]
 }
 
 export interface KpiRisk {
   decisions: { allowed: number; delayed: number; throttled: number; held: number }
   newContacts: number
-  scoreSeries: Serie[]
-  holdSeries: Serie[]
+  scoreSeries: Series[]
+  holdSeries: Series[]
 }
 
 export interface KpiBusiness {
-  volume: Serie[]
+  volume: Series[]
   activeChats: number
   responseRate: number
   firstResponseSeconds: { p50: number | null; p95: number | null }
@@ -237,12 +237,12 @@ export interface ChatwootInbox {
   usable: boolean
 }
 
-export interface DescobertaChatwoot {
+export interface ChatwootDiscovery {
   accounts: ChatwootAccount[]
   inboxes: ChatwootInbox[] | null
 }
 
-export interface TesteDoConector {
+export interface ConnectorTest {
   /** False when the response did not become a message — the diagnosis says why. */
   ok: boolean
   status: number

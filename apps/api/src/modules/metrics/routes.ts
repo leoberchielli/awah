@@ -44,8 +44,8 @@ export async function metricsRoutes(app: FastifyInstance) {
       const expected = app.env.METRICS_TOKEN
       if (expected) {
         const header = request.headers.authorization
-        const recebido = header?.startsWith('Bearer ') ? header.slice(7) : null
-        if (recebido !== expected) throw unauthorized('Invalid metrics token.')
+        const received = header?.startsWith('Bearer ') ? header.slice(7) : null
+        if (received !== expected) throw unauthorized('Invalid metrics token.')
       }
 
       await app.metrics.collect(app.db, app.sessions.activeSessionIds().length)
@@ -185,7 +185,7 @@ export async function metricsRoutes(app: FastifyInstance) {
       const since = cutoff(request.query.hours)
       const scope = request.query.sessionId ?? null
 
-      const totais = await repo.totals(
+      const totals = await repo.totals(
         [
           'messages.outbound',
           'status.delivered',
@@ -198,9 +198,9 @@ export async function metricsRoutes(app: FastifyInstance) {
         scope,
       )
 
-      const sent = totais['messages.outbound'] ?? 0
-      const delivered = totais['status.delivered'] ?? 0
-      const read = totais['status.read'] ?? 0
+      const sent = totals['messages.outbound'] ?? 0
+      const delivered = totals['status.delivered'] ?? 0
+      const read = totals['status.read'] ?? 0
 
       // Percentiles do not sum across sessions; the bucket average is the honest read.
       const percentis = await repo.totals(
@@ -208,14 +208,13 @@ export async function metricsRoutes(app: FastifyInstance) {
         since,
         scope,
       )
-      const baldes = await repo.series({
+      const buckets = await repo.series({
         metrics: ['latency.delivered.p95'],
         since,
         sessionId: scope,
       })
-      const quantidadeBaldes = baldes[0]?.points.length ?? 0
-      const mean = (value: number) =>
-        quantidadeBaldes > 0 ? Math.round(value / quantidadeBaldes) : null
+      const bucketCount = buckets[0]?.points.length ?? 0
+      const mean = (value: number) => (bucketCount > 0 ? Math.round(value / bucketCount) : null)
 
       const queue = await app.db.execute(sql`
         SELECT status, count(*)::int AS total FROM outbox_messages
@@ -233,7 +232,7 @@ export async function metricsRoutes(app: FastifyInstance) {
           sent,
           delivered,
           read,
-          failed: totais['status.failed'] ?? 0,
+          failed: totals['status.failed'] ?? 0,
           deliveryRate: sent > 0 ? Number((delivered / sent).toFixed(4)) : 0,
           readRate: sent > 0 ? Number((read / sent).toFixed(4)) : 0,
         },
@@ -248,8 +247,8 @@ export async function metricsRoutes(app: FastifyInstance) {
           dead: byStatus.dead ?? 0,
         },
         webhooks: {
-          delivered: totais['webhook.delivered'] ?? 0,
-          dead: totais['webhook.dead'] ?? 0,
+          delivered: totals['webhook.delivered'] ?? 0,
+          dead: totals['webhook.dead'] ?? 0,
         },
         throughput: await repo.series({
           metrics: ['messages.outbound', 'messages.inbound'],
@@ -289,7 +288,7 @@ export async function metricsRoutes(app: FastifyInstance) {
       const since = cutoff(request.query.hours)
       const scope = request.query.sessionId ?? null
 
-      const totais = await repo.totals(
+      const totals = await repo.totals(
         ['risk.allowed', 'risk.delayed', 'risk.throttled', 'risk.held', 'contacts.new'],
         since,
         scope,
@@ -297,12 +296,12 @@ export async function metricsRoutes(app: FastifyInstance) {
 
       return {
         decisions: {
-          allowed: totais['risk.allowed'] ?? 0,
-          delayed: totais['risk.delayed'] ?? 0,
-          throttled: totais['risk.throttled'] ?? 0,
-          held: totais['risk.held'] ?? 0,
+          allowed: totals['risk.allowed'] ?? 0,
+          delayed: totals['risk.delayed'] ?? 0,
+          throttled: totals['risk.throttled'] ?? 0,
+          held: totals['risk.held'] ?? 0,
         },
-        newContacts: totais['contacts.new'] ?? 0,
+        newContacts: totals['contacts.new'] ?? 0,
         scoreSeries: await repo.series({
           metrics: ['risk.score.avg'],
           since,
@@ -355,7 +354,7 @@ export async function metricsRoutes(app: FastifyInstance) {
       const hours = request.query.hours
       const since = cutoff(hours)
 
-      const resposta = await app.db.execute(sql`
+      const response = await app.db.execute(sql`
         WITH conversas AS (
           SELECT chat_id,
                  count(*) AS total,
@@ -391,7 +390,7 @@ export async function metricsRoutes(app: FastifyInstance) {
           (SELECT percentile_cont(0.95) WITHIN GROUP (ORDER BY segundos) FROM primeira_resposta) AS p95
       `)
 
-      const r = ([...resposta][0] ?? {}) as Record<string, unknown>
+      const r = ([...response][0] ?? {}) as Record<string, unknown>
       const withInput = Number(r.com_entrada ?? 0)
       const respondidas = Number(r.respondidas ?? 0)
 
@@ -403,7 +402,7 @@ export async function metricsRoutes(app: FastifyInstance) {
         GROUP BY chat_id ORDER BY total DESC LIMIT 10
       `)
 
-      const tipos = await app.db.execute(sql`
+      const types = await app.db.execute(sql`
         SELECT type, count(*)::int AS total
         FROM messages
         WHERE org_id = ${auth.orgId}::uuid
@@ -431,7 +430,7 @@ export async function metricsRoutes(app: FastifyInstance) {
             lastAt: new Date(String(t.ultima)),
           }
         }),
-        byType: [...tipos].map((row) => {
+        byType: [...types].map((row) => {
           const t = row as Record<string, unknown>
           return { type: String(t.type), count: Number(t.total) }
         }),

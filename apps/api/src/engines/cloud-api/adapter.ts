@@ -104,17 +104,17 @@ export class CloudApiAdapter implements EngineAdapter {
     const { ok, status, body } = await this.request(`${this.baseUrl}?fields=display_phone_number`)
 
     if (!ok) {
-      const detalhe = (body as GraphError)?.error?.message ?? `HTTP ${status}`
+      const detail = (body as GraphError)?.error?.message ?? `HTTP ${status}`
       this.ready = false
       this.deps.onEvent({
         type: 'closed',
         rawCode: status,
-        cause: `Credentials rejected by Meta: ${detalhe}`,
+        cause: `Credentials rejected by Meta: ${detail}`,
         shouldReconnect: false,
         // An invalid token needs reconfiguring, as a logout would need pairing.
         loggedOut: status === 401 || status === 403,
       })
-      throw badRequest(`Meta rejected the credentials: ${detalhe}`)
+      throw badRequest(`Meta rejected the credentials: ${detail}`)
     }
 
     this.ready = true
@@ -153,14 +153,14 @@ export class CloudApiAdapter implements EngineAdapter {
     }
 
     // Meta expects digits only, without the unofficial protocol's JID suffix.
-    const destino = chatId.replace(/@.*$/, '').replace(/\D/g, '')
+    const recipient = chatId.replace(/@.*$/, '').replace(/\D/g, '')
 
     const { ok, status, body } = await this.request(`${this.baseUrl}/messages`, {
       method: 'POST',
       body: JSON.stringify({
         messaging_product: 'whatsapp',
         recipient_type: 'individual',
-        to: destino,
+        to: recipient,
         type: 'text',
         text: { preview_url: false, body: text },
       }),

@@ -15,7 +15,7 @@ export type {
   OutboxMessage,
   OutboxStatus,
   RiskSnapshot,
-  Serie,
+  Series as Serie,
   Session,
   SessionEvent,
   SessionStatus,

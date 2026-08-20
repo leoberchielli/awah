@@ -36,8 +36,8 @@ export async function verifyWebhook(options: CheckDelivery): Promise<boolean> {
   const timestamp = Number(options.timestamp)
   if (!Number.isFinite(timestamp)) return false
 
-  const idadeSegundos = Math.abs(Math.floor(now() / 1000) - timestamp)
-  if (idadeSegundos > toleranceSeconds) return false
+  const ageSeconds = Math.abs(Math.floor(now() / 1000) - timestamp)
+  if (ageSeconds > toleranceSeconds) return false
 
   const expected = await signWebhook(payload, secret, timestamp)
   return constantTimeEqual(expected, signature)
@@ -79,12 +79,12 @@ export async function signWebhook(
 function constantTimeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false
 
-  let diferenca = 0
+  let diff = 0
   for (let i = 0; i < a.length; i++) {
-    diferenca |= a.charCodeAt(i) ^ b.charCodeAt(i)
+    diff |= a.charCodeAt(i) ^ b.charCodeAt(i)
   }
 
-  return diferenca === 0
+  return diff === 0
 }
 
 /**

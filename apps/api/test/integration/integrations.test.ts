@@ -25,16 +25,16 @@ describe.skipIf(!hasInfra)('integrações com ferramentas externas', () => {
   /** Records everything the connector tried to say to Chatwoot. */
   let calls: Array<{ url: string; method: string; body: unknown }>
 
-  function fetchDoChatwoot(): typeof fetch {
+  function chatwootFetch(): typeof fetch {
     return vi.fn(async (url: string | URL, init?: RequestInit) => {
-      const endereco = String(url)
+      const address = String(url)
       calls.push({
-        url: endereco,
+        url: address,
         method: init?.method ?? 'GET',
         body: init?.body ? JSON.parse(String(init.body)) : null,
       })
 
-      if (endereco.includes('/contacts/search')) {
+      if (address.includes('/contacts/search')) {
         return new Response(
           JSON.stringify({
             payload: [{ id: 42, contact_inboxes: [{ source_id: 'src-42', inbox: { id: 7 } }] }],
@@ -43,7 +43,7 @@ describe.skipIf(!hasInfra)('integrações com ferramentas externas', () => {
         )
       }
 
-      if (endereco.endsWith('/conversations')) {
+      if (address.endsWith('/conversations')) {
         return new Response(JSON.stringify({ id: 555 }), { status: 200 })
       }
 
@@ -51,7 +51,7 @@ describe.skipIf(!hasInfra)('integrações com ferramentas externas', () => {
     }) as unknown as typeof fetch
   }
 
-  function dispatcher(fetchImpl = fetchDoChatwoot()): IntegrationDispatcher {
+  function dispatcher(fetchImpl = chatwootFetch()): IntegrationDispatcher {
     return new IntegrationDispatcher({
       db: app.db,
       encryptionKey,
@@ -126,12 +126,12 @@ describe.skipIf(!hasInfra)('integrações com ferramentas externas', () => {
     it('abre a conversa uma vez e reaproveita nas seguintes', async () => {
       await receive('primeira mensagem')
 
-      const vinculo = await findLink(app.db, integrationId, CHAT_ID)
-      expect(vinculo?.externalConversationId).toBe('555')
-      expect(vinculo?.externalContactId).toBe('42')
+      const link = await findLink(app.db, integrationId, CHAT_ID)
+      expect(link?.externalConversationId).toBe('555')
+      expect(link?.externalContactId).toBe('42')
 
-      const criouConversa = calls.filter((c) => c.url.endsWith('/conversations')).length
-      expect(criouConversa).toBe(1)
+      const conversationsCreated = calls.filter((c) => c.url.endsWith('/conversations')).length
+      expect(conversationsCreated).toBe(1)
 
       calls = []
       await receive('segunda mensagem')
@@ -198,7 +198,7 @@ describe.skipIf(!hasInfra)('integrações com ferramentas externas', () => {
         payload: JSON.stringify(payload),
       })
 
-    const respostaDeAgente = (id: number, content = 'resposta do agente') => ({
+    const agentReply = (id: number, content = 'resposta do agente') => ({
       event: 'message_created',
       id,
       content,
@@ -215,33 +215,33 @@ describe.skipIf(!hasInfra)('integrações com ferramentas externas', () => {
     })
 
     it('recusa token errado', async () => {
-      const resposta = await app.inject({
+      const response = await app.inject({
         method: 'POST',
         url: `/webhooks/chatwoot/${integrationId}/${'x'.repeat(32)}`,
         headers: { 'content-type': 'application/json' },
-        payload: JSON.stringify(respostaDeAgente(1)),
+        payload: JSON.stringify(agentReply(1)),
       })
 
-      expect(resposta.statusCode).toBe(403)
+      expect(response.statusCode).toBe(403)
     })
 
     it('recusa evento de outra conta do Chatwoot', async () => {
-      const resposta = await webhook({ ...respostaDeAgente(2), account: { id: 99 } })
-      expect(resposta.statusCode).toBe(403)
+      const response = await webhook({ ...agentReply(2), account: { id: 99 } })
+      expect(response.statusCode).toBe(403)
     })
 
     it('enfileira a resposta do agente', async () => {
       const before = (await queue()).length
-      expect((await webhook(respostaDeAgente(1001))).statusCode).toBe(200)
+      expect((await webhook(agentReply(1001))).statusCode).toBe(200)
 
-      const depois = await wait(async () => {
+      const after = await wait(async () => {
         const rows = await queue()
         return rows.length > before ? rows : null
       })
 
-      const nova = depois?.find((l) => l.clientMessageId === 'chatwoot:1001')
-      expect(nova?.chatId).toBe(CHAT_ID)
-      expect((nova?.payload as { text?: string })?.text).toBe('resposta do agente')
+      const newRow = after?.find((l) => l.clientMessageId === 'chatwoot:1001')
+      expect(newRow?.chatId).toBe(CHAT_ID)
+      expect((newRow?.payload as { text?: string })?.text).toBe('resposta do agente')
     })
 
     /**
@@ -250,16 +250,16 @@ describe.skipIf(!hasInfra)('integrações com ferramentas externas', () => {
      * twice.
      */
     it('reentrega do mesmo evento não duplica a mensagem', async () => {
-      await webhook(respostaDeAgente(2002))
-      await webhook(respostaDeAgente(2002))
-      await webhook(respostaDeAgente(2002))
+      await webhook(agentReply(2002))
+      await webhook(agentReply(2002))
+      await webhook(agentReply(2002))
 
-      const iguais = await wait(async () => {
+      const duplicates = await wait(async () => {
         const rows = (await queue()).filter((l) => l.clientMessageId === 'chatwoot:2002')
         return rows.length > 0 ? rows : null
       })
 
-      expect(iguais).toHaveLength(1)
+      expect(duplicates).toHaveLength(1)
     })
 
     /**
@@ -270,11 +270,11 @@ describe.skipIf(!hasInfra)('integrações com ferramentas externas', () => {
       const before = (await queue()).length
 
       await webhook({
-        ...respostaDeAgente(3003),
+        ...agentReply(3003),
         message_type: 'incoming',
         source_id: 'wamid.QUEVEIODOWHATSAPP',
       })
-      await webhook({ ...respostaDeAgente(3004), source_id: 'wamid.OUTRA' })
+      await webhook({ ...agentReply(3004), source_id: 'wamid.OUTRA' })
 
       await new Promise((r) => setTimeout(r, 400))
       expect((await queue()).length).toBe(before)
@@ -282,7 +282,7 @@ describe.skipIf(!hasInfra)('integrações com ferramentas externas', () => {
 
     it('não manda nota interna para o cliente', async () => {
       const before = (await queue()).length
-      await webhook({ ...respostaDeAgente(4004), private: true })
+      await webhook({ ...agentReply(4004), private: true })
 
       await new Promise((r) => setTimeout(r, 400))
       expect((await queue()).length).toBe(before)
@@ -290,7 +290,7 @@ describe.skipIf(!hasInfra)('integrações com ferramentas externas', () => {
 
     it('ignora evento que não é criação de mensagem', async () => {
       const before = (await queue()).length
-      await webhook({ ...respostaDeAgente(5005), event: 'conversation_status_changed' })
+      await webhook({ ...agentReply(5005), event: 'conversation_status_changed' })
 
       await new Promise((r) => setTimeout(r, 400))
       expect((await queue()).length).toBe(before)
@@ -298,7 +298,7 @@ describe.skipIf(!hasInfra)('integrações com ferramentas externas', () => {
 
     it('ignora resposta vazia', async () => {
       const before = (await queue()).length
-      await webhook(respostaDeAgente(6006, '   '))
+      await webhook(agentReply(6006, '   '))
 
       await new Promise((r) => setTimeout(r, 400))
       expect((await queue()).length).toBe(before)
@@ -307,31 +307,31 @@ describe.skipIf(!hasInfra)('integrações com ferramentas externas', () => {
 
   describe('isolamento entre organizações', () => {
     it('não lista integração de outra org', async () => {
-      const outra = await seedOrg(app.db)
+      const other = await seedOrg(app.db)
 
       try {
-        const resposta = await app.inject({
+        const response = await app.inject({
           method: 'GET',
           url: '/v1/integrations',
-          headers: { authorization: `Bearer ${outra.token}` },
+          headers: { authorization: `Bearer ${other.token}` },
         })
 
-        expect(resposta.statusCode).toBe(200)
-        expect(resposta.json().integrations).toHaveLength(0)
+        expect(response.statusCode).toBe(200)
+        expect(response.json().integrations).toHaveLength(0)
       } finally {
-        await outra.cleanup()
+        await other.cleanup()
       }
     })
 
     it('não devolve as credenciais em leitura', async () => {
-      const resposta = await app.inject({
+      const response = await app.inject({
         method: 'GET',
         url: '/v1/integrations',
         headers: { authorization: `Bearer ${org.token}` },
       })
 
-      expect(resposta.body).not.toContain('token-de-acesso-do-agente')
-      expect(resposta.body).not.toContain(TOKEN)
+      expect(response.body).not.toContain('token-de-acesso-do-agente')
+      expect(response.body).not.toContain(TOKEN)
     })
   })
 
@@ -365,9 +365,9 @@ describe.skipIf(!hasInfra)('integrações com ferramentas externas', () => {
   })
 })
 
-async function wait<T>(consulta: () => Promise<T | null>, attempts = 40): Promise<T | null> {
+async function wait<T>(query: () => Promise<T | null>, attempts = 40): Promise<T | null> {
   for (let i = 0; i < attempts; i++) {
-    const result = await consulta()
+    const result = await query()
     if (result) return result
     await new Promise((resolve) => setTimeout(resolve, 50))
   }

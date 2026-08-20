@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
 import { ChatwootClient, ChatwootError } from '../src/integrations/chatwoot/client'
 import { chatwootConfigSchema, typebotConfigSchema } from '../src/integrations/config'
-import { derivarDoLink, TypebotClient, TypebotError } from '../src/integrations/typebot/client'
+import { deriveFromLink, TypebotClient, TypebotError } from '../src/integrations/typebot/client'
 
-function resposta(body: unknown, status = 200): Response {
+function response(body: unknown, status = 200): Response {
   const withoutBody = status === 204 || status === 304
   return new Response(withoutBody ? null : JSON.stringify(body), {
     status,
@@ -45,7 +45,7 @@ describe('cliente do Chatwoot', () => {
     const calls: Array<{ url: string; init?: RequestInit }> = []
     const fetchImpl = vi.fn(async (url: string | URL, init?: RequestInit) => {
       calls.push({ url: String(url), init })
-      return resposta({ name: 'WhatsApp', channel_type: 'Channel::Api' })
+      return response({ name: 'WhatsApp', channel_type: 'Channel::Api' })
     })
 
     await new ChatwootClient(CHATWOOT, { fetch: fetchImpl as unknown as typeof fetch }).verify()
@@ -57,7 +57,7 @@ describe('cliente do Chatwoot', () => {
 
   it('reporta o tipo da caixa, para a rota recusar o que não é API', async () => {
     const fetchImpl = vi.fn(async () =>
-      resposta({ name: 'Site', channel_type: 'Channel::WebWidget' }),
+      response({ name: 'Site', channel_type: 'Channel::WebWidget' }),
     )
     const info = await new ChatwootClient(CHATWOOT, {
       fetch: fetchImpl as unknown as typeof fetch,
@@ -74,7 +74,7 @@ describe('cliente do Chatwoot', () => {
    */
   it('escolhe o source_id da caixa configurada', async () => {
     const fetchImpl = vi.fn(async () =>
-      resposta({
+      response({
         payload: [
           {
             id: 42,
@@ -101,16 +101,16 @@ describe('cliente do Chatwoot', () => {
       // Search: finds a contact, but only in the wrong inbox.
       if (!init?.method || init.method === 'GET') {
         if (call === 1) {
-          return resposta({
+          return response({
             payload: [{ id: 9, contact_inboxes: [{ source_id: 'outro', inbox: { id: 3 } }] }],
           })
         }
-        return resposta({
+        return response({
           payload: [{ id: 9, contact_inboxes: [{ source_id: 'novo', inbox: { id: 7 } }] }],
         })
       }
       // Creating one returns the right link.
-      return resposta({
+      return response({
         payload: { contact: { id: 9, contact_inboxes: [{ source_id: 'novo', inbox: { id: 7 } }] } },
       })
     })
@@ -126,10 +126,10 @@ describe('cliente do Chatwoot', () => {
   it('sobrevive a contato criado por outro processo no meio do caminho', async () => {
     let search = 0
     const fetchImpl = vi.fn(async (_url: string | URL, init?: RequestInit) => {
-      if (init?.method === 'POST') return resposta({ message: 'já existe' }, 422)
+      if (init?.method === 'POST') return response({ message: 'já existe' }, 422)
       search++
-      if (search === 1) return resposta({ payload: [] })
-      return resposta({
+      if (search === 1) return response({ payload: [] })
+      return response({
         payload: [{ id: 5, contact_inboxes: [{ source_id: 'tarde', inbox: { id: 7 } }] }],
       })
     })
@@ -145,7 +145,7 @@ describe('cliente do Chatwoot', () => {
     let body: Record<string, unknown> = {}
     const fetchImpl = vi.fn(async (_url: string | URL, init?: RequestInit) => {
       body = JSON.parse(String(init?.body))
-      return resposta({ id: 900 })
+      return response({ id: 900 })
     })
 
     await new ChatwootClient(CHATWOOT, {
@@ -172,7 +172,7 @@ describe('cliente do Chatwoot', () => {
 describe('cliente do Typebot', () => {
   it('achata o richText em texto corrido', async () => {
     const fetchImpl = vi.fn(async () =>
-      resposta({
+      response({
         sessionId: 'sess-1',
         input: { type: 'text input' },
         messages: [
@@ -189,57 +189,57 @@ describe('cliente do Typebot', () => {
       }),
     )
 
-    const turno = await new TypebotClient(TYPEBOT, {
+    const turn = await new TypebotClient(TYPEBOT, {
       fetch: fetchImpl as unknown as typeof fetch,
-    }).iniciar('oi')
+    }).start('oi')
 
-    expect(turno.texts).toEqual(['Olá! Tudo bem?\nComo posso ajudar?'])
-    expect(turno.sessionId).toBe('sess-1')
-    expect(turno.awaitingReply).toBe(true)
+    expect(turn.texts).toEqual(['Olá! Tudo bem?\nComo posso ajudar?'])
+    expect(turn.sessionId).toBe('sess-1')
+    expect(turn.awaitingReply).toBe(true)
   })
 
   /** With no `input`, the flow is over — and the next message starts from scratch. */
   it('reconhece fluxo encerrado', async () => {
     const fetchImpl = vi.fn(async () =>
-      resposta({
+      response({
         sessionId: 'sess-2',
         messages: [{ type: 'text', content: { richText: [{ children: [{ text: 'Tchau!' }] }] } }],
       }),
     )
 
-    const turno = await new TypebotClient(TYPEBOT, {
+    const turn = await new TypebotClient(TYPEBOT, {
       fetch: fetchImpl as unknown as typeof fetch,
-    }).iniciar()
+    }).start()
 
-    expect(turno.awaitingReply).toBe(false)
+    expect(turn.awaitingReply).toBe(false)
   })
 
   it('mídia vira a URL, em vez de sumir', async () => {
     const fetchImpl = vi.fn(async () =>
-      resposta({
+      response({
         sessionId: 's',
         input: {},
         messages: [{ type: 'image', content: { url: 'https://exemplo.com/foto.png' } }],
       }),
     )
 
-    const turno = await new TypebotClient(TYPEBOT, {
+    const turn = await new TypebotClient(TYPEBOT, {
       fetch: fetchImpl as unknown as typeof fetch,
-    }).iniciar()
+    }).start()
 
-    expect(turno.texts).toEqual(['https://exemplo.com/foto.png'])
+    expect(turn.texts).toEqual(['https://exemplo.com/foto.png'])
   })
 
   it('descarta mensagem sem conteúdo aproveitável', async () => {
     const fetchImpl = vi.fn(async () =>
-      resposta({ sessionId: 's', input: {}, messages: [{ type: 'embed', content: {} }] }),
+      response({ sessionId: 's', input: {}, messages: [{ type: 'embed', content: {} }] }),
     )
 
-    const turno = await new TypebotClient(TYPEBOT, {
+    const turn = await new TypebotClient(TYPEBOT, {
       fetch: fetchImpl as unknown as typeof fetch,
-    }).iniciar()
+    }).start()
 
-    expect(turno.texts).toEqual([])
+    expect(turn.texts).toEqual([])
   })
 
   /**
@@ -255,37 +255,37 @@ describe('cliente do Typebot', () => {
     const withoutToken: Array<Record<string, string>> = []
     const fetchImpl = vi.fn(async (_url: string | URL, init?: RequestInit) => {
       withoutToken.push(init?.headers as Record<string, string>)
-      return resposta({ sessionId: 's', messages: [] })
+      return response({ sessionId: 's', messages: [] })
     })
 
-    await new TypebotClient(TYPEBOT, { fetch: fetchImpl as unknown as typeof fetch }).iniciar()
+    await new TypebotClient(TYPEBOT, { fetch: fetchImpl as unknown as typeof fetch }).start()
     expect(withoutToken[0]?.authorization).toBeUndefined()
 
     await new TypebotClient(
       { ...TYPEBOT, apiToken: 'token-do-typebot' },
       { fetch: fetchImpl as unknown as typeof fetch },
-    ).iniciar()
+    ).start()
     expect(withoutToken[1]?.authorization).toBe('Bearer token-do-typebot')
   })
 })
 
 describe('link de compartilhamento do Typebot', () => {
   it('deriva endereço e id do fluxo', () => {
-    expect(derivarDoLink('https://typebot.io/meu-fluxo')).toEqual({
+    expect(deriveFromLink('https://typebot.io/meu-fluxo')).toEqual({
       baseUrl: 'https://typebot.io',
       typebotId: 'meu-fluxo',
     })
   })
 
   it('funciona com instância própria', () => {
-    expect(derivarDoLink('https://bot.minhaempresa.com.br/atendimento')).toEqual({
+    expect(deriveFromLink('https://bot.minhaempresa.com.br/atendimento')).toEqual({
       baseUrl: 'https://bot.minhaempresa.com.br',
       typebotId: 'atendimento',
     })
   })
 
   it('tolera espaço e barra sobrando', () => {
-    expect(derivarDoLink('  https://typebot.io/meu-fluxo  ').typebotId).toBe('meu-fluxo')
+    expect(deriveFromLink('  https://typebot.io/meu-fluxo  ').typebotId).toBe('meu-fluxo')
   })
 
   /**
@@ -294,17 +294,17 @@ describe('link de compartilhamento do Typebot', () => {
    * only fails later, on the first message from a real customer.
    */
   it('recusa a URL do editor, explicando onde está a certa', () => {
-    expect(() => derivarDoLink('https://app.typebot.io/typebots/abc123/edit')).toThrow(
+    expect(() => deriveFromLink('https://app.typebot.io/typebots/abc123/edit')).toThrow(
       /editor link/i,
     )
   })
 
   it('recusa endereço sem fluxo', () => {
-    expect(() => derivarDoLink('https://typebot.io')).toThrow(/flow id/i)
+    expect(() => deriveFromLink('https://typebot.io')).toThrow(/flow id/i)
   })
 
   it('recusa o que não é URL', () => {
-    expect(() => derivarDoLink('meu-fluxo')).toThrow(/URL/i)
+    expect(() => deriveFromLink('meu-fluxo')).toThrow(/URL/i)
   })
 })
 
@@ -318,7 +318,7 @@ describe('descoberta no Chatwoot', () => {
     const urls: string[] = []
     const fetchImpl = vi.fn(async (url: string | URL) => {
       urls.push(String(url))
-      return resposta({
+      return response({
         accounts: [
           { id: 1, name: 'Minha Empresa', role: 'administrator' },
           { id: 2, name: 'Cliente X', role: 'agent' },
@@ -339,7 +339,7 @@ describe('descoberta no Chatwoot', () => {
   })
 
   it('descarta conta sem id em vez de estourar', async () => {
-    const fetchImpl = vi.fn(async () => resposta({ accounts: [{ name: 'sem id' }, { id: 3 }] }))
+    const fetchImpl = vi.fn(async () => response({ accounts: [{ name: 'sem id' }, { id: 3 }] }))
 
     const accounts = await new ChatwootClient(CHATWOOT, {
       fetch: fetchImpl as unknown as typeof fetch,
@@ -350,7 +350,7 @@ describe('descoberta no Chatwoot', () => {
 
   it('lista as caixas com o tipo, para o painel marcar as que não servem', async () => {
     const fetchImpl = vi.fn(async () =>
-      resposta({
+      response({
         payload: [
           { id: 7, name: 'WhatsApp', channel_type: 'Channel::Api' },
           { id: 8, name: 'Site', channel_type: 'Channel::WebWidget' },
@@ -376,7 +376,7 @@ describe('descoberta no Chatwoot', () => {
     let body: Record<string, unknown> = {}
     const fetchImpl = vi.fn(async (_url: string | URL, init?: RequestInit) => {
       body = JSON.parse(String(init?.body))
-      return resposta({ id: 12, name: 'WhatsApp (AWAH)' })
+      return response({ id: 12, name: 'WhatsApp (AWAH)' })
     })
 
     const created = await new ChatwootClient(CHATWOOT, {
@@ -398,19 +398,19 @@ describe('descoberta no Chatwoot', () => {
         method: init?.method,
         body: init?.body ? JSON.parse(String(init.body)) : null,
       })
-      return resposta({ id: 7 })
+      return response({ id: 7 })
     })
 
     await new ChatwootClient(CHATWOOT, {
       fetch: fetchImpl as unknown as typeof fetch,
-    }).apontarWebhook(7, 'https://gateway/webhooks/chatwoot/abc/token')
+    }).setInboxWebhook(7, 'https://gateway/webhooks/chatwoot/abc/token')
 
     expect(calls[0]?.method).toBe('PATCH')
     expect(calls[0]?.url).toContain('/accounts/1/inboxes/7')
   })
 
   it('propaga 403 para a rota poder falar de permissão', async () => {
-    const fetchImpl = vi.fn(async () => resposta({ message: 'sem permissão' }, 403))
+    const fetchImpl = vi.fn(async () => response({ message: 'sem permissão' }, 403))
 
     await expect(
       new ChatwootClient(CHATWOOT, { fetch: fetchImpl as unknown as typeof fetch }).createInboxFor(

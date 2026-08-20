@@ -46,18 +46,18 @@ export async function metaRoutes(app: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const credenciais = await loadCloudApiCredentials(
+      const credentials = await loadCloudApiCredentials(
         app.db,
         request.params.sessionId,
         encryptionKey,
       ).catch(() => null)
 
-      if (!credenciais) throw notFound('Session not found or without credentials.')
+      if (!credentials) throw notFound('Session not found or without credentials.')
 
       const query = request.query
       if (
         query['hub.mode'] !== 'subscribe' ||
-        query['hub.verify_token'] !== credenciais.verifyToken
+        query['hub.verify_token'] !== credentials.verifyToken
       ) {
         throw forbidden('Invalid verification token.')
       }
@@ -95,10 +95,10 @@ export async function metaRoutes(app: FastifyInstance) {
 
       if (!session) throw notFound('Session not found.')
 
-      const credenciais = await loadCloudApiCredentials(app.db, sessionId, encryptionKey).catch(
+      const credentials = await loadCloudApiCredentials(app.db, sessionId, encryptionKey).catch(
         () => null,
       )
-      if (!credenciais) throw notFound('Session without configured credentials.')
+      if (!credentials) throw notFound('Session without configured credentials.')
 
       /**
        * The **raw** body, not the reserialized one.
@@ -113,12 +113,12 @@ export async function metaRoutes(app: FastifyInstance) {
         throw forbidden('Raw body unavailable to check the signature.')
       }
 
-      if (!verifySignature(body, credenciais.appSecret, request.headers['x-hub-signature-256'])) {
+      if (!verifySignature(body, credentials.appSecret, request.headers['x-hub-signature-256'])) {
         throw forbidden('Invalid event signature.')
       }
 
       // Answer first, process after. Our error must not become a Meta redelivery.
-      void processarEvento(app, session.orgId, sessionId, request.body).catch((error) => {
+      void processEvent(app, session.orgId, sessionId, request.body).catch((error) => {
         app.log.error({ err: error, sessionId }, 'failed to process Meta event')
       })
 
@@ -132,12 +132,12 @@ function verifySignature(
   appSecret: string,
   signature: string | string[] | undefined,
 ): boolean {
-  const recebida = Array.isArray(signature) ? signature[0] : signature
-  if (!recebida) return false
+  const received = Array.isArray(signature) ? signature[0] : signature
+  if (!received) return false
 
   const expected = `sha256=${createHmac('sha256', appSecret).update(body).digest('hex')}`
   const a = Buffer.from(expected)
-  const b = Buffer.from(recebida)
+  const b = Buffer.from(received)
 
   if (a.length !== b.length) return false
   return timingSafeEqual(a, b)
@@ -175,7 +175,7 @@ const STATUS_META: Record<string, number> = {
   read: 4,
 }
 
-async function processarEvento(
+async function processEvent(
   app: FastifyInstance,
   orgId: string,
   sessionId: string,
@@ -191,7 +191,7 @@ async function processarEvento(
       for (const message of value.messages ?? []) {
         if (!message.id || !message.from) continue
 
-        const conteudo =
+        const content =
           message.text?.body ??
           message.image?.caption ??
           message.video?.caption ??
@@ -204,8 +204,8 @@ async function processarEvento(
           chatId: message.from,
           engineMessageId: message.id,
           direction: 'inbound',
-          type: traduzirTipo(message.type),
-          body: conteudo,
+          type: translateType(message.type),
+          body: content,
           fromJid: message.from,
           status: 'delivered',
           occurredAt: message.timestamp ? new Date(Number(message.timestamp) * 1000) : new Date(),
@@ -222,8 +222,8 @@ async function processarEvento(
             messageId: message.id,
             chatId: message.from,
             from: message.from,
-            type: traduzirTipo(message.type),
-            body: conteudo,
+            type: translateType(message.type),
+            body: content,
             timestamp: new Date().toISOString(),
           },
         })
@@ -235,7 +235,7 @@ async function processarEvento(
         const mapped = mapStatus(STATUS_META[status.status])
         if (!mapped) continue
 
-        const avancou = await recordStatus(app.db, {
+        const advanced = await recordStatus(app.db, {
           orgId,
           sessionId,
           engineMessageId: status.id,
@@ -243,7 +243,7 @@ async function processarEvento(
           occurredAt: status.timestamp ? new Date(Number(status.timestamp) * 1000) : new Date(),
         })
 
-        if (!avancou) continue
+        if (!advanced) continue
 
         await emitWebhook(app.db, {
           orgId,
@@ -262,8 +262,8 @@ async function processarEvento(
   }
 }
 
-function traduzirTipo(tipo: string | undefined) {
-  switch (tipo) {
+function translateType(type: string | undefined) {
+  switch (type) {
     case 'text':
       return 'text' as const
     case 'image':

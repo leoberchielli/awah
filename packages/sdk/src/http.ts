@@ -15,7 +15,7 @@ export interface AwahOptions {
   headers?: Record<string, string>
 }
 
-interface Pedido {
+interface RequestOptions {
   method: string
   path: string
   body?: unknown
@@ -52,23 +52,23 @@ export class HttpClient {
     this.headersExtras = options.headers ?? {}
 
     if (typeof this.fetchImpl !== 'function') {
-      throw new Error('fetch indisponível neste runtime; passe um em options.fetch')
+      throw new Error('fetch is unavailable in this runtime; pass one in options.fetch')
     }
   }
 
-  async request<T>(pedido: Pedido): Promise<T> {
-    const url = this.montarUrl(pedido.path, pedido.query)
-    const canRetry = pedido.idempotente ?? ['GET', 'HEAD', 'DELETE'].includes(pedido.method)
+  async request<T>(options: RequestOptions): Promise<T> {
+    const url = this.buildUrl(options.path, options.query)
+    const canRetry = options.idempotente ?? ['GET', 'HEAD', 'DELETE'].includes(options.method)
 
     let lastError: unknown
 
     for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
       try {
-        const resposta = await this.send(url, pedido)
+        const response = await this.send(url, options)
 
-        if (resposta.ok) return await this.readBody<T>(resposta)
+        if (response.ok) return await this.readBody<T>(response)
 
-        const error = await this.buildError(resposta)
+        const error = await this.buildError(response)
 
         /**
          * Repeating a 4xx that is not 408 or 429 is waste: the server rejected
@@ -76,7 +76,7 @@ export class HttpClient {
          */
         if (!error.isRetryable || !canRetry || attempt === this.maxRetries) throw error
 
-        await dormir(this.waitUntil(attempt, resposta.headers.get('retry-after')))
+        await sleep(this.waitUntil(attempt, response.headers.get('retry-after')))
         lastError = error
       } catch (failure) {
         if (failure instanceof AwahError) {
@@ -85,21 +85,21 @@ export class HttpClient {
           continue
         }
 
-        const conexao = new AwahConnectionError(
-          failure instanceof Error ? failure.message : 'falha de rede',
+        const connectionError = new AwahConnectionError(
+          failure instanceof Error ? failure.message : 'network failure',
           failure,
         )
-        if (!canRetry || attempt === this.maxRetries) throw conexao
+        if (!canRetry || attempt === this.maxRetries) throw connectionError
 
-        lastError = conexao
-        await dormir(this.waitUntil(attempt, null))
+        lastError = connectionError
+        await sleep(this.waitUntil(attempt, null))
       }
     }
 
     throw lastError
   }
 
-  private montarUrl(path: string, query?: Pedido['query']): string {
+  private buildUrl(path: string, query?: RequestOptions['query']): string {
     const url = new URL(`${this.baseUrl}${path}`)
 
     for (const [key, value] of Object.entries(query ?? {})) {
@@ -109,32 +109,32 @@ export class HttpClient {
     return url.toString()
   }
 
-  private async send(url: string, pedido: Pedido): Promise<Response> {
+  private async send(url: string, options: RequestOptions): Promise<Response> {
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), this.timeoutMs)
 
     try {
       return await this.fetchImpl(url, {
-        method: pedido.method,
+        method: options.method,
         signal: controller.signal,
         headers: {
           authorization: `Bearer ${this.apiKey}`,
           accept: 'application/json',
-          ...(pedido.body === undefined ? {} : { 'content-type': 'application/json' }),
+          ...(options.body === undefined ? {} : { 'content-type': 'application/json' }),
           ...this.headersExtras,
-          ...pedido.headers,
+          ...options.headers,
         },
-        body: pedido.body === undefined ? undefined : JSON.stringify(pedido.body),
+        body: options.body === undefined ? undefined : JSON.stringify(options.body),
       })
     } finally {
       clearTimeout(timer)
     }
   }
 
-  private async readBody<T>(resposta: Response): Promise<T> {
-    if (resposta.status === 204) return undefined as T
+  private async readBody<T>(response: Response): Promise<T> {
+    if (response.status === 204) return undefined as T
 
-    const text = await resposta.text()
+    const text = await response.text()
     if (!text) return undefined as T
 
     try {
@@ -144,8 +144,8 @@ export class HttpClient {
     }
   }
 
-  private async buildError(resposta: Response): Promise<AwahError> {
-    const body = await resposta
+  private async buildError(response: Response): Promise<AwahError> {
+    const body = await response
       .text()
       .then((text) => (text ? JSON.parse(text) : null))
       .catch(() => null)
@@ -154,9 +154,9 @@ export class HttpClient {
       ?.error
 
     return new AwahError(
-      resposta.status,
+      response.status,
       envelope?.code ?? 'unknown',
-      envelope?.message ?? `A API respondeu ${resposta.status}.`,
+      envelope?.message ?? `A API respondeu ${response.status}.`,
       envelope?.details,
       body,
     )
@@ -170,15 +170,15 @@ export class HttpClient {
    */
   private waitUntil(attempt: number, retryAfter: string | null): number {
     if (retryAfter) {
-      const segundos = Number(retryAfter)
-      if (Number.isFinite(segundos) && segundos >= 0) return Math.min(segundos * 1000, 60_000)
+      const seconds = Number(retryAfter)
+      if (Number.isFinite(seconds) && seconds >= 0) return Math.min(seconds * 1000, 60_000)
     }
 
-    const teto = Math.min(RETRY_BASE_MS * 2 ** attempt, RETRY_CAP_MS)
-    return teto / 2 + Math.random() * (teto / 2)
+    const cap = Math.min(RETRY_BASE_MS * 2 ** attempt, RETRY_CAP_MS)
+    return cap / 2 + Math.random() * (cap / 2)
   }
 }
 
-function dormir(ms: number): Promise<void> {
+function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }

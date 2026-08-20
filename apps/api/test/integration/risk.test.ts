@@ -17,8 +17,8 @@ describe.skipIf(!hasInfra)('motor de risco', () => {
   let sessionId: string
 
   /** Controlled clock: a sliding window without waiting real minutes. */
-  let agora = new Date('2026-08-18T12:00:00Z').getTime()
-  const now = () => agora
+  let nowMs = new Date('2026-08-18T12:00:00Z').getTime()
+  const now = () => nowMs
 
   let budget: BudgetTracker
 
@@ -39,7 +39,7 @@ describe.skipIf(!hasInfra)('motor de risco', () => {
   })
 
   beforeEach(async () => {
-    agora = new Date('2026-08-18T12:00:00Z').getTime()
+    nowMs = new Date('2026-08-18T12:00:00Z').getTime()
     await budget.reset(sessionId)
   })
 
@@ -48,10 +48,10 @@ describe.skipIf(!hasInfra)('motor de risco', () => {
       await budget.record(sessionId, 'a@s.whatsapp.net', false)
       await budget.record(sessionId, 'b@s.whatsapp.net', false)
 
-      const uso = await budget.usage(sessionId)
-      expect(uso.minute).toBe(2)
-      expect(uso.hour).toBe(2)
-      expect(uso.day).toBe(2)
+      const usage = await budget.usage(sessionId)
+      expect(usage.minute).toBe(2)
+      expect(usage.hour).toBe(2)
+      expect(usage.day).toBe(2)
     })
 
     /**
@@ -62,21 +62,21 @@ describe.skipIf(!hasInfra)('motor de risco', () => {
     it('esquece o que saiu da janela conforme o tempo passa', async () => {
       await budget.record(sessionId, 'a@s.whatsapp.net', false)
 
-      agora += 61_000
-      const uso = await budget.usage(sessionId)
+      nowMs += 61_000
+      const usage = await budget.usage(sessionId)
 
-      expect(uso.minute).toBe(0)
-      expect(uso.hour).toBe(1)
-      expect(uso.day).toBe(1)
+      expect(usage.minute).toBe(0)
+      expect(usage.hour).toBe(1)
+      expect(usage.day).toBe(1)
     })
 
     it('conta contatos novos separadamente', async () => {
       await budget.record(sessionId, 'novo@s.whatsapp.net', true)
       await budget.record(sessionId, 'conhecido@s.whatsapp.net', false)
 
-      const uso = await budget.usage(sessionId)
-      expect(uso.day).toBe(2)
-      expect(uso.newContactsToday).toBe(1)
+      const usage = await budget.usage(sessionId)
+      expect(usage.day).toBe(2)
+      expect(usage.newContactsToday).toBe(1)
     })
   })
 
@@ -106,12 +106,12 @@ describe.skipIf(!hasInfra)('motor de risco', () => {
     it('calcula a ETA a partir do envio mais antigo da janela', async () => {
       const limits = { ...DEFAULT_LIMITS, perMinute: 2 }
       await budget.record(sessionId, 'a@s.whatsapp.net', false)
-      agora += 20_000
+      nowMs += 20_000
       await budget.record(sessionId, 'b@s.whatsapp.net', false)
 
       const verdict = await budget.check(sessionId, limits, false)
       // The first landed 20 s ago: the slot opens 40 s from now.
-      const expected = agora + 40_000
+      const expected = nowMs + 40_000
       expect(verdict.availableAt?.getTime()).toBe(expected)
     })
 
@@ -164,15 +164,15 @@ describe.skipIf(!hasInfra)('motor de risco', () => {
   describe('decisão do motor', () => {
     it('libera envio normal com jitter', async () => {
       const engine = new RiskEngine({ db, budget, now })
-      const decisao = await engine.evaluate({
+      const decision = await engine.evaluate({
         sessionId,
         chatId: 'alguem@s.whatsapp.net',
         textLength: 20,
       })
 
-      expect(['delayed', 'throttled']).toContain(decisao.action)
-      expect(decisao.delayMs).toBeGreaterThan(0)
-      expect(decisao.typingMs).toBeGreaterThan(0)
+      expect(['delayed', 'throttled']).toContain(decision.action)
+      expect(decision.delayMs).toBeGreaterThan(0)
+      expect(decision.typingMs).toBeGreaterThan(0)
     })
 
     /** Never dropped: held with a time on it, and the reason comes back in words. */
@@ -185,49 +185,49 @@ describe.skipIf(!hasInfra)('motor de risco', () => {
       await budget.record(sessionId, 'ja@s.whatsapp.net', false)
 
       const engine = new RiskEngine({ db, budget, now })
-      const decisao = await engine.evaluate({
+      const decision = await engine.evaluate({
         sessionId,
         chatId: 'outro@s.whatsapp.net',
         textLength: 10,
       })
 
-      expect(decisao.action).toBe('held')
-      expect(decisao.availableAt).not.toBeNull()
-      expect(decisao.reason).toMatch(/per minute/i)
+      expect(decision.action).toBe('held')
+      expect(decision.availableAt).not.toBeNull()
+      expect(decision.reason).toMatch(/per minute/i)
     })
 
     it('o override explícito passa por cima do teto', async () => {
       await budget.record(sessionId, 'ja@s.whatsapp.net', false)
 
       const engine = new RiskEngine({ db, budget, now })
-      const decisao = await engine.evaluate({
+      const decision = await engine.evaluate({
         sessionId,
         chatId: 'urgente@s.whatsapp.net',
         textLength: 10,
         bypass: true,
       })
 
-      expect(decisao.action).toBe('allowed')
-      expect(decisao.delayMs).toBe(0)
-      expect(decisao.reason).toMatch(/override/i)
+      expect(decision.action).toBe('allowed')
+      expect(decision.delayMs).toBe(0)
+      expect(decision.reason).toMatch(/override/i)
     })
 
     it('desligado, libera tudo na hora', async () => {
       const engine = new RiskEngine({ db, budget, now, enabled: false })
-      const decisao = await engine.evaluate({
+      const decision = await engine.evaluate({
         sessionId,
         chatId: 'qualquer@s.whatsapp.net',
         textLength: 10,
       })
 
-      expect(decisao.action).toBe('allowed')
-      expect(decisao.delayMs).toBe(0)
+      expect(decision.action).toBe('allowed')
+      expect(decision.delayMs).toBe(0)
     })
 
     it('o retrato traz score, uso e limites já com warmup', async () => {
       await db
         .update(schema.sessions)
-        .set({ config: {}, pairedAt: new Date(agora - 24 * 60 * 60 * 1000) })
+        .set({ config: {}, pairedAt: new Date(nowMs - 24 * 60 * 60 * 1000) })
         .where(eq(schema.sessions.id, sessionId))
 
       const engine = new RiskEngine({ db, budget, now })

@@ -1,7 +1,7 @@
 import { type FormEvent, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { LanguagePicker } from '../components/LanguagePicker'
-import { Marca } from '../components/Shell'
+import { Brand } from '../components/Shell'
 import { useQuery } from '../hooks/useQuery'
 import { useT } from '../i18n'
 import type { Bootstrap } from '../lib/api'
@@ -26,8 +26,8 @@ export function SignIn() {
   const [error, setError] = useState<string | null>(null)
   const [sending, setSending] = useState(false)
 
-  async function send(evento: FormEvent) {
-    evento.preventDefault()
+  async function send(event: FormEvent) {
+    event.preventDefault()
     setSending(true)
     setError(null)
 
@@ -50,7 +50,7 @@ export function SignIn() {
           {/* The picker comes before the form: whoever cannot read the detected
               language has to change it here, not after managing to sign in. */}
           <div className="flex items-start justify-between gap-3">
-            <Marca />
+            <Brand />
             <LanguagePicker />
           </div>
           <p className="text-sm text-muted">{t('app.tagline')}</p>
@@ -114,7 +114,7 @@ function Field({
         id={id}
         required
         value={value}
-        onChange={(evento) => onChange(evento.target.value)}
+        onChange={(event) => onChange(event.target.value)}
         className="rounded-md border border-line bg-surface-2 px-3 py-2 text-sm text-ink placeholder:text-muted"
         {...resto}
       />

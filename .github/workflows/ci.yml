@@ -43,7 +43,7 @@ jobs:
       DATABASE_URL: postgres://awah:awah@localhost:5432/awah
       REDIS_URL: redis://localhost:6379
       ENCRYPTION_KEY: YXdhaC1jaS1rZXktbm90LWZvci1wcm9kdWN0aW9uISE=
-      COOKIE_SECRET: awah-ci-cookie-secret-nao-usar-em-producao
+      COOKIE_SECRET: awah-ci-cookie-secret-do-not-use-in-production
 
     steps:
       - uses: actions/checkout@v4

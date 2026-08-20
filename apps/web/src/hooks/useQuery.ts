@@ -28,21 +28,21 @@ export function useQuery<T>(path: string | null, intervalMs = 0): QueryState<T> 
   // Only the response from the most recent request may write to state.
   const generation = useRef(0)
 
-  const executar = useCallback(async () => {
+  const run = useCallback(async () => {
     if (!path) return
-    const minha = ++generation.current
+    const mine = ++generation.current
 
     setLoading(true)
     try {
-      const resposta = await get<T>(path)
-      if (minha !== generation.current) return
-      setData(resposta)
+      const response = await get<T>(path)
+      if (mine !== generation.current) return
+      setData(response)
       setError(null)
     } catch (failure) {
-      if (minha !== generation.current) return
+      if (mine !== generation.current) return
       setError(failure as Error)
     } finally {
-      if (minha === generation.current) {
+      if (mine === generation.current) {
         setLoading(false)
         setSettled(true)
       }
@@ -50,17 +50,17 @@ export function useQuery<T>(path: string | null, intervalMs = 0): QueryState<T> 
   }, [path])
 
   useEffect(() => {
-    void executar()
+    void run()
     if (!intervalMs) return
 
     const timer = setInterval(() => {
       // A hidden tab generates no traffic: the browser freezes the timer
       // anyway, and waking up to a burst of requests only gets in the way.
-      if (document.visibilityState === 'visible') void executar()
+      if (document.visibilityState === 'visible') void run()
     }, intervalMs)
 
     return () => clearInterval(timer)
-  }, [executar, intervalMs])
+  }, [run, intervalMs])
 
-  return { data, error, loading, settled, refetch: executar }
+  return { data, error, loading, settled, refetch: run }
 }

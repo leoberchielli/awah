@@ -54,14 +54,14 @@ export class BudgetTracker {
   }
 
   async usage(sessionId: string): Promise<BudgetUsage> {
-    const agora = this.now()
+    const nowMs = this.now()
     const sent = this.sentKey(sessionId)
 
     const [minute, hour, day, newContactsToday] = await Promise.all([
-      this.redis.zcount(sent, agora - MINUTE, '+inf'),
-      this.redis.zcount(sent, agora - HOUR, '+inf'),
-      this.redis.zcount(sent, agora - DAY, '+inf'),
-      this.redis.zcount(this.newContactsKey(sessionId), agora - DAY, '+inf'),
+      this.redis.zcount(sent, nowMs - MINUTE, '+inf'),
+      this.redis.zcount(sent, nowMs - HOUR, '+inf'),
+      this.redis.zcount(sent, nowMs - DAY, '+inf'),
+      this.redis.zcount(this.newContactsKey(sessionId), nowMs - DAY, '+inf'),
     ])
 
     return { minute, hour, day, newContactsToday }
@@ -121,12 +121,12 @@ export class BudgetTracker {
    * honest ETA on the dashboard instead of "try again later".
    */
   private async windowOpensAt(key: string, windowMs: number): Promise<Date> {
-    const agora = this.now()
+    const nowMs = this.now()
 
     // The oldest entry still inside the window; when it leaves, a slot opens.
     const oldest = await this.redis.zrangebyscore(
       key,
-      agora - windowMs,
+      nowMs - windowMs,
       '+inf',
       'WITHSCORES',
       'LIMIT',
@@ -135,28 +135,28 @@ export class BudgetTracker {
     )
 
     const score = oldest[1]
-    if (!score) return new Date(agora + 1000)
+    if (!score) return new Date(nowMs + 1000)
 
-    const expira = Number(score) + windowMs
+    const expiresAt = Number(score) + windowMs
     // A short floor avoids a tight re-evaluation loop when a slot is imminent.
-    return new Date(Math.max(expira, agora + 250))
+    return new Date(Math.max(expiresAt, nowMs + 250))
   }
 
   /** Records the send in the windows. Called after successful delivery. */
   async record(sessionId: string, chatId: string, isNewContact: boolean): Promise<void> {
-    const agora = this.now()
+    const nowMs = this.now()
     const sent = this.sentKey(sessionId)
     const pipeline = this.redis.pipeline()
 
-    pipeline.zadd(sent, agora, `${agora}:${chatId}`)
+    pipeline.zadd(sent, nowMs, `${nowMs}:${chatId}`)
     // Prunes what left the largest window, so the ZSET cannot grow forever.
-    pipeline.zremrangebyscore(sent, '-inf', agora - DAY)
+    pipeline.zremrangebyscore(sent, '-inf', nowMs - DAY)
     pipeline.expire(sent, KEY_TTL_SECONDS)
 
     if (isNewContact) {
       const fresh = this.newContactsKey(sessionId)
-      pipeline.zadd(fresh, agora, chatId)
-      pipeline.zremrangebyscore(fresh, '-inf', agora - DAY)
+      pipeline.zadd(fresh, nowMs, chatId)
+      pipeline.zremrangebyscore(fresh, '-inf', nowMs - DAY)
       pipeline.expire(fresh, KEY_TTL_SECONDS)
     }
 

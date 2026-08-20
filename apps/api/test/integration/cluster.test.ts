@@ -8,13 +8,13 @@ import type { ManagerLogger } from '../../src/sessions/manager'
 
 const hasInfra = Boolean(process.env.REDIS_URL)
 
-const silencioso: ManagerLogger = {
+const silent: ManagerLogger = {
   info: () => {},
   warn: () => {},
   error: () => {},
 }
 
-const espera = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 describe.skipIf(!hasInfra)('cluster', () => {
   let redis: Redis
@@ -42,12 +42,9 @@ describe.skipIf(!hasInfra)('cluster', () => {
       const nodeA = new SessionLease(redis, 'awah-1')
       const nodeB = new SessionLease(redis, 'awah-2')
 
-      const [ganhouA, ganhouB] = await Promise.all([
-        nodeA.acquire(sessionId),
-        nodeB.acquire(sessionId),
-      ])
+      const [wonA, wonB] = await Promise.all([nodeA.acquire(sessionId), nodeB.acquire(sessionId)])
 
-      expect([ganhouA, ganhouB].filter(Boolean)).toHaveLength(1)
+      expect([wonA, wonB].filter(Boolean)).toHaveLength(1)
       await nodeA.release(sessionId)
       await nodeB.release(sessionId)
     })
@@ -102,17 +99,17 @@ describe.skipIf(!hasInfra)('cluster', () => {
 
     /** This is what makes failover possible with no coordinator and no election. */
     it('a posse expira sozinha quando ninguém renova', async () => {
-      const efemero = new SessionLease(redis, 'awah-morto', { ttlMs: 3000 })
-      await efemero.acquire(sessionId)
-      expect(await efemero.owner(sessionId)).toBe('awah-morto')
+      const ephemeral = new SessionLease(redis, 'awah-morto', { ttlMs: 3000 })
+      await ephemeral.acquire(sessionId)
+      expect(await ephemeral.owner(sessionId)).toBe('awah-morto')
 
-      await espera(3200)
+      await sleep(3200)
 
-      expect(await efemero.owner(sessionId)).toBeNull()
+      expect(await ephemeral.owner(sessionId)).toBeNull()
       // And another node can take over.
-      const sobrevivente = new SessionLease(redis, 'awah-2')
-      expect(await sobrevivente.acquire(sessionId)).toBe(true)
-      await sobrevivente.release(sessionId)
+      const survivor = new SessionLease(redis, 'awah-2')
+      expect(await survivor.acquire(sessionId)).toBe(true)
+      await survivor.release(sessionId)
     })
 
     it('consulta a posse de várias sessões de uma vez', async () => {
@@ -155,14 +152,14 @@ describe.skipIf(!hasInfra)('cluster', () => {
   describe('roteamento de comandos', () => {
     let publisher: Redis
     let ownerSubscriber: Redis
-    let subscriberEmissor: Redis
+    let senderSubscriber: Redis
     let owner: CommandBus
-    let emissor: CommandBus
+    let sender: CommandBus
 
     beforeAll(async () => {
       publisher = redis.duplicate()
       ownerSubscriber = redis.duplicate()
-      subscriberEmissor = redis.duplicate()
+      senderSubscriber = redis.duplicate()
 
       /**
        * ioredis connects lazily. In production the connections come up at boot,
@@ -170,30 +167,30 @@ describe.skipIf(!hasInfra)('cluster', () => {
        * before the test, and without this warm-up the first exchange races the
        * handshake.
        */
-      await Promise.all([publisher.ping(), ownerSubscriber.ping(), subscriberEmissor.ping()])
+      await Promise.all([publisher.ping(), ownerSubscriber.ping(), senderSubscriber.ping()])
 
       owner = new CommandBus({
         publisher,
         subscriber: ownerSubscriber,
         nodeId: 'awah-dono',
-        logger: silencioso,
+        logger: silent,
       })
-      emissor = new CommandBus({
+      sender = new CommandBus({
         publisher,
-        subscriber: subscriberEmissor,
+        subscriber: senderSubscriber,
         nodeId: 'awah-emissor',
-        logger: silencioso,
+        logger: silent,
         timeoutMs: 2000,
       })
     })
 
     afterAll(async () => {
       await owner?.close()
-      await emissor?.close()
+      await sender?.close()
       await Promise.allSettled([
         publisher?.quit(),
         ownerSubscriber?.quit(),
-        subscriberEmissor?.quit(),
+        senderSubscriber?.quit(),
       ])
     })
 
@@ -203,35 +200,35 @@ describe.skipIf(!hasInfra)('cluster', () => {
      */
     it('entrega o comando ao dono e devolve o resultado', async () => {
       await owner.claim(sessionId, async (request) => ({
-        executado: request.command,
+        executed: request.command,
         to: request.sessionId,
       }))
 
-      const resposta = await emissor.send({
+      const response = await sender.send({
         sessionId,
         orgId: randomUUID(),
         command: 'stop',
       })
 
-      expect(resposta.ok).toBe(true)
-      expect(resposta.result).toEqual({ executado: 'stop', to: sessionId })
+      expect(response.ok).toBe(true)
+      expect(response.result).toEqual({ executed: 'stop', to: sessionId })
 
       await owner.unclaim(sessionId)
     })
 
     it('leva o payload junto', async () => {
       await owner.claim(sessionId, async (request) => ({
-        recebido: request.payload?.phoneNumber,
+        received: request.payload?.phoneNumber,
       }))
 
-      const resposta = await emissor.send({
+      const response = await sender.send({
         sessionId,
         orgId: randomUUID(),
         command: 'pairing-code',
         payload: { phoneNumber: '5511999999999' },
       })
 
-      expect(resposta.result).toEqual({ recebido: '5511999999999' })
+      expect(response.result).toEqual({ received: '5511999999999' })
       await owner.unclaim(sessionId)
     })
 
@@ -240,32 +237,32 @@ describe.skipIf(!hasInfra)('cluster', () => {
         throw new Error('sessão já estava parada')
       })
 
-      const resposta = await emissor.send({ sessionId, orgId: randomUUID(), command: 'stop' })
+      const response = await sender.send({ sessionId, orgId: randomUUID(), command: 'stop' })
 
-      expect(resposta.ok).toBe(false)
-      expect(resposta.error).toContain('já estava parada')
+      expect(response.ok).toBe(false)
+      expect(response.error).toContain('já estava parada')
 
       await owner.unclaim(sessionId)
     })
 
     /** A dead node must not leave the caller waiting forever. */
     it('devolve erro de timeout quando ninguém atende', async () => {
-      const resposta = await emissor.send({
+      const response = await sender.send({
         sessionId: randomUUID(),
         orgId: randomUUID(),
         command: 'stop',
       })
 
-      expect(resposta.ok).toBe(false)
-      expect(resposta.error).toMatch(/did not respond/i)
+      expect(response.ok).toBe(false)
+      expect(response.error).toMatch(/did not respond/i)
     })
 
     it('para de atender depois de soltar a sessão', async () => {
       await owner.claim(sessionId, async () => ({ ok: true }))
       await owner.unclaim(sessionId)
 
-      const resposta = await emissor.send({ sessionId, orgId: randomUUID(), command: 'stop' })
-      expect(resposta.ok).toBe(false)
+      const response = await sender.send({ sessionId, orgId: randomUUID(), command: 'stop' })
+      expect(response.ok).toBe(false)
     })
   })
 })

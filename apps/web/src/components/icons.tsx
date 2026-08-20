@@ -19,13 +19,13 @@ const base = {
 
 type Props = SVGProps<SVGSVGElement>
 
-export const IconePulso = (p: Props) => (
+export const PulseIcon = (p: Props) => (
   <svg {...base} {...p} aria-hidden>
     <path d="M3 12h4l2.5-7 4 14 2.5-7H21" />
   </svg>
 )
 
-export const IconeNegocio = (p: Props) => (
+export const BusinessIcon = (p: Props) => (
   <svg {...base} {...p} aria-hidden>
     <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />
   </svg>
@@ -38,20 +38,20 @@ export const SessionIcon = (p: Props) => (
   </svg>
 )
 
-export const IconeSol = (p: Props) => (
+export const SunIcon = (p: Props) => (
   <svg {...base} {...p} aria-hidden>
     <circle cx="12" cy="12" r="4" />
     <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
   </svg>
 )
 
-export const IconeLua = (p: Props) => (
+export const MoonIcon = (p: Props) => (
   <svg {...base} {...p} aria-hidden>
     <path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z" />
   </svg>
 )
 
-export const IconeMonitor = (p: Props) => (
+export const MonitorIcon = (p: Props) => (
   <svg {...base} {...p} aria-hidden>
     <rect x="2.5" y="4" width="19" height="13" rx="2" />
     <path d="M8 21h8M12 17v4" />
@@ -78,7 +78,7 @@ export const KeyIcon = (p: Props) => (
   </svg>
 )
 
-export const IconePessoas = (p: Props) => (
+export const PeopleIcon = (p: Props) => (
   <svg {...base} {...p} aria-hidden>
     <circle cx="9" cy="8" r="3.5" />
     <path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 5.2a3.5 3.5 0 0 1 0 5.6M18 14.3a6.5 6.5 0 0 1 3.5 5.7" />

@@ -23,7 +23,7 @@ x-api-env: &api-env
   DATABASE_URL: postgres://awah:awah@postgres:5432/awah
   REDIS_URL: redis://redis:6379
   ENCRYPTION_KEY: ${ENCRYPTION_KEY:-YXdhaC1kZXYta2V5LW5vdC1mb3ItcHJvZHVjdGlvbiE=}
-  COOKIE_SECRET: ${COOKIE_SECRET:-awah-dev-cookie-secret-trocar-antes-de-ir-a-producao}
+  COOKIE_SECRET: ${COOKIE_SECRET:-awah-dev-cookie-secret-change-before-production}
   ALLOW_OPEN_REGISTRATION: ${ALLOW_OPEN_REGISTRATION:-true}
   # Vazios em desenvolvimento; obrigatórios quando a instância vira alcançável.
   PUBLIC_URL: ${PUBLIC_URL:-}

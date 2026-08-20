@@ -1,5 +1,5 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
-import { Marca } from './components/Shell'
+import { Brand } from './components/Shell'
 import { useQuery } from './hooks/useQuery'
 import { useT } from './i18n'
 import type { Bootstrap, Me } from './lib/api'
@@ -7,7 +7,7 @@ import { SessionProvider } from './lib/sessao'
 import { Keys } from './pages/Chaves'
 import { SignIn } from './pages/Entrar'
 import { Integrations } from './pages/Integracoes'
-import { Negocio } from './pages/Negocio'
+import { Business } from './pages/Negocio'
 import { Operations } from './pages/Operacao'
 import { FirstRun } from './pages/PrimeiroAcesso'
 import { Sessions } from './pages/Sessoes'
@@ -24,7 +24,7 @@ export function App() {
             <Authenticated>
               <Routes>
                 <Route path="/operations" element={<Operations />} />
-                <Route path="/business" element={<Negocio />} />
+                <Route path="/business" element={<Business />} />
                 <Route path="/sessions" element={<Sessions />} />
                 <Route path="/integrations" element={<Integrations />} />
                 <Route path="/keys" element={<Keys />} />
@@ -62,8 +62,8 @@ function Authenticated({ children }: { children: React.ReactNode }) {
   if (bootstrap.data?.needsSetup) return <FirstRun />
 
   if (error || !data) {
-    const destino = `${window.location.pathname}${window.location.search}`
-    return <Navigate to={`/entrar?voltar=${encodeURIComponent(destino)}`} replace />
+    const returnTo = `${window.location.pathname}${window.location.search}`
+    return <Navigate to={`/entrar?voltar=${encodeURIComponent(returnTo)}`} replace />
   }
 
   return <SessionProvider value={data}>{children}</SessionProvider>
@@ -75,7 +75,7 @@ function Loading() {
   return (
     <div className="grid min-h-dvh place-items-center bg-ground">
       <div className="flex flex-col items-center gap-3">
-        <Marca />
+        <Brand />
         <span className="text-xs text-muted">{t('app.loading')}</span>
       </div>
     </div>

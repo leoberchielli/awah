@@ -16,16 +16,16 @@ declare module 'fastify' {
  * Prefixes that belong to the server, not to the dashboard.
  *
  * The SPA answers any path it does not know — that is how client-side routing
- * works. Without this list, a mistyped `GET /v1/sessoes` would return the HTML
+ * works. Without this list, a mistyped `GET /v1/session` would return the HTML
  * page with status 200, and the integrator would spend the afternoon working
  * out why the JSON turned into `<!doctype html>`.
  */
-const RESERVADOS = ['/v1/', '/webhooks/', '/metrics', '/docs', '/health', '/ready']
+const RESERVED_PREFIXES = ['/v1/', '/webhooks/', '/metrics', '/docs', '/health', '/ready']
 
-export function ehRotaDoServidor(url: string): boolean {
-  const caminho = url.split('?')[0] ?? url
-  return RESERVADOS.some((prefixo) =>
-    prefixo.endsWith('/') ? caminho.startsWith(prefixo) : caminho === prefixo,
+export function isServerRoute(url: string): boolean {
+  const path = url.split('?')[0] ?? url
+  return RESERVED_PREFIXES.some((prefixo) =>
+    prefixo.endsWith('/') ? path.startsWith(prefixo) : path === prefixo,
   )
 }
 
@@ -38,7 +38,7 @@ export function ehRotaDoServidor(url: string): boolean {
  * points DASHBOARD_DIR at it. That is the order — explicit beats convention.
  */
 export function findDashboard(dirExplicito?: string): string | null {
-  const candidatos = dirExplicito
+  const candidates = dirExplicito
     ? [isAbsolute(dirExplicito) ? dirExplicito : resolve(process.cwd(), dirExplicito)]
     : [
         resolve(process.cwd(), 'public'),
@@ -47,8 +47,8 @@ export function findDashboard(dirExplicito?: string): string | null {
         resolve(process.cwd(), 'apps/web/dist'),
       ]
 
-  for (const candidato of candidatos) {
-    if (existsSync(join(candidato, 'index.html'))) return candidato
+  for (const candidate of candidates) {
+    if (existsSync(join(candidate, 'index.html'))) return candidate
   }
 
   return null
@@ -68,9 +68,9 @@ export function findDashboard(dirExplicito?: string): string | null {
  * needs one owner.
  */
 export const dashboardPlugin = fp(async (app: FastifyInstance) => {
-  const raiz = findDashboard(app.env.DASHBOARD_DIR)
+  const root = findDashboard(app.env.DASHBOARD_DIR)
 
-  if (!raiz) {
+  if (!root) {
     app.decorate('spaIndex', null)
     app.log.info(
       'dashboard not bundled; the API starts with the HTTP routes only (`pnpm --filter @awah/web build` generates the files)',
@@ -79,7 +79,7 @@ export const dashboardPlugin = fp(async (app: FastifyInstance) => {
   }
 
   await app.register(fastifyStatic, {
-    root: raiz,
+    root: root,
     prefix: '/',
     /**
      * No wildcard route: the plugin scans the folder at boot and registers one
@@ -88,7 +88,7 @@ export const dashboardPlugin = fp(async (app: FastifyInstance) => {
      */
     wildcard: false,
     index: false,
-    setHeaders(resposta, caminho) {
+    setHeaders(response, path) {
       /**
        * The files under `assets/` carry a content hash in the name: content
        * changed, name changed. They can be cached forever. `index.html` has no
@@ -96,14 +96,14 @@ export const dashboardPlugin = fp(async (app: FastifyInstance) => {
        * caching it would leave the browser stuck on the previous version after
        * a deploy.
        */
-      if (caminho.includes(`${sep}assets${sep}`)) {
-        resposta.header('cache-control', 'public, max-age=31536000, immutable')
+      if (path.includes(`${sep}assets${sep}`)) {
+        response.header('cache-control', 'public, max-age=31536000, immutable')
       } else {
-        resposta.header('cache-control', 'no-cache')
+        response.header('cache-control', 'no-cache')
       }
     },
   })
 
-  app.decorate('spaIndex', await readFile(join(raiz, 'index.html'), 'utf8'))
-  app.log.info({ raiz }, 'dashboard served by the API')
+  app.decorate('spaIndex', await readFile(join(root, 'index.html'), 'utf8'))
+  app.log.info({ root: root }, 'dashboard served by the API')
 })

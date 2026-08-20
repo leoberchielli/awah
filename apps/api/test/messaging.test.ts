@@ -93,7 +93,7 @@ describe('timestamp do protocolo', () => {
     )
   })
 
-  it('cai no agora quando o valor não presta', () => {
+  it('cai no nowMs quando o valor não presta', () => {
     for (const input of [null, undefined, 0, -5, Number.NaN]) {
       expect(toDate(input).getTime()).toBeGreaterThan(Date.now() - 5000)
     }
@@ -101,29 +101,29 @@ describe('timestamp do protocolo', () => {
 })
 
 describe('política de retenção', () => {
-  const agora = new Date('2026-08-18T12:00:00Z')
+  const nowMs = new Date('2026-08-18T12:00:00Z')
 
   it('marca a data de expiração no padrão de 30 dias', () => {
-    const result = applyRetention('conteúdo', 30, agora)
+    const result = applyRetention('conteúdo', 30, nowMs)
     expect(result.body).toBe('conteúdo')
     expect(result.contentExpiresAt?.toISOString()).toBe('2026-09-17T12:00:00.000Z')
   })
 
   /** Zero means never persist a body — the row is born with metadata only. */
   it('descarta o corpo quando a retenção é zero', () => {
-    const result = applyRetention('sensível', 0, agora)
+    const result = applyRetention('sensível', 0, nowMs)
     expect(result.body).toBeNull()
     expect(result.contentExpiresAt).toBeNull()
   })
 
   it('retém para sempre com -1', () => {
-    const result = applyRetention('conteúdo', -1, agora)
+    const result = applyRetention('conteúdo', -1, nowMs)
     expect(result.body).toBe('conteúdo')
     expect(result.contentExpiresAt).toBeNull()
   })
 
   it('preserva corpo nulo sem inventar conteúdo', () => {
-    expect(applyRetention(null, 30, agora).body).toBeNull()
+    expect(applyRetention(null, 30, nowMs).body).toBeNull()
   })
 })
 

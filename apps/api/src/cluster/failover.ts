@@ -95,16 +95,16 @@ export class FailoverScanner {
        * the fleet, in a loop that runs on every node at the same time.
        */
       const owners = await this.deps.lease.owners(candidates.map((c) => c.id))
-      const orfas = candidates.filter((c) => !owners.has(c.id)).slice(0, this.deps.batchSize)
+      const orphans = candidates.filter((c) => !owners.has(c.id)).slice(0, this.deps.batchSize)
 
-      if (orfas.length === 0) return
+      if (orphans.length === 0) return
 
-      for (const orfa of orfas) {
+      for (const orphan of orphans) {
         // `adopt` tries for the lease; losing the race to another node is normal.
-        const assumiu = await this.deps.sessions.adopt(orfa.orgId, orfa.id)
-        if (assumiu) {
+        const adopted = await this.deps.sessions.adopt(orphan.orgId, orphan.id)
+        if (adopted) {
           this.deps.logger.info(
-            { sessionId: orfa.id, name: orfa.name },
+            { sessionId: orphan.id, name: orphan.name },
             'orphan session adopted by this node',
           )
         }
