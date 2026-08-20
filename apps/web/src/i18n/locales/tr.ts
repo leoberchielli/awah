@@ -331,4 +331,24 @@ export const tr: Catalog = {
   'chatwoot.inboxName': 'Gelen kutusu adı',
   'chatwoot.whichAccount': 'Bu belirteç birden fazla hesaba erişiyor. Hangisi?',
   'chatwoot.inbox': 'Gelen kutusu',
+
+  'nav.users': 'Kullanıcılar',
+  'users.list.title': 'Kimlerin erişimi var',
+  'users.list.hint':
+    'Bu kuruluşa giriş yapabilen herkes. Buradaki rol kişinin ne yapabileceğini belirler; API anahtarları ayrı bir şeydir ve Anahtarlar bölümünde durur.',
+  'users.list.empty': 'Henüz üye yok.',
+  'users.add.title': 'Birini ekle',
+  'users.add.hint': 'Kişi API anahtarıyla değil, kendi e-postası ve parolasıyla giriş yapar.',
+  'users.add.credentialsHint':
+    'Ad ve parola yalnızca e-postanın bu sunucuda henüz hesabı yoksa gerekir. Hesabı varsa kişi kendi parolasıyla devam eder.',
+  'users.add.submit': 'Ekle',
+  'users.adding': 'Ekleniyor…',
+  'users.addFailed': 'Bu kişi eklenemedi. Yeniden deneyin.',
+  'users.changeFailed': 'Değişiklik uygulanamadı.',
+  'users.remove': 'Kaldır',
+  'users.removing': 'Kaldırılıyor…',
+  'users.leave': 'Ayrıl',
+  'users.you': '(siz)',
+  'users.joined': '{when} katıldı',
+  'users.lastOwner': 'Son sahip',
 }

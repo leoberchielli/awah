@@ -10,6 +10,7 @@ import {
   IconeLua,
   IconeMonitor,
   IconeNegocio,
+  IconePessoas,
   IconePulso,
   IconeSair,
   IconeSessao,
@@ -68,11 +69,12 @@ interface Aba {
 }
 
 const ABAS: Aba[] = [
-  { para: '/operacao', chave: 'nav.operation', Icone: IconePulso },
-  { para: '/negocio', chave: 'nav.business', Icone: IconeNegocio },
-  { para: '/sessoes', chave: 'nav.sessions', Icone: IconeSessao },
-  { para: '/integracoes', chave: 'nav.integrations', Icone: IconeLigacao },
-  { para: '/chaves', chave: 'nav.keys', Icone: IconeChave, minimo: 'admin' },
+  { para: '/operations', chave: 'nav.operation', Icone: IconePulso },
+  { para: '/business', chave: 'nav.business', Icone: IconeNegocio },
+  { para: '/sessions', chave: 'nav.sessions', Icone: IconeSessao },
+  { para: '/integrations', chave: 'nav.integrations', Icone: IconeLigacao },
+  { para: '/keys', chave: 'nav.keys', Icone: IconeChave, minimo: 'admin' },
+  { para: '/users', chave: 'nav.users', Icone: IconePessoas },
 ]
 
 /**

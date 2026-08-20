@@ -33,7 +33,7 @@ export function PrimeiroAcesso() {
     try {
       await post('/v1/auth/register', { organizationName, name, email, password })
       // O registro já devolve a sessão pronta: entra direto, sem pedir login.
-      window.location.assign('/sessoes')
+      window.location.assign('/sessions')
     } catch (falha) {
       setErro(falha instanceof ApiError ? falha.message : t('setup.apiUnreachable'))
       setEnviando(false)

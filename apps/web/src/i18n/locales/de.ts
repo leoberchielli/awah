@@ -338,4 +338,25 @@ export const de: Catalog = {
   'chatwoot.inboxName': 'Name des Postfachs',
   'chatwoot.whichAccount': 'Dieses Token erreicht mehr als ein Konto. Welches davon?',
   'chatwoot.inbox': 'Posteingang',
+
+  'nav.users': 'Benutzer',
+  'users.list.title': 'Wer Zugriff hat',
+  'users.list.hint':
+    'Alle, die sich bei dieser Organisation anmelden können. Die Rolle hier entscheidet, was die Person darf; API-Schlüssel sind etwas anderes und stehen unter Schlüssel.',
+  'users.list.empty': 'Noch kein Mitglied.',
+  'users.add.title': 'Jemanden hinzufügen',
+  'users.add.hint':
+    'Die Person meldet sich mit eigener E-Mail und eigenem Passwort an, nicht mit einem API-Schlüssel.',
+  'users.add.credentialsHint':
+    'Name und Passwort werden nur gebraucht, wenn die E-Mail auf dieser Instanz noch kein Konto hat. Gibt es schon eines, behält die Person ihr Passwort.',
+  'users.add.submit': 'Hinzufügen',
+  'users.adding': 'Wird hinzugefügt…',
+  'users.addFailed': 'Diese Person konnte nicht hinzugefügt werden. Bitte erneut versuchen.',
+  'users.changeFailed': 'Die Änderung konnte nicht angewendet werden.',
+  'users.remove': 'Entfernen',
+  'users.removing': 'Wird entfernt…',
+  'users.leave': 'Verlassen',
+  'users.you': '(Sie)',
+  'users.joined': 'dabei seit {when}',
+  'users.lastOwner': 'Letzter Eigentümer',
 }

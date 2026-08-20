@@ -335,4 +335,24 @@ export const es: Catalog = {
   'chatwoot.inboxName': 'Nombre de la bandeja',
   'chatwoot.whichAccount': 'Este token llega a más de una cuenta. ¿Cuál de ellas?',
   'chatwoot.inbox': 'Bandeja de entrada',
+
+  'nav.users': 'Usuarios',
+  'users.list.title': 'Quién tiene acceso',
+  'users.list.hint':
+    'Todos los que pueden entrar en esta organización. El rol de aquí decide qué puede hacer la persona; las claves de API son otra cosa y viven en Claves.',
+  'users.list.empty': 'Todavía no hay miembros.',
+  'users.add.title': 'Agregar a alguien',
+  'users.add.hint': 'La persona entra con su propio correo y contraseña, no con una clave de API.',
+  'users.add.credentialsHint':
+    'El nombre y la contraseña solo hacen falta cuando el correo aún no tiene cuenta en esta instancia. Si ya la tiene, la persona conserva su contraseña.',
+  'users.add.submit': 'Agregar',
+  'users.adding': 'Agregando…',
+  'users.addFailed': 'No se pudo agregar a esta persona. Inténtalo de nuevo.',
+  'users.changeFailed': 'No se pudo aplicar el cambio.',
+  'users.remove': 'Quitar',
+  'users.removing': 'Quitando…',
+  'users.leave': 'Salir',
+  'users.you': '(tú)',
+  'users.joined': 'entró el {when}',
+  'users.lastOwner': 'Último dueño',
 }

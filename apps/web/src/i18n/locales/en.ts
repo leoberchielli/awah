@@ -361,6 +361,27 @@ export const en = {
   'chatwoot.inbox': 'Inbox',
   'http.responseBody': 'Response body',
   'wizard.stepOf': 'Step {n} of {total}',
+
+  // ---- users ----
+  'nav.users': 'Users',
+  'users.list.title': 'People with access',
+  'users.list.hint':
+    'Everyone who can sign in to this organization. A role here decides what the person can do; API keys are separate and live under Keys.',
+  'users.list.empty': 'No member yet.',
+  'users.add.title': 'Add someone',
+  'users.add.hint': 'They sign in with their own email and password, not with an API key.',
+  'users.add.credentialsHint':
+    'Name and password are only needed when the email has no account on this instance yet. If it already does, the person keeps the password they have.',
+  'users.add.submit': 'Add',
+  'users.adding': 'Adding…',
+  'users.addFailed': 'Could not add this person. Try again.',
+  'users.changeFailed': 'Could not apply the change.',
+  'users.remove': 'Remove',
+  'users.removing': 'Removing…',
+  'users.leave': 'Leave',
+  'users.you': '(you)',
+  'users.joined': 'joined {when}',
+  'users.lastOwner': 'Last owner',
 } as const
 
 export type TranslationKey = keyof typeof en

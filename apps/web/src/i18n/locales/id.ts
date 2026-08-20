@@ -334,4 +334,25 @@ export const id: Catalog = {
   'chatwoot.inboxName': 'Nama inbox',
   'chatwoot.whichAccount': 'Token ini menjangkau lebih dari satu akun. Yang mana?',
   'chatwoot.inbox': 'Kotak masuk',
+
+  'nav.users': 'Pengguna',
+  'users.list.title': 'Siapa yang punya akses',
+  'users.list.hint':
+    'Semua orang yang bisa masuk ke organisasi ini. Peran di sini menentukan apa yang boleh dilakukan; kunci API adalah hal lain dan ada di menu Kunci.',
+  'users.list.empty': 'Belum ada anggota.',
+  'users.add.title': 'Tambahkan orang',
+  'users.add.hint':
+    'Orang tersebut masuk dengan email dan kata sandinya sendiri, bukan dengan kunci API.',
+  'users.add.credentialsHint':
+    'Nama dan kata sandi hanya diperlukan bila email itu belum punya akun di instans ini. Kalau sudah punya, orang tersebut tetap memakai kata sandinya.',
+  'users.add.submit': 'Tambah',
+  'users.adding': 'Menambahkan…',
+  'users.addFailed': 'Tidak bisa menambahkan orang ini. Coba lagi.',
+  'users.changeFailed': 'Perubahan tidak bisa diterapkan.',
+  'users.remove': 'Hapus',
+  'users.removing': 'Menghapus…',
+  'users.leave': 'Keluar',
+  'users.you': '(Anda)',
+  'users.joined': 'bergabung {when}',
+  'users.lastOwner': 'Pemilik terakhir',
 }

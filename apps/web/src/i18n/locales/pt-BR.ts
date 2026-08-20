@@ -331,4 +331,24 @@ export const ptBR: Catalog = {
   'chatwoot.inbox': 'Caixa de entrada',
   'http.responseBody': 'Corpo da resposta',
   'wizard.stepOf': 'Passo {n} de {total}',
+
+  'nav.users': 'Usuários',
+  'users.list.title': 'Quem tem acesso',
+  'users.list.hint':
+    'Todo mundo que consegue entrar nesta organização. O papel aqui decide o que a pessoa pode fazer; chave de API é outra coisa e vive na aba Chaves.',
+  'users.list.empty': 'Nenhum membro ainda.',
+  'users.add.title': 'Adicionar alguém',
+  'users.add.hint': 'A pessoa entra com o próprio e-mail e senha, não com chave de API.',
+  'users.add.credentialsHint':
+    'Nome e senha só são necessários quando o e-mail ainda não tem conta nesta instância. Se já tiver, a pessoa continua com a senha dela.',
+  'users.add.submit': 'Adicionar',
+  'users.adding': 'Adicionando…',
+  'users.addFailed': 'Não foi possível adicionar esta pessoa. Tente de novo.',
+  'users.changeFailed': 'Não foi possível aplicar a mudança.',
+  'users.remove': 'Remover',
+  'users.removing': 'Removendo…',
+  'users.leave': 'Sair',
+  'users.you': '(você)',
+  'users.joined': 'entrou em {when}',
+  'users.lastOwner': 'Último owner',
 }

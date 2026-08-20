@@ -336,4 +336,25 @@ export const fr: Catalog = {
   'chatwoot.inboxName': 'Nom de la boîte',
   'chatwoot.whichAccount': 'Ce jeton atteint plus d’un compte. Lequel ?',
   'chatwoot.inbox': 'Boîte de réception',
+
+  'nav.users': 'Utilisateurs',
+  'users.list.title': 'Qui a accès',
+  'users.list.hint':
+    "Toutes les personnes qui peuvent se connecter à cette organisation. Le rôle ici décide de ce qu'elles peuvent faire ; les clés d'API sont autre chose et vivent dans Clés.",
+  'users.list.empty': 'Aucun membre pour le moment.',
+  'users.add.title': 'Ajouter quelqu’un',
+  'users.add.hint':
+    "La personne se connecte avec son propre e-mail et mot de passe, pas avec une clé d'API.",
+  'users.add.credentialsHint':
+    "Le nom et le mot de passe ne sont nécessaires que si l'e-mail n'a pas encore de compte sur cette instance. S'il en a un, la personne garde son mot de passe.",
+  'users.add.submit': 'Ajouter',
+  'users.adding': 'Ajout…',
+  'users.addFailed': "Impossible d'ajouter cette personne. Réessayez.",
+  'users.changeFailed': "Impossible d'appliquer le changement.",
+  'users.remove': 'Retirer',
+  'users.removing': 'Retrait…',
+  'users.leave': 'Quitter',
+  'users.you': '(vous)',
+  'users.joined': 'arrivé le {when}',
+  'users.lastOwner': 'Dernier propriétaire',
 }

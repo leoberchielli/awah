@@ -11,6 +11,7 @@ import { Negocio } from './pages/Negocio'
 import { Operacao } from './pages/Operacao'
 import { PrimeiroAcesso } from './pages/PrimeiroAcesso'
 import { Sessoes } from './pages/Sessoes'
+import { Users } from './pages/Users'
 
 export function App() {
   return (
@@ -22,12 +23,13 @@ export function App() {
           element={
             <Autenticado>
               <Routes>
-                <Route path="/operacao" element={<Operacao />} />
-                <Route path="/negocio" element={<Negocio />} />
-                <Route path="/sessoes" element={<Sessoes />} />
-                <Route path="/integracoes" element={<Integracoes />} />
-                <Route path="/chaves" element={<Chaves />} />
-                <Route path="*" element={<Navigate to="/operacao" replace />} />
+                <Route path="/operations" element={<Operacao />} />
+                <Route path="/business" element={<Negocio />} />
+                <Route path="/sessions" element={<Sessoes />} />
+                <Route path="/integrations" element={<Integracoes />} />
+                <Route path="/keys" element={<Chaves />} />
+                <Route path="/users" element={<Users />} />
+                <Route path="*" element={<Navigate to="/operations" replace />} />
               </Routes>
             </Autenticado>
           }
