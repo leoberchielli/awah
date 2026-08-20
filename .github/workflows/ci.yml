@@ -66,6 +66,13 @@ jobs:
       - name: Checagem de tipos
         run: pnpm typecheck
 
+      # Chave faltante não reprova — ela cai no inglês, e é isso que permite
+      # tradução parcial. O que reprova é chave desconhecida e placeholder
+      # perdido: `{n}` sumido faz o número desaparecer em silêncio, e nenhum
+      # type-checker pega isso porque o valor continua sendo uma string.
+      - name: Catálogos de tradução
+        run: pnpm i18n:check
+
       - name: Aplicar migrations
         run: pnpm db:migrate
 
