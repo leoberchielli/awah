@@ -332,7 +332,17 @@ e volte a usar `docker compose up -d` normalmente.
 
 ## Conectar um número
 
-Crie a sessão, inicie e pareie. O QR é trocado a cada poucos segundos, então
+O painel faz isso sem curl: crie a sessão, inicie, e o painel de pareamento
+abre com o código e os quatro passos a seguir no telefone.
+
+![Pareando um número: o QR ao lado dos quatro passos, e a sessão marcada como
+Pareando até o telefone aceitar](docs/img/pairing.gif)
+
+O código se renova sozinho e o painel se fecha no instante em que o telefone
+aceita. O QR acima está morto há muito tempo — aquela sessão foi apagada logo
+depois da gravação.
+
+Se preferir pelo terminal, o QR é trocado a cada poucos segundos, então
 busque-o depois do START:
 
 ```bash

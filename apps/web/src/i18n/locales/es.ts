@@ -234,6 +234,7 @@ export const es: Catalog = {
   'pairing.hint':
     'El código se renueva solo cada pocos segundos. Deja esta pantalla abierta hasta que la sesión aparezca como conectada.',
   'pairing.qrAlt': 'Código QR de vinculación',
+  'pairing.waitingForCode': 'Esperando que el motor genere el código…',
   'pairing.step1':
     'Abre WhatsApp en el teléfono que va a atender por esta sesión. Usa un número dedicado, nunca el personal.',
   'pairing.step2':

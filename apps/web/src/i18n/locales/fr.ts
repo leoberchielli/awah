@@ -235,6 +235,7 @@ export const fr: Catalog = {
   'pairing.hint':
     "Le code se renouvelle tout seul toutes les quelques secondes. Laissez cet écran ouvert jusqu'à ce que la session apparaisse connectée.",
   'pairing.qrAlt': 'QR code d’appairage',
+  'pairing.waitingForCode': 'En attente du code généré par le moteur…',
   'pairing.step1':
     'Ouvrez WhatsApp sur le téléphone qui répondra pour cette session. Utilisez un numéro dédié — jamais le vôtre.',
   'pairing.step2':

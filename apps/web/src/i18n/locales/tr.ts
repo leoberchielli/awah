@@ -232,6 +232,7 @@ export const tr: Catalog = {
   'pairing.hint':
     'Kod birkaç saniyede bir kendini yeniler. Oturum bağlı görünene kadar bu ekranı açık bırakın.',
   'pairing.qrAlt': 'Eşleştirme QR kodu',
+  'pairing.waitingForCode': 'Motorun kodu oluşturması bekleniyor…',
   'pairing.step1':
     'Bu oturumda hizmet verecek telefonda WhatsApp’ı açın. Kendinize ait bir numara kullanın — asla kişisel numaranızı değil.',
   'pairing.step2':

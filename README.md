@@ -342,7 +342,17 @@ and go back to plain `docker compose up -d`.
 
 ## Connecting a number
 
-Create the session, start it and pair. The QR rotates every few seconds, so
+The dashboard does it without curl: create the session, start it, and the
+pairing panel opens with the code and the four steps to follow on the phone.
+
+![Pairing a number: the QR code beside the four steps, and the session showing
+as Pairing until the phone accepts](docs/img/pairing.gif)
+
+The code refreshes on its own and the panel closes itself the moment the phone
+accepts. The QR above is long dead — that session was deleted right after the
+recording.
+
+If you would rather do it from a terminal, the QR rotates every few seconds, so
 fetch it after the START:
 
 ```bash

@@ -232,6 +232,7 @@ export const ptBR: Catalog = {
   'pairing.hint':
     'O código se renova sozinho a cada poucos segundos. Deixe esta tela aberta até a sessão aparecer como conectada.',
   'pairing.qrAlt': 'QR de pareamento',
+  'pairing.waitingForCode': 'Aguardando a engine gerar o código…',
   'pairing.step1':
     'Abra o WhatsApp no celular que vai atender por esta sessão. Use um número dedicado — nunca o seu pessoal.',
   'pairing.step2':

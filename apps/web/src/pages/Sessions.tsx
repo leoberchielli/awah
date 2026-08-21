@@ -359,10 +359,8 @@ function QrPanel({ sessionId }: { sessionId: string }) {
    */
   if (!qr.data) {
     return (
-      <div className="grid size-[248px] shrink-0 place-items-center rounded-lg border border-dashed border-line text-center text-sm text-muted">
-        Aguardando a engine
-        <br />
-        gerar o código…
+      <div className="grid size-[248px] shrink-0 place-items-center rounded-lg border border-dashed border-line px-6 text-center text-sm text-muted">
+        {t('pairing.waitingForCode')}
       </div>
     )
   }

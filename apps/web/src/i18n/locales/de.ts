@@ -236,6 +236,7 @@ export const de: Catalog = {
   'pairing.hint':
     'Der Code erneuert sich alle paar Sekunden von selbst. Lassen Sie diesen Bildschirm offen, bis die Sitzung als verbunden erscheint.',
   'pairing.qrAlt': 'QR-Code zur Kopplung',
+  'pairing.waitingForCode': 'Warte darauf, dass die Engine den Code erzeugt…',
   'pairing.step1':
     'Öffnen Sie WhatsApp auf dem Telefon, das für diese Sitzung antwortet. Nehmen Sie eine eigene Nummer — nie Ihre private.',
   'pairing.step2':

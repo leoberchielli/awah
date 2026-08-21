@@ -233,6 +233,7 @@ export const id: Catalog = {
   'pairing.hint':
     'Kode diperbarui sendiri setiap beberapa detik. Biarkan layar ini terbuka sampai sesi tampak terhubung.',
   'pairing.qrAlt': 'Kode QR pemasangan',
+  'pairing.waitingForCode': 'Menunggu engine membuat kode…',
   'pairing.step1':
     'Buka WhatsApp di ponsel yang akan melayani sesi ini. Pakai nomor khusus — jangan nomor pribadi.',
   'pairing.step2':

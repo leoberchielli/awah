@@ -255,6 +255,7 @@ export const en = {
   'pairing.hint':
     'The code refreshes itself every few seconds. Keep this screen open until the session shows as connected.',
   'pairing.qrAlt': 'Pairing QR code',
+  'pairing.waitingForCode': 'Waiting for the engine to generate the code…',
   'pairing.step1':
     'Open WhatsApp on the phone that will answer for this session. Use a dedicated number — never your personal one.',
   'pairing.step2':
