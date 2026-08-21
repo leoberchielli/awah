@@ -1,37 +1,32 @@
 name: Site
 
-# A página em awah.99ia.com.br. Não há build: o diretório `site` vai para a VM
-# como está, então o workflow só roda quando algo lá dentro mudou.
+# A página não é publicada daqui. Ela é servida do host que roda os túneis, e
+# quem publica é `site/deploy/publish.sh` — a chave da site01 vive nos secrets
+# deste repositório e não existe na máquina onde a página está.
+#
+# O que sobra para a CI é a verificação que nada mais faria: o inglês é
+# aplicado por cima do HTML em português, e uma chave que existe de um lado e
+# não do outro é um parágrafo que silenciosamente para de traduzir.
 on:
   push:
     branches: [main]
     paths: ['site/**', '.github/workflows/site.yml']
+  pull_request:
+    paths: ['site/**', '.github/workflows/site.yml']
   workflow_dispatch:
 
-# Um deploy por vez, e nunca cancelar no meio: uma cópia interrompida deixaria
-# o domínio servindo metade de uma versão e metade de outra.
 concurrency:
-  group: deploy-site01-awah
-  cancel-in-progress: false
-
-env:
-  SITE_DIR: /home/deploy/awah-site
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  deploy:
-    name: Publicar em awah.99ia.com.br
+  verificar:
+    name: Chaves de tradução e integridade da página
     runs-on: ubuntu-latest
-    environment: production
 
     steps:
-      # Presas por SHA, não por tag: este é o job que carrega SITE01_SSH_KEY, e
-      # tag é ponteiro mutável — quem controla o repositório da action pode
-      # reapontá-la para outro commit, que então roda aqui com a chave da VM.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      # O inglês é aplicado por cima do HTML em português. Uma chave que existe
-      # em um lado e não no outro é um parágrafo que silenciosamente para de
-      # traduzir, e nada mais na página perceberia.
       - name: Chaves de tradução batem
         run: |
           node -e "
@@ -50,66 +45,23 @@ jobs:
           console.log(keys.size + ' chaves, todas traduzidas');
           "
 
-      - name: Instalar cloudflared
+      # Um href para um arquivo que não existe é o tipo de erro que só aparece
+      # quando alguém clica — e ninguém avisa.
+      - name: Recursos referenciados existem
         run: |
-          curl -fsSL -o cloudflared \
-            https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64
-          chmod +x cloudflared
-          sudo mv cloudflared /usr/local/bin/
+          node -e "
+          const f = require('fs');
+          const h = f.readFileSync('site/index.html', 'utf8');
+          const refs = [...h.matchAll(/(?:src|href)=\"(assets\/[^\"]+)\"/g)].map(m => m[1]);
+          const missing = [...new Set(refs)].filter(r => !f.existsSync('site/' + r));
+          if (missing.length) {
+            console.error('::error::A página aponta para arquivos que não existem: ' + missing.join(', '));
+            process.exit(1);
+          }
+          console.log(new Set(refs).size + ' recursos, todos presentes');
+          "
 
-      - name: Configurar SSH
-        run: |
-          mkdir -p ~/.ssh
-          printf '%s\n' "${{ secrets.SITE01_SSH_KEY }}" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          printf '%s\n' "${{ secrets.SITE01_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
-          chmod 644 ~/.ssh/known_hosts
-          cat >> ~/.ssh/config <<'EOF'
-          Host site01
-            HostName ssh-site01.99ia.com.br
-            User deploy
-            IdentityFile ~/.ssh/id_ed25519
-            IdentitiesOnly yes
-            ProxyCommand cloudflared access ssh --hostname %h
-            ServerAliveInterval 30
-            ConnectTimeout 30
-          EOF
-
-      # A release vai para um diretório próprio e só então o link `current`
-      # muda. Copiar por cima do que está no ar serviria, por alguns segundos,
-      # uma página com o HTML novo e o CSS velho.
-      # O diretório é publicado inteiro, então o que não é página não sobe: o
-      # vhost do nginx, com a porta interna, não precisa virar URL.
-      - name: Enviar a release
-        run: |
-          REL="$SITE_DIR/releases/${GITHUB_SHA::12}"
-          ssh site01 "mkdir -p '$REL'"
-          rsync -az --delete \
-            --exclude 'deploy/' \
-            --exclude 'README*.md' \
-            --exclude 'og.html' \
-            --exclude 'make-og.mjs' \
-            site/ "site01:$REL/"
-
-      - name: Publicar
-        run: |
-          REL="$SITE_DIR/releases/${GITHUB_SHA::12}"
-          ssh site01 "set -e
-            ln -sfn '$REL' '$SITE_DIR/current.tmp'
-            mv -T '$SITE_DIR/current.tmp' '$SITE_DIR/current'
-            # Guarda as cinco últimas: o suficiente para voltar atrás sem
-            # transformar a VM em arquivo morto.
-            cd '$SITE_DIR/releases'
-            ls -1dt */ | tail -n +6 | xargs -r rm -rf
-            ls -1dt */ | head -5"
-
-      # Um deploy que "deu certo" e serve 404 é o que ninguém percebe até
-      # alguém reclamar. A verificação passa pelo domínio real, não pela VM.
-      - name: Verificar no ar
-        run: |
-          sleep 3
-          curl -fsS -o /dev/null -w 'página:  %{http_code}\n' https://awah.99ia.com.br/
-          curl -fsS -o /dev/null -w 'og.png:  %{http_code}\n' https://awah.99ia.com.br/assets/og.png
-          curl -fsS -o /dev/null -w 'estilo:  %{http_code}\n' https://awah.99ia.com.br/assets/styles.css
-          curl -fsS https://awah.99ia.com.br/ | grep -q 'awah.99ia.com.br/assets/og.png' \
-            || { echo '::error::a página no ar não traz a meta og:image esperada'; exit 1; }
+      # O servidor do host roda sem dependência nenhuma; se ele deixar de
+      # carregar, a página para de subir na próxima publicação.
+      - name: O servidor estático carrega
+        run: node --check site/deploy/serve.mjs && echo 'serve.mjs ok'

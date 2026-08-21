@@ -19,7 +19,10 @@ site/
   assets/og.png       what link unfurlers read (1200×630)
   assets/*-icon.png   favicons generated from the SVG (iOS ignores SVG)
   assets/*.gif        the same recordings as docs/img
-  deploy/nginx.conf   the vhost on site01 — installed by hand, once
+  deploy/serve.mjs    the static server that is live today
+  deploy/publish.sh   release + `current` symlink swap, with --rollback
+  deploy/*.service    the systemd user unit
+  deploy/nginx.conf   the vhost for the day it moves to the site01 VM
   robots.txt  sitemap.xml
 ```
 
@@ -38,28 +41,49 @@ too, except for the star count — the browser refuses the request on origin.
 
 ## Publishing
 
-`.github/workflows/site.yml` publishes to **site01** on every push to `main`
-that touches `site/` — the same VM and the same Cloudflare Access path the
-other subdomains use. It rsyncs into `/home/deploy/awah-site/releases/<sha>`
-and only then moves the `current` symlink, because copying over what is live
-would serve the new HTML with the old CSS for a few seconds. The last five
-releases stay on disk, which is what makes going back a one-line `ln -sfn`.
+The page is live at **https://awah.99ia.com.br**, served from the host that
+runs the tunnels — not from the site01 VM. The reason is prosaic: the site01
+key lives in this repository's secrets and does not exist on the machine the
+page is published from. The VM path is still described below, for when that
+changes.
 
-Three things exist outside the workflow, done once by hand, because a server
-that reconfigures itself on every push is a server nobody reviews:
+```bash
+./site/deploy/publish.sh              # publish the current state of site/
+./site/deploy/publish.sh --rollback   # go back to the previous release
+```
 
-1. **The directory**: `mkdir -p /home/deploy/awah-site/releases` as `deploy`.
-2. **The vhost**: `deploy/nginx.conf` — it listens on `127.0.0.1:8091` and
-   carries the cache and security headers the page assumes.
-3. **The tunnel**: an ingress entry pointing `awah.99ia.com.br` at
-   `http://127.0.0.1:8091`, and `cloudflared tunnel route dns <tunnel>
-   awah.99ia.com.br` to create the record.
+The script copies `site/` into `~/awah-site/releases/<sha>` and only then moves
+the `current` symlink. Copying over what is live would serve the new HTML with
+the old CSS for a few seconds. The last five stay on disk, which is what makes
+going back instant. Nothing is restarted: the server resolves the symlink on
+every request.
 
-TLS and HTTP/2 belong to Cloudflare; inside the VM it is plain HTTP on the
-loopback.
+The three pieces, installed once:
 
-The directory is a plain static site, so any other host serves it as it stands
-— the headers in `deploy/nginx.conf` are the ones to reproduce elsewhere.
+| Piece | What it is |
+| --- | --- |
+| `deploy/serve.mjs` | Dependency-free static server: the vhost's headers, gzip, ETag, and the redirect from `http` to `https` |
+| `deploy/awah-site.service` | User unit; listens on `127.0.0.1:8092` and serves `~/awah-site/current` |
+| `~/.cloudflared/awah.yml` | Its own tunnel, like navarrolimas' — touching this page must not take kidsheaven down |
+
+```bash
+cp site/deploy/awah-site.service ~/.config/systemd/user/
+systemctl --user daemon-reload && systemctl --user enable --now awah-site
+cloudflared tunnel create awah
+cloudflared tunnel route dns awah awah.99ia.com.br
+systemctl --user enable --now cloudflared-awah
+```
+
+TLS and HTTP/2 belong to Cloudflare; in here it is plain HTTP on the loopback.
+
+### When the page moves to the site01 VM
+
+`deploy/nginx.conf` is the vhost for that day: installed by hand with sudo, it
+listens on the port where the VM's nginx already decides by `Host` and carries
+the same headers. In `~/.cloudflared/awah.yml` only the `service` changes, to
+`http://127.0.0.1:8080` with `httpHostHeader: awah.99ia.com.br` — the same
+shape kidsheaven and navarrolima use. Publishing then becomes an rsync from
+GitHub Actions, with `SITE01_SSH_KEY` in the secrets.
 
 ## Languages
 

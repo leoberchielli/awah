@@ -1,0 +1,34 @@
+# Servidor estático da página, no host. Instalação:
+#
+#   cp site/deploy/awah-site.service ~/.config/systemd/user/
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now awah-site
+#
+# Serve o symlink `current`, que o publish.sh move — então publicar não reinicia
+# o serviço, e reiniciar o serviço não muda o que está publicado.
+
+[Unit]
+Description=awah.99ia.com.br (site estatico, servido do host)
+After=network-online.target
+Wants=network-online.target
+StartLimitBurst=5
+StartLimitIntervalSec=60
+
+[Service]
+Type=simple
+Environment=AWAH_SITE_ROOT=%h/awah-site/current
+Environment=AWAH_SITE_PORT=8092
+Environment=AWAH_SITE_HOST=awah.99ia.com.br
+ExecStart=/usr/bin/node %h/awah-site/serve.mjs
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+# Não há nada para escrever: o servidor só lê o diretório publicado.
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectKernelTunables=true
+RestrictAddressFamilies=AF_INET AF_INET6
+
+[Install]
+WantedBy=default.target

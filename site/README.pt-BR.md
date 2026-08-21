@@ -20,7 +20,10 @@ site/
   assets/og.png       o que os agregadores de link leem (1200×630)
   assets/*-icon.png   favicons gerados do SVG (o iOS ignora SVG)
   assets/*.gif        as mesmas gravações de docs/img
-  deploy/nginx.conf   o vhost na site01 — instalado à mão, uma vez
+  deploy/serve.mjs    o servidor estático que está no ar hoje
+  deploy/publish.sh   release + troca do symlink `current`, com --rollback
+  deploy/*.service    a unidade de usuário do systemd
+  deploy/nginx.conf   o vhost para o dia em que mudar para a VM site01
   robots.txt  sitemap.xml
 ```
 
@@ -40,28 +43,48 @@ requisição por origem.
 
 ## Publicar
 
-O `.github/workflows/site.yml` publica na **site01** a cada push em `main` que
-toque em `site/` — a mesma VM e o mesmo caminho por Cloudflare Access dos
-outros subdomínios. Ele faz rsync para
-`/home/deploy/awah-site/releases/<sha>` e só então move o symlink `current`,
-porque copiar por cima do que está no ar serviria, por alguns segundos, o HTML
-novo com o CSS velho. As cinco últimas releases ficam no disco, e é isso que
-faz voltar atrás ser um `ln -sfn`.
+A página está no ar em **https://awah.99ia.com.br**, servida do host que roda
+os túneis — não da VM site01. O motivo é prosaico: a chave da site01 vive nos
+*secrets* deste repositório e não existe na máquina onde a página é publicada.
+O caminho pela VM continua descrito abaixo, para quando isso mudar.
 
-Três coisas ficam fora do workflow, feitas uma vez à mão, porque um servidor
-que se reconfigura a cada push é um servidor que ninguém revisa:
+```bash
+./site/deploy/publish.sh              # publica o estado atual de site/
+./site/deploy/publish.sh --rollback   # volta para a release anterior
+```
 
-1. **O diretório**: `mkdir -p /home/deploy/awah-site/releases` como `deploy`.
-2. **O vhost**: `deploy/nginx.conf` — escuta em `127.0.0.1:8091` e carrega os
-   cabeçalhos de cache e segurança que a página assume.
-3. **O túnel**: uma entrada de ingress apontando `awah.99ia.com.br` para
-   `http://127.0.0.1:8091`, e `cloudflared tunnel route dns <túnel>
-   awah.99ia.com.br` para criar o registro.
+O script copia `site/` para `~/awah-site/releases/<sha>` e só então move o
+symlink `current`. Copiar por cima do que está no ar serviria, por alguns
+segundos, o HTML novo com o CSS velho. As cinco últimas ficam no disco, e é
+isso que faz voltar atrás ser instantâneo. Nada é reiniciado: o servidor
+resolve o symlink a cada requisição.
 
-TLS e HTTP/2 ficam com o Cloudflare; dentro da VM é HTTP puro na loopback.
+As três peças, instaladas uma vez:
 
-O diretório é estático puro, então qualquer outra hospedagem serve ele como
-está — os cabeçalhos do `deploy/nginx.conf` são os que devem ser reproduzidos.
+| Peça | O que é |
+| --- | --- |
+| `deploy/serve.mjs` | Servidor estático sem dependência: os mesmos cabeçalhos do vhost, gzip, ETag e desvio de `http` para `https` |
+| `deploy/awah-site.service` | Unidade de usuário; escuta em `127.0.0.1:8092` e serve `~/awah-site/current` |
+| `~/.cloudflared/awah.yml` | Túnel próprio, como o do navarrolimas — mexer nesta página não pode derrubar o kidsheaven |
+
+```bash
+cp site/deploy/awah-site.service ~/.config/systemd/user/
+systemctl --user daemon-reload && systemctl --user enable --now awah-site
+cloudflared tunnel create awah
+cloudflared tunnel route dns awah awah.99ia.com.br
+systemctl --user enable --now cloudflared-awah
+```
+
+TLS e HTTP/2 ficam com o Cloudflare; aqui dentro é HTTP puro na loopback.
+
+### Quando a página mudar para a VM site01
+
+O `deploy/nginx.conf` é o vhost para esse dia: instalado à mão com sudo, ele
+escuta na mesma porta em que o nginx da VM já decide por `Host` e carrega os
+mesmos cabeçalhos. No `~/.cloudflared/awah.yml` muda só o `service`, para
+`http://127.0.0.1:8080` com `httpHostHeader: awah.99ia.com.br` — o mesmo
+desenho do kidsheaven e do navarrolima. Aí o publish passa a ser um rsync a
+partir do GitHub Actions, com `SITE01_SSH_KEY` nos secrets.
 
 ## Idiomas
 
