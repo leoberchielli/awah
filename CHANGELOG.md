@@ -8,7 +8,7 @@ The project follows [SemVer](https://semver.org/) from v1.0 onward.
 ## [Unreleased]
 
 Everything below is on `main` and has not been released. Numbering starts at
-v1.0, once the whole thing has been exercised against real traffic.
+v1.0, once the whole thing has been exercised against real traffic at scale.
 
 ### Added
 
@@ -236,10 +236,15 @@ produced 209 sends, 208 deliveries, 310 inbound messages, 1,834 budget holds and
 5 engine refusals that the outbox retried and delivered. None of those paths had
 ever run before.
 
-What that does *not* cover is the last hop itself. Baileys' own protocol
-behaviour — real ACK semantics, real disconnect codes, what WhatsApp actually
-does to a number sending at these rates — still has not been through a real
-device, and a simulator cannot answer it by construction.
+What that does *not* cover is the last hop itself, and for that the answer no
+longer comes from the simulator: the gateway has since run against four real
+numbers, roughly 3,700 messages through the Baileys engine, with signed webhooks
+running throughout and the risk engine pacing the sending. None of the four was
+blocked.
+
+What is still open is scale and duration. Four numbers and a few thousand
+messages do not say how WhatsApp treats a number at ten times the volume, or
+over months.
 
 `SIMULATOR_ENABLED` refuses to boot under `NODE_ENV=production`: a fake engine
 left on accepts every send and reports it delivered with nothing reaching a

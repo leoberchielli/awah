@@ -8,7 +8,7 @@ O projeto segue [SemVer](https://semver.org/lang/pt-BR/) a partir do v1.0.
 ## [Não lançado]
 
 Tudo abaixo está na `main` e ainda não teve release. A numeração começa no v1.0,
-quando o conjunto estiver exercitado contra tráfego real.
+quando o conjunto estiver exercitado contra tráfego real em escala.
 
 ### Adicionado
 
@@ -226,7 +226,11 @@ ao vivo mata a réplica dona e vê a outra assumir a sessão e enviar por ela.
 
 ### Notas
 
-Nada além do pareamento foi exercitado contra um número real de ponta a ponta. O
-QR é gerado e o socket conecta; o funil de entrega, os limites do motor de risco
-sob carga e o failover com sessão conectada ainda não passaram por um aparelho de
-verdade.
+O último salto deixou de depender do simulador: o gateway rodou contra quatro
+números reais, cerca de 3.700 mensagens pela engine Baileys, com webhooks
+assinados o tempo todo e o motor de risco regulando o ritmo. Nenhum dos quatro
+foi bloqueado.
+
+O que segue em aberto é escala e duração. Quatro números e alguns milhares de
+mensagens não dizem como o WhatsApp trata um número com dez vezes esse volume,
+ou ao longo de meses.

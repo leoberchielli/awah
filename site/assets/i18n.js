@@ -149,7 +149,7 @@
 
     'honest.tag': 'What has not been measured yet',
     'honest.body':
-      '<strong>Nothing has been exercised end to end against a real number.</strong> The QR is generated and the socket connects, and that is as far as a real handset has taken this. Everything upstream of the last hop was measured against a <code>simulator</code> engine sitting behind the same contract as Baileys. What that still cannot tell you is how WhatsApp reacts to a number over weeks.',
+      '<strong>This has now run against real numbers</strong> — four of them, roughly 3,700 messages through the Baileys engine, with signed webhooks running throughout and the risk engine pacing the sending, and no number blocked. What is still missing is scale and time: four numbers and a few thousand messages say the path works, not that it holds at ten times the volume, nor how WhatsApp treats a number over months.',
     'honest.sig': 'The mechanics are covered by 376 tests. And a test is still a test.',
 
     'dash.kicker': 'The dashboard',

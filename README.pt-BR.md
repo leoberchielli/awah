@@ -156,7 +156,7 @@ várias réplicas com failover automático, a operação é mensurável por um p
 servido pela própria API, e a engine oficial da Meta roda atrás do mesmo
 contrato do Baileys. A onda 8 fechou o conjunto com o SDK, a documentação e o
 endurecimento da configuração. **O que falta para o v1.0 não é código: é uso
-real.**
+em escala.**
 
 | Onda | Entrega | Estado |
 | --- | --- | --- |
@@ -174,11 +174,21 @@ real.**
 | 11 | Conector HTTP: plugar qualquer plataforma sem conector novo | ✅ |
 | 12 | Imagem publicada, multi-arquitetura, com proveniência | ✅ |
 
-> Nada além do pareamento foi exercitado contra um número real de ponta a ponta:
-> o QR é gerado e o socket conecta, mas o funil de entrega, os limites do motor
-> de risco em carga e o failover com sessão conectada ainda não passaram por um
-> aparelho de verdade. Os números do painel vêm dos agregados; a mecânica é
-> coberta por 366 testes, e ainda assim é teste, não produção.
+> **Isto já rodou contra números reais.** Quatro deles, cerca de 3.700 mensagens
+> pela engine Baileys, com webhooks assinados rodando o tempo todo e o motor de
+> risco regulando o ritmo. Nenhum número foi bloqueado.
+>
+> Tudo antes do último salto é medido à parte, contra uma engine `simulator` que
+> fica atrás do mesmo contrato do Baileys — a fila, a ordem por conversa, o
+> caminho de retentativa e o motor de risco sob concorrência. Veja
+> **[o benchmark](docs/BENCHMARK.md)**, gerado por um script deste repositório
+> que você mesmo pode rodar de novo.
+>
+> **O que ainda falta é escala e tempo.** Quatro números e alguns milhares de
+> mensagens dizem que o caminho funciona; não dizem que ele aguenta dez vezes
+> esse volume, e nada aqui ainda conta como o WhatsApp trata um número ao longo
+> de meses. A mecânica é coberta por 376 testes, e um teste continua sendo um
+> teste.
 
 ## Medido, não afirmado
 
