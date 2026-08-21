@@ -613,6 +613,79 @@ async function webhookRetentativa(sessao, r, webhookId) {
   )
 }
 
+/**
+ * The last rung of the ladder, and the way back off it.
+ *
+ * A receiver that never recovers has to end somewhere findable rather than in a
+ * log line. This needs the instance to be configured with a shallow retry depth
+ * — `WEBHOOK_MAX_ATTEMPTS` — because the default of eight spans hours with
+ * exponential backoff. When the ladder is deeper than this can wait for, the
+ * check says so instead of failing.
+ */
+async function webhookFilaMorta(sessao, r, webhookId) {
+  grupo(
+    'The webhook dead queue',
+    'A delivery that never lands ends up somewhere you can find it, and can be sent again.',
+  )
+
+  r.limpar()
+  // Never recover.
+  r.falharAsPrimeiras(Number.MAX_SAFE_INTEGER)
+
+  await api(`/v1/sessions/${sessao.id}/messages`, {
+    method: 'POST',
+    body: JSON.stringify({ chatId: '5511944440005', text: 'para a fila morta' }),
+  })
+
+  const prazo = Date.now() + 150_000
+  let morta = null
+  while (Date.now() < prazo) {
+    await sleep(4000)
+    const { deliveries } = await api('/v1/webhooks/deliveries?status=dead&limit=100')
+    morta = deliveries.find((d) => d.webhookId === webhookId)
+    if (morta) break
+  }
+
+  if (!morta) {
+    check(
+      'a delivery that keeps failing ends in the dead queue',
+      false,
+      `nothing died in 150 s — this instance retries deeper than the check can wait for (set WEBHOOK_MAX_ATTEMPTS low to observe it)`,
+    )
+    return
+  }
+
+  check(
+    'a delivery that keeps failing ends in the dead queue',
+    true,
+    `attempts=${morta.attempts}, status=${morta.status}, lastError=${JSON.stringify(String(morta.lastError ?? '').slice(0, 40))}`,
+  )
+  check(
+    'it is queryable rather than only logged',
+    true,
+    `GET /v1/webhooks/deliveries?status=dead returned it by id ${morta.id.slice(0, 8)}`,
+  )
+
+  // Now let the receiver recover, and put it back on the queue.
+  r.falharAsPrimeiras(0)
+  const chegadasAntes = r.recebidas.length
+
+  const replay = await api('/v1/webhooks/deliveries/replay', {
+    method: 'POST',
+    body: JSON.stringify({ ids: [morta.id] }),
+  })
+  check('replay accepts the dead delivery', replay.replayed >= 1, `replayed=${replay.replayed}`)
+
+  const prazo2 = Date.now() + 90_000
+  while (r.recebidas.length === chegadasAntes && Date.now() < prazo2) await sleep(1000)
+
+  check(
+    'and it reaches the receiver on the second life',
+    r.recebidas.length > chegadasAntes,
+    `${r.recebidas.length - chegadasAntes} arrival(s) after the replay`,
+  )
+}
+
 // ===========================================================================
 // 7. Doors that should be shut
 // ===========================================================================
@@ -760,6 +833,7 @@ async function main() {
   const web = await webhooks(a)
   if (web?.receptor) {
     await webhookRetentativa(a, web.receptor, web.webhookId)
+    await webhookFilaMorta(a, web.receptor, web.webhookId)
     await web.receptor.fechar()
   }
   await portasFechadas()
@@ -824,11 +898,6 @@ suite instead, against a real Postgres: \`sessions.test.ts\` ("does not see a
 session from another org"), \`keys.test.ts\` ("refuses a session from another
 organization") and \`integrations.test.ts\` ("does not list an integration from
 another org").
-
-**The dead-letter queue for webhooks.** A delivery gives up after eight
-attempts with exponential backoff, which takes long enough that waiting for it
-here would make the script useless. The retry ladder is exercised above; the
-last rung is covered by the test suite.
 
 **WhatsApp itself.** The last hop is the \`simulator\` engine. Nothing on this
 page says anything about how a real number behaves over weeks.

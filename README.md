@@ -105,11 +105,12 @@ node scripts/verify.mjs --url http://localhost:2900 --key "$AWAH_KEY" \
 node scripts/verify-cluster.mjs --key "$AWAH_KEY"   # needs the cluster profile
 ```
 
-**[docs/VERIFICATION.md](docs/VERIFICATION.md)** — 41 checks over eight groups,
+**[docs/VERIFICATION.md](docs/VERIFICATION.md)** — 45 checks over ten groups,
 each with its evidence: a viewer key refused a session, a scoped key answered
 404 rather than 403 for a session outside its scope, a webhook signature
 recomputed from the body and the secret, a delivery refused twice and landed on
-the third attempt, sixty messages surviving `docker kill` mid-drain with none
+the third attempt, another that never landed and ended in the dead queue where
+a replay brought it back, sixty messages surviving `docker kill` mid-drain with none
 stuck and none lost, and a session taken over by the surviving replica after
 its owner was killed.
 
