@@ -61,6 +61,31 @@ jobs:
           console.log(new Set(refs).size + ' recursos, todos presentes');
           "
 
+      # `1fr` solto é `minmax(auto, 1fr)`, e o mínimo `auto` é o min-content do
+      # item. Um <pre> que não quebra linha estica a trilha, a página fica mais
+      # larga que a tela e o navegador afasta o zoom para caber: a página
+      # inteira encolhe num canto. Aconteceu uma vez, no hero, e só apareceu
+      # num telefone — nenhuma outra verificação daqui olharia para isso.
+      - name: Trilhas de grid não estouram
+        run: |
+          node -e "
+          const css = require('fs').readFileSync('site/assets/styles.css', 'utf8');
+          const suspeitas = [];
+          for (const m of css.matchAll(/grid-template-columns:([^;]+);/g)) {
+            let valor = m[1];
+            let antes;
+            do { antes = valor; valor = valor.replace(/minmax\((?:[^()]|\([^()]*\))*\)/g, 'MINMAX'); } while (valor !== antes);
+            valor = valor.replace(/\s+/g, ' ').trim();
+            if (/(^|[ ,(])[0-9.]*fr\b/.test(valor)) suspeitas.push(m[1].trim());
+          }
+          if (suspeitas.length) {
+            console.error('::error::Trilha com fr fora de minmax(0, …) — o mínimo vira min-content e a página estoura na horizontal:');
+            for (const s of suspeitas) console.error('  grid-template-columns: ' + s);
+            process.exit(1);
+          }
+          console.log('nenhuma trilha com fr sem piso explícito');
+          "
+
       # O servidor do host roda sem dependência nenhuma; se ele deixar de
       # carregar, a página para de subir na próxima publicação.
       - name: O servidor estático carrega
