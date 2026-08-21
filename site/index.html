@@ -30,8 +30,8 @@
 <meta name="twitter:description" content="Gateway de WhatsApp open source com fila durável, motor de risco e sessões em cluster.">
 <meta name="twitter:image" content="https://awah.99ia.com.br/assets/og.png">
 
-<meta name="theme-color" content="#101216" media="(prefers-color-scheme: dark)">
-<meta name="theme-color" content="#f4f2ed" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0e1117" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f2f4f7" media="(prefers-color-scheme: light)">
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <!-- O iOS não lê SVG em apple-touch-icon, e o PNG de 32 é o fallback de quem
      ainda não lê SVG em favicon. Ambos são gerados do mesmo SVG. -->
@@ -40,7 +40,7 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:ital,wght@0,400;0,600;1,400&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="assets/styles.css">
 
 <script>
@@ -133,7 +133,7 @@
 
       <h1 class="hero__title reveal">
         <span data-i18n="hero.title1">Dez mil mensagens sem perder nenhuma.</span>
-        <span class="h1__punch" data-i18n="hero.title2">E sem perder o número.</span>
+        <span class="grad" data-i18n="hero.title2">E sem perder o número.</span>
       </h1>
 
       <p class="lede reveal" data-i18n="hero.lede">
@@ -169,6 +169,7 @@
     <div class="hero__visual reveal" aria-hidden="true">
       <div class="term">
         <div class="term__bar">
+          <span class="term__dots"><i></i><i></i><i></i></span>
           <span class="term__title">bash — awah</span>
         </div>
         <pre class="term__body"><span class="ln"><span class="p">$</span> docker compose up -d</span>

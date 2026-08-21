@@ -1,36 +1,64 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="AWAH — dez mil mensagens sem perder nenhuma, e sem perder o número">
-  <rect width="1200" height="630" fill="#101216"/>
+  <defs>
+    <linearGradient id="ink" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#a3a3f7"/>
+      <stop offset="100%" stop-color="#22a6b8"/>
+    </linearGradient>
+    <radialGradient id="g1" cx="0.12" cy="-0.12" r="0.62">
+      <stop offset="0%" stop-color="#7d7df0" stop-opacity="0.45"/>
+      <stop offset="100%" stop-color="#7d7df0" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="g2" cx="0.96" cy="1.08" r="0.55">
+      <stop offset="0%" stop-color="#22a6b8" stop-opacity="0.30"/>
+      <stop offset="100%" stop-color="#22a6b8" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="grid" width="60" height="60" patternUnits="userSpaceOnUse">
+      <path d="M60 0H0V60" fill="none" stroke="#ffffff" stroke-opacity="0.05" stroke-width="1"/>
+    </pattern>
+    <linearGradient id="fade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fff" stop-opacity="1"/>
+      <stop offset="100%" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <mask id="gridmask"><rect width="1200" height="630" fill="url(#fade)"/></mask>
+  </defs>
 
-  <!-- Régua de topo: a mesma que abre o cabeçalho da página. -->
-  <rect x="68" y="74" width="1064" height="1" fill="#e8e7e3"/>
+  <rect width="1200" height="630" fill="#0e1117"/>
+  <rect width="1200" height="630" fill="url(#grid)" mask="url(#gridmask)"/>
+  <rect width="1200" height="630" fill="url(#g1)"/>
+  <rect width="1200" height="630" fill="url(#g2)"/>
 
-  <g font-family="'IBM Plex Mono', 'DejaVu Sans Mono', monospace">
-    <text x="68" y="112" fill="#e8e7e3" font-size="19" font-weight="600" letter-spacing="3.4">AWAH</text>
-    <text x="196" y="112" fill="#8e8d89" font-size="15" letter-spacing="0.6">gateway de whatsapp · fila durável · motor de risco · cluster</text>
-    <text x="1132" y="112" fill="#8e8d89" font-size="15" text-anchor="end">MIT</text>
+  <!-- marca -->
+  <g transform="translate(68,58)">
+    <rect width="46" height="46" rx="10" fill="#7d7df0"/>
+    <path d="M8.6 16.5h4.5l3.2 9.5 3.2-9.5h3.7l3.2 9.5 3.2-9.5h4.5L28.3 31.6h-3.9l-3.2-9.1-3.1 9.1h-3.9L8.6 16.5Z" fill="#fff"/>
+    <circle cx="35.2" cy="12.9" r="4.3" fill="#35C07A" stroke="#7d7df0" stroke-width="2.3"/>
+    <text x="62" y="31" fill="#e9ecf2" font-family="'IBM Plex Sans', 'DejaVu Sans', sans-serif" font-size="25" font-weight="600" letter-spacing="5">AWAH</text>
+    <line x1="190" y1="8" x2="190" y2="38" stroke="#2a3140" stroke-width="1"/>
+    <text x="210" y="29" fill="#949daf" font-family="'IBM Plex Mono', 'DejaVu Sans Mono', monospace" font-size="15">gateway de WhatsApp · fila durável · motor de risco · cluster</text>
   </g>
 
-  <!-- A manchete em duas vozes: o fato na sans, o argumento na serifa. -->
-  <text x="68" y="290" fill="#e8e7e3" font-family="'IBM Plex Sans', 'DejaVu Sans', sans-serif" font-size="62" font-weight="600" letter-spacing="-1.4">Dez mil mensagens</text>
-  <text x="68" y="356" fill="#e8e7e3" font-family="'IBM Plex Sans', 'DejaVu Sans', sans-serif" font-size="62" font-weight="600" letter-spacing="-1.4">sem perder nenhuma.</text>
-  <text x="68" y="430" fill="#a3a3f7" font-family="'IBM Plex Serif', Georgia, serif" font-size="60" font-style="italic" letter-spacing="-1">E sem perder o número.</text>
+  <!-- manchete -->
+  <text x="68" y="316" fill="#e9ecf2" font-family="'IBM Plex Sans', 'DejaVu Sans', sans-serif" font-size="66" font-weight="700" letter-spacing="-2">Dez mil mensagens</text>
+  <text x="68" y="386" fill="#e9ecf2" font-family="'IBM Plex Sans', 'DejaVu Sans', sans-serif" font-size="66" font-weight="700" letter-spacing="-2">sem perder nenhuma.</text>
+  <text x="68" y="456" fill="url(#ink)" font-family="'IBM Plex Sans', 'DejaVu Sans', sans-serif" font-size="66" font-weight="700" letter-spacing="-2">E sem perder o número.</text>
 
-  <!-- Ficha técnica: régua em cima, número sobre rótulo, colunas separadas. -->
-  <rect x="68" y="508" width="1064" height="1" fill="#262a31"/>
+  <!-- números -->
   <g font-family="'IBM Plex Mono', 'DejaVu Sans Mono', monospace">
-    <text x="68" y="552" fill="#e8e7e3" font-size="30">376</text>
-    <text x="68" y="578" fill="#8e8d89" font-size="13" letter-spacing="1.4">TESTES</text>
+    <text x="68" y="556" fill="#e9ecf2" font-size="30" font-weight="500">376</text>
+    <text x="68" y="580" fill="#949daf" font-size="15" font-family="'IBM Plex Sans', 'DejaVu Sans', sans-serif">testes</text>
 
-    <rect x="228" y="524" width="1" height="62" fill="#262a31"/>
-    <text x="268" y="552" fill="#e8e7e3" font-size="30">45</text>
-    <text x="268" y="578" fill="#8e8d89" font-size="13" letter-spacing="1.4">CHECKS VERIFICADOS</text>
+    <text x="196" y="556" fill="#e9ecf2" font-size="30" font-weight="500">45</text>
+    <text x="196" y="580" fill="#949daf" font-size="15" font-family="'IBM Plex Sans', 'DejaVu Sans', sans-serif">checks verificados</text>
 
-    <rect x="568" y="524" width="1" height="62" fill="#262a31"/>
-    <text x="608" y="552" fill="#e8e7e3" font-size="30">~450</text>
-    <text x="608" y="578" fill="#8e8d89" font-size="13" letter-spacing="1.4">ENVIOS/S DE INGESTÃO</text>
+    <text x="392" y="556" fill="#e9ecf2" font-size="30" font-weight="500">~450</text>
+    <text x="392" y="580" fill="#949daf" font-size="15" font-family="'IBM Plex Sans', 'DejaVu Sans', sans-serif">envios/s de ingestão</text>
 
-    <rect x="928" y="524" width="1" height="62" fill="#262a31"/>
-    <text x="1132" y="552" fill="#a3a3f7" font-size="19" text-anchor="end">awah.99ia.com.br</text>
-    <text x="1132" y="578" fill="#8e8d89" font-size="13" letter-spacing="1.4" text-anchor="end">OPEN SOURCE</text>
+    <text x="588" y="556" fill="#e9ecf2" font-size="30" font-weight="500">MIT</text>
+    <text x="588" y="580" fill="#949daf" font-size="15" font-family="'IBM Plex Sans', 'DejaVu Sans', sans-serif">open source</text>
+  </g>
+
+  <g transform="translate(898,528)">
+    <rect width="234" height="46" rx="10" fill="#151a22" stroke="#2a3140"/>
+    <text x="117" y="30" fill="#a3a3f7" text-anchor="middle" font-family="'IBM Plex Mono', 'DejaVu Sans Mono', monospace" font-size="18">awah.99ia.com.br</text>
   </g>
 </svg>
