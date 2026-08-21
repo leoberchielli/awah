@@ -1,12 +1,124 @@
 # AWAH
 
+**Gateway de WhatsApp com fila durável, motor de risco e sessões em cluster.**
+
 *[English](README.md)*
 
-Gateway de WhatsApp com fila durável, motor de risco e sessões em cluster.
+[![CI](https://github.com/leoberchielli/awah/actions/workflows/ci.yml/badge.svg)](https://github.com/leoberchielli/awah/actions/workflows/ci.yml)
+[![Imagem](https://github.com/leoberchielli/awah/actions/workflows/image.yml/badge.svg)](https://github.com/leoberchielli/awah/actions/workflows/image.yml)
+[![Licença: MIT](https://img.shields.io/badge/licen%C3%A7a-MIT-blue.svg)](LICENSE)
+[![Testes](https://img.shields.io/badge/testes-376%20passando-brightgreen.svg)](#medido-n%C3%A3o-afirmado)
+[![Verificado](https://img.shields.io/badge/verifica%C3%A7%C3%A3o-45%20checks-brightgreen.svg)](docs/VERIFICATION.md)
 
 A maioria dos gateways resolve *"como envio uma mensagem"*. O AWAH existe para a
 segunda pergunta: **"como envio dez mil sem perder nenhuma e sem perder o
 número"**.
+
+```bash
+curl -O https://raw.githubusercontent.com/leoberchielli/awah/main/docker-compose.yml
+docker compose up -d
+```
+
+Depois abra `http://localhost:2900`. Não há arquivo de configuração para
+escrever nem curl para rodar: o painel conduz a primeira organização, o primeiro
+número e a primeira integração.
+
+---
+
+## O que acontece com uma mensagem
+
+A parte que separa isto de um botão de enviar. Nada é descartado — o que não
+passa agora espera, e diz por quê.
+
+```mermaid
+flowchart LR
+    A["POST /messages"] --> B[("outbox<br/>Postgres")]
+    B -->|"202 aceito"| A
+
+    B --> C{"orçamento<br/>tem vaga?"}
+    C -->|"não"| H["segurada<br/><i>com o motivo<br/>e uma previsão</i>"]
+    H -.->|"quando a janela abre"| C
+
+    C -->|"sim, reservada"| D{"score<br/>0–100"}
+    D --> E["jitter humano<br/><i>digitando, depois uma pausa</i>"]
+    E --> F["engine"]
+
+    F -->|"recusada"| G["retentativa com backoff"]
+    G --> B
+    G -->|"tentativas esgotadas"| I["fila morta<br/><i>consultável, reenviável</i>"]
+
+    F -->|"enviada"| J["reconciliação de ACK<br/>enviada → entregue → lida"]
+    J --> K["webhook assinado"]
+```
+
+A fila é o produto. A API responde `202` no instante em que a linha fica
+durável, antes de qualquer I/O de rede — então um processo que morre não perde
+nada, o que é [medido matando um](docs/VERIFICATION.md).
+
+## Por que existe um motor de risco
+
+Engine não oficial faz número ser banido. Toda outra garantia daqui não vale
+nada se o número deixar de existir numa terça-feira.
+
+O motor dosa o envio como uma pessoa faria, e o ritmo não é constante — ele
+abre conforme o número envelhece:
+
+```mermaid
+flowchart TD
+    subgraph W["Warm-up: o teto cresce com a idade do número"]
+        direction LR
+        D0["dia 0<br/><b>5%</b><br/>1/min"] --> D3["dia 3<br/><b>20%</b><br/>2/min"]
+        D3 --> D7["dia 7<br/><b>40%</b>"]
+        D7 --> D14["dia 14<br/><b>70%</b>"]
+        D14 --> D30["dia 30<br/><b>100%</b><br/>12/min"]
+    end
+```
+
+Um número recém-pareado que dispara mil mensagens no primeiro dia é o padrão de
+conta descartável mais óbvio que existe. Essas taxas são
+[observadas, não afirmadas](docs/BENCHMARK.md#the-warm-up-curve): três sessões
+idênticas exceto pela data de pareamento, com a mesma fila.
+
+## Como é montado
+
+```mermaid
+flowchart TB
+    subgraph CLIENT["Seu sistema"]
+        SDK["SDK TypeScript<br/><i>ou HTTP puro</i>"]
+    end
+
+    subgraph AWAH["AWAH — N réplicas atrás de um balanceador"]
+        API["API REST + painel<br/><i>mesma origem, mesma porta</i>"]
+        RISK["motor de risco"]
+        SCHED["agendador<br/><i>FIFO por conversa</i>"]
+        WH["despachante de webhook<br/><i>HMAC, retentativa, DLQ</i>"]
+    end
+
+    subgraph STATE["Estado"]
+        PG[("Postgres<br/><i>outbox, mensagens,<br/>auth state cifrado</i>")]
+        RD[("Redis<br/><i>leases, janelas de orçamento</i>")]
+    end
+
+    subgraph ENGINES["Engines, um contrato só"]
+        BAI["Baileys<br/><i>não oficial, grátis</i>"]
+        CLOUD["Cloud API<br/><i>oficial, cobrada</i>"]
+        SIM["simulador<br/><i>para teste</i>"]
+    end
+
+    SDK --> API
+    API --> PG
+    SCHED --> RISK
+    RISK --> RD
+    SCHED --> PG
+    SCHED --> BAI & CLOUD & SIM
+    BAI & CLOUD & SIM --> WH
+    WH --> SDK
+    API -.->|"lease de posse"| RD
+```
+
+Uma sessão pertence a uma réplica por vez, através de um lease no Redis. Quando
+essa réplica morre, outra percebe e assume — o que também é
+[conferido matando uma](docs/VERIFICATION.md#killing-things).
 
 ---
 
@@ -57,11 +169,64 @@ real.**
 > aparelho de verdade. Os números do painel vêm dos agregados; a mecânica é
 > coberta por 366 testes, e ainda assim é teste, não produção.
 
+## Medido, não afirmado
+
+Quatro das afirmações desta página são baratas de escrever e caras de
+verificar, então existe um script que verifica e anota o que encontrou:
+
+```bash
+node scripts/benchmark.mjs --url http://localhost:2900 --key "$AWAH_KEY"
+```
+
+Ele produz **[docs/BENCHMARK.md](docs/BENCHMARK.md)**. Da última execução:
+
+| | |
+|---|---|
+| Envios fora de ordem dentro de uma conversa, na primeira tentativa | **0** de 192 pares |
+| Envios recusados recuperados pela retentativa | **todos**, nenhum chegou à fila morta |
+| Ingestão por `POST /v1/sessions/:id/messages` | **~450 envios/s** |
+| Warm-up: dia 0 · dia 3 · dia 30 | **1,2 · 2,4 · 14,4** envios/min, contra tetos de 1 · 2 · 12 |
+
+A última linha merece ser lida duas vezes. Três sessões idênticas exceto pela
+data de pareamento, com a mesma fila: a curva prende cada uma ao próprio teto.
+É essa a diferença entre um motor de risco e um limite de taxa escrito num
+README.
+
+Todo número vem do engine `simulator`, que substitui apenas o último salto.
+Eles descrevem o gateway; não descrevem o WhatsApp. O relatório diz isso logo no
+começo e explica o que segue sem medição.
+
+### E as que não são sobre velocidade
+
+Um segundo script pergunta se as garantias valem, e registra o que viu em vez
+de apenas se ficou satisfeito:
+
+```bash
+node scripts/verify.mjs --url http://localhost:2900 --key "$AWAH_KEY" \
+  --email voce@exemplo.com --password ...
+node scripts/verify-cluster.mjs --key "$AWAH_KEY"   # precisa do perfil cluster
+```
+
+**[docs/VERIFICATION.md](docs/VERIFICATION.md)** — 45 checks em dez grupos, cada
+um com sua evidência: chave de leitura recusada ao criar sessão, chave restrita
+respondendo 404 e não 403 para uma sessão fora do escopo, assinatura de webhook
+recalculada a partir do corpo e do segredo, uma entrega recusada duas vezes que
+chegou na terceira, outra que nunca chegou e terminou na fila morta de onde um
+replay a trouxe de volta, sessenta mensagens sobrevivendo a um `docker kill` no
+meio da drenagem sem nenhuma presa nem perdida, e uma sessão assumida pela
+réplica sobrevivente depois que a dona foi morta.
+
+O segundo script dirige o Docker, porque durabilidade e failover não dão para
+conferir sem parar um processo — e parada limpa é o caso fácil, então ele usa
+SIGKILL.
+
 ## Documentação
 
 | Documento | Sobre |
 | --- | --- |
 | [docs/comecando.md](docs/getting-started.pt-BR.md) | Do zero a uma conversa no Chatwoot, sem curl nenhum |
+| [docs/BENCHMARK.md](docs/BENCHMARK.md) | Ordem, retentativa, vazão e a curva de warm-up, medidos |
+| [docs/VERIFICATION.md](docs/VERIFICATION.md) | 45 checks contra instância viva, cada um com sua evidência |
 | Este README | O que o projeto faz e como usar cada parte |
 | [docs/integracoes.md](docs/integrations.pt-BR.md) | Ligar Chatwoot e Typebot, e o que o gateway acrescenta a eles |
 | [docs/qualquer-plataforma.md](docs/any-platform.pt-BR.md) | O conector HTTP: n8n, Make, serverless, sistema próprio |

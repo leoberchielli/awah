@@ -178,13 +178,20 @@ export function BarrasHorizontais({
       <BarChart data={data} layout="vertical" margin={{ top: 0, right: 12, left: 0, bottom: 0 }}>
         <CartesianGrid stroke="var(--line)" strokeDasharray="2 4" horizontal={false} />
         <XAxis type="number" tickFormatter={num} {...axis} />
-        <YAxis type="category" dataKey="rotulo" width={92} {...axis} />
+        {/*
+          These two keys are strings, so nothing type-checks them against the
+          shape above. When the props were renamed from Portuguese to English
+          the renames stopped here, the chart started asking for fields that no
+          longer existed, and it rendered an empty card with a title on it —
+          silently, for as long as nobody looked at that corner of the screen.
+        */}
+        <YAxis type="category" dataKey="label" width={92} {...axis} />
         <Tooltip
           {...tooltipStyle}
           cursor={{ fill: 'var(--surface-2)' }}
           formatter={(v) => num(Number(v))}
         />
-        <Bar dataKey="valor" radius={[0, 4, 4, 0]} isAnimationActive={false} barSize={16}>
+        <Bar dataKey="value" radius={[0, 4, 4, 0]} isAnimationActive={false} barSize={16}>
           {data.map((entry) => (
             <Cell key={entry.label} fill={entry.color ?? 'var(--accent)'} />
           ))}

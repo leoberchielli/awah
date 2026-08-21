@@ -1,12 +1,124 @@
 # AWAH
 
+**WhatsApp gateway with a durable queue, a risk engine and clustered sessions.**
+
 *[Português](README.pt-BR.md)*
 
-WhatsApp gateway with a durable queue, a risk engine and clustered sessions.
+[![CI](https://github.com/leoberchielli/awah/actions/workflows/ci.yml/badge.svg)](https://github.com/leoberchielli/awah/actions/workflows/ci.yml)
+[![Image](https://github.com/leoberchielli/awah/actions/workflows/image.yml/badge.svg)](https://github.com/leoberchielli/awah/actions/workflows/image.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Tests](https://img.shields.io/badge/tests-376%20passing-brightgreen.svg)](#measured-not-asserted)
+[![Verified](https://img.shields.io/badge/verification-45%20checks-brightgreen.svg)](docs/VERIFICATION.md)
 
 Most gateways answer *"how do I send a message"*. AWAH exists for the second
 question: **"how do I send ten thousand without losing any of them, and without
 losing the number"**.
+
+```bash
+curl -O https://raw.githubusercontent.com/leoberchielli/awah/main/docker-compose.yml
+docker compose up -d
+```
+
+Then open `http://localhost:2900`. There is no configuration file to write and
+no curl to run: the dashboard walks you through the first organization, the
+first number and the first integration.
+
+---
+
+## What happens to a message
+
+The part that separates this from a send button. Nothing is discarded — what
+does not pass now, waits, and says why.
+
+```mermaid
+flowchart LR
+    A["POST /messages"] --> B[("outbox<br/>Postgres")]
+    B -->|"202 accepted"| A
+
+    B --> C{"budget<br/>has a slot?"}
+    C -->|"no"| H["held<br/><i>with the reason<br/>and an ETA</i>"]
+    H -.->|"when the window opens"| C
+
+    C -->|"yes, reserved"| D{"score<br/>0–100"}
+    D --> E["human jitter<br/><i>typing, then a pause</i>"]
+    E --> F["engine"]
+
+    F -->|"refused"| G["retry with backoff"]
+    G --> B
+    G -->|"attempts exhausted"| I["dead letter<br/><i>queryable, replayable</i>"]
+
+    F -->|"sent"| J["ACK reconciliation<br/>sent → delivered → read"]
+    J --> K["signed webhook"]
+```
+
+The queue is the product. The API answers `202` the moment the row is durable,
+before any network I/O — so a process that dies loses nothing, which is
+[measured by killing one](docs/VERIFICATION.md).
+
+## Why the risk engine exists
+
+Unofficial engines get numbers banned. Every other guarantee here is worth
+nothing if the number stops existing on a Tuesday.
+
+The engine paces sending the way a person would, and the pace is not a constant
+— it opens as the number ages:
+
+```mermaid
+flowchart TD
+    subgraph W["Warm-up: the ceiling grows with the number's age"]
+        direction LR
+        D0["day 0<br/><b>5%</b><br/>1/min"] --> D3["day 3<br/><b>20%</b><br/>2/min"]
+        D3 --> D7["day 7<br/><b>40%</b>"]
+        D7 --> D14["day 14<br/><b>70%</b>"]
+        D14 --> D30["day 30<br/><b>100%</b><br/>12/min"]
+    end
+```
+
+A freshly paired number that sends a thousand messages on day one is the most
+obvious throwaway-account pattern there is. Those rates are
+[observed, not claimed](docs/BENCHMARK.md#the-warm-up-curve): three sessions
+identical except for their pairing date, given the same backlog.
+
+## How it is put together
+
+```mermaid
+flowchart TB
+    subgraph CLIENT["Your system"]
+        SDK["TypeScript SDK<br/><i>or plain HTTP</i>"]
+    end
+
+    subgraph AWAH["AWAH — N replicas behind a load balancer"]
+        API["REST API + dashboard<br/><i>same origin, same port</i>"]
+        RISK["risk engine"]
+        SCHED["scheduler<br/><i>FIFO per conversation</i>"]
+        WH["webhook dispatcher<br/><i>HMAC, retry, DLQ</i>"]
+    end
+
+    subgraph STATE["State"]
+        PG[("Postgres<br/><i>outbox, messages,<br/>encrypted auth state</i>")]
+        RD[("Redis<br/><i>leases, budget windows</i>")]
+    end
+
+    subgraph ENGINES["Engines, one contract"]
+        BAI["Baileys<br/><i>unofficial, free</i>"]
+        CLOUD["Cloud API<br/><i>official, billed</i>"]
+        SIM["simulator<br/><i>for testing</i>"]
+    end
+
+    SDK --> API
+    API --> PG
+    SCHED --> RISK
+    RISK --> RD
+    SCHED --> PG
+    SCHED --> BAI & CLOUD & SIM
+    BAI & CLOUD & SIM --> WH
+    WH --> SDK
+    API -.->|"ownership lease"| RD
+```
+
+A session belongs to one replica at a time, through a lease in Redis. When that
+replica dies, another notices and takes it over — which is also
+[checked by killing one](docs/VERIFICATION.md#killing-things).
 
 ---
 
@@ -124,6 +236,8 @@ it uses SIGKILL.
 | --- | --- |
 | [docs/getting-started.md](docs/getting-started.md) | From zero to a conversation in Chatwoot, with no curl at all |
 | This README | What the project does and how to use each part |
+| [docs/BENCHMARK.md](docs/BENCHMARK.md) | Ordering, retries, throughput and the warm-up curve, measured |
+| [docs/VERIFICATION.md](docs/VERIFICATION.md) | 45 checks against a live instance, each with its evidence |
 | [docs/integrations.md](docs/integrations.md) | Wiring up Chatwoot and Typebot, and what the gateway adds to them |
 | [docs/any-platform.md](docs/any-platform.md) | The HTTP connector: n8n, Make, serverless, your own system |
 | [docs/production.md](docs/production.md) | Ship it and don't regret it: TLS, backup, replicas, monitoring |
