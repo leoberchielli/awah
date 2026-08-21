@@ -19,10 +19,13 @@ site/
   assets/og.svg       fonte da imagem de compartilhamento
   assets/og.png       o que os agregadores de link leem (1200×630)
   assets/*.gif        as mesmas gravações de docs/img
-  netlify.toml
-  _headers            cabeçalhos para Netlify e Cloudflare Pages
-  robots.txt  sitemap.xml  CNAME
+  deploy/nginx.conf   o vhost na site01 — instalado à mão, uma vez
+  robots.txt  sitemap.xml
 ```
+
+`deploy/`, `og.html`, `make-og.mjs` e estes READMEs ficam de fora do envio: o
+diretório é publicado inteiro, e uma configuração de servidor com porta interna
+não tem por que virar URL.
 
 ## Ver localmente
 
@@ -36,17 +39,28 @@ requisição por origem.
 
 ## Publicar
 
-Qualquer hospedagem de arquivo estático serve. O diretório inteiro é a raiz do
-site; não há nada para compilar.
+O `.github/workflows/site.yml` publica na **site01** a cada push em `main` que
+toque em `site/` — a mesma VM e o mesmo caminho por Cloudflare Access dos
+outros subdomínios. Ele faz rsync para
+`/home/deploy/awah-site/releases/<sha>` e só então move o symlink `current`,
+porque copiar por cima do que está no ar serviria, por alguns segundos, o HTML
+novo com o CSS velho. As cinco últimas releases ficam no disco, e é isso que
+faz voltar atrás ser um `ln -sfn`.
 
-| Onde | Como |
-| --- | --- |
-| **Netlify** | Conecte o repositório, diretório de publicação `site`, comando de build vazio. O `netlify.toml` já traz cabeçalhos e cache. |
-| **Cloudflare Pages** | Igual: sem comando de build, diretório de saída `site`. Lê o `_headers`. |
-| **GitHub Pages** | O workflow `.github/workflows/site.yml` publica a cada push em `main` que toque em `site/`. O `CNAME` já aponta para o domínio. |
-| **nginx** | `root /caminho/para/site;` e um `try_files $uri $uri/ /index.html;`. |
+Três coisas ficam fora do workflow, feitas uma vez à mão, porque um servidor
+que se reconfigura a cada push é um servidor que ninguém revisa:
 
-No DNS, um `CNAME` de `awah` para o host escolhido. TLS fica com a hospedagem.
+1. **O diretório**: `mkdir -p /home/deploy/awah-site/releases` como `deploy`.
+2. **O vhost**: `deploy/nginx.conf` — escuta em `127.0.0.1:8091` e carrega os
+   cabeçalhos de cache e segurança que a página assume.
+3. **O túnel**: uma entrada de ingress apontando `awah.99ia.com.br` para
+   `http://127.0.0.1:8091`, e `cloudflared tunnel route dns <túnel>
+   awah.99ia.com.br` para criar o registro.
+
+TLS e HTTP/2 ficam com o Cloudflare; dentro da VM é HTTP puro na loopback.
+
+O diretório é estático puro, então qualquer outra hospedagem serve ele como
+está — os cabeçalhos do `deploy/nginx.conf` são os que devem ser reproduzidos.
 
 ## Idiomas
 
@@ -104,6 +118,10 @@ repositório no GitHub (Settings → General → Social preview).
 
 ## Notas
 
+- **Não há `hreflang`** nem `?lang=en` no sitemap. O inglês é a mesma página
+  trocada no navegador; anunciá-lo como URL alternativa enquanto a canônica
+  dela aponta de volta para `/` é dizer duas coisas contrárias ao buscador. O
+  inglês tem URL própria no README do repositório, que é onde ele deve estar.
 - A `Content-Security-Policy` permite `'unsafe-inline'` em script por causa do
   bloco que aplica tema e idioma **antes da primeira pintura** — sem ele a
   página pisca no tema errado. Trocar por um hash é possível, e quebra a cada
