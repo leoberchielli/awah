@@ -146,8 +146,18 @@ body {
    * clássico de `position: sticky` parar de grudar. A barra do topo depende
    * disso.
    */
-  overflow-x: hidden;
   overflow-x: clip;
+}
+/*
+ * O Safari só entendeu `clip` na 16. Antes disso, cortar mal é melhor que não
+ * cortar — mas a queda vem por `@supports`, e não por declarar a propriedade
+ * duas vezes: duas declarações iguais no mesmo bloco é o que o `biome check`
+ * recusa, e foi o que derrubou a CI.
+ */
+@supports not (overflow-x: clip) {
+  body {
+    overflow-x: hidden;
+  }
 }
 
 h1,
