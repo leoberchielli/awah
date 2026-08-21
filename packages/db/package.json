@@ -16,7 +16,7 @@
     "test": "echo \"sem testes neste pacote\""
   },
   "dependencies": {
-    "drizzle-orm": "^0.38.3",
+    "drizzle-orm": "^0.45.2",
     "postgres": "^3.4.5"
   },
   "devDependencies": {
