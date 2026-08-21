@@ -18,6 +18,7 @@ site/
   assets/main.js      gráficos em SVG, cópia, tema, revelação ao rolar
   assets/og.svg       fonte da imagem de compartilhamento
   assets/og.png       o que os agregadores de link leem (1200×630)
+  assets/*-icon.png   favicons gerados do SVG (o iOS ignora SVG)
   assets/*.gif        as mesmas gravações de docs/img
   deploy/nginx.conf   o vhost na site01 — instalado à mão, uma vez
   robots.txt  sitemap.xml

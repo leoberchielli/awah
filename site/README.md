@@ -17,6 +17,7 @@ site/
   assets/main.js      SVG charts, copy buttons, theme, scroll reveals
   assets/og.svg       source of the share image
   assets/og.png       what link unfurlers read (1200×630)
+  assets/*-icon.png   favicons generated from the SVG (iOS ignores SVG)
   assets/*.gif        the same recordings as docs/img
   deploy/nginx.conf   the vhost on site01 — installed by hand, once
   robots.txt  sitemap.xml
