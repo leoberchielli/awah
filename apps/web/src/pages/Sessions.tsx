@@ -378,6 +378,33 @@ function QrPanel({ sessionId }: { sessionId: string }) {
   )
 }
 
+/** Just the three fields the wording needs, so it does not shadow the row type. */
+type CauseOf = {
+  cause: string | null
+  causeCode: string | null
+  detail: Record<string, string | number> | null
+}
+
+/**
+ * Why the session did what it did, in the reader's language.
+ *
+ * The hint above this list promises "the raw protocol code next to the
+ * translated cause", and for a long time only the first half was true: the
+ * sentence came from the server in English and was printed as it arrived, in a
+ * panel translated into ten languages. The server now sends a stable code and
+ * the numbers beside it, and the wording happens here.
+ *
+ * The English sentence stays as the fallback. A disconnect reason the catalogue
+ * has never seen — and WhatsApp invents them — is better shown untranslated
+ * than not shown at all.
+ */
+function causa(t: Translate, event: CauseOf): string {
+  if (!event.causeCode) return event.cause ?? '—'
+  const key = `events.cause.${event.causeCode}` as TranslationKey
+  const traduzida = t(key, event.detail ?? undefined)
+  return traduzida === key ? (event.cause ?? '—') : traduzida
+}
+
 type ScoreFactor = { name: string; detail: string; values: Record<string, number> }
 
 /**
@@ -536,7 +563,7 @@ function Timeline({ sessionId }: { sessionId: string }) {
             >
               <Pill tone={TONE_BY_EVENT[event.type] ?? 'hold'}>{event.type}</Pill>
               <span className="min-w-0 flex-1 truncate text-xs text-muted">
-                {event.cause ?? '—'}
+                {causa(t, event)}
                 {event.rawCode !== null && (
                   <span className="ml-1.5 font-mono opacity-70">({event.rawCode})</span>
                 )}

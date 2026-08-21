@@ -121,9 +121,26 @@ export const sessionEvents = pgTable(
       .references(() => sessions.id, { onDelete: 'cascade' }),
     type: sessionEventType('type').notNull(),
     rawCode: integer('raw_code'),
+    /**
+     * The cause in English prose, for anything reading the API directly.
+     *
+     * Kept alongside `causeCode` rather than replaced by it: a code is only
+     * useful to a caller that knows the vocabulary, and an integrator reading
+     * the response for the first time should not have to.
+     */
     cause: text('cause'),
+    /**
+     * A stable slug for the same fact, so a client can say it in its own
+     * language.
+     *
+     * The dashboard is translated into ten languages and used to print `cause`
+     * verbatim, which meant a German operator read why their session dropped in
+     * English. A sentence assembled by the server cannot be translated by the
+     * client; a code and its values can.
+     */
+    causeCode: text('cause_code'),
     nodeId: text('node_id'),
-    detail: jsonb('detail'),
+    detail: jsonb('detail').$type<Record<string, unknown>>(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [

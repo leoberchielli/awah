@@ -1,0 +1,1 @@
+ALTER TABLE "session_events" ADD COLUMN "cause_code" text;

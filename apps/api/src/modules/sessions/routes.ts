@@ -493,7 +493,15 @@ export async function sessionRoutes(app: FastifyInstance) {
                 id: z.string(),
                 type: z.string(),
                 rawCode: z.number().nullable(),
-                cause: z.string().nullable(),
+                cause: z.string().nullable().describe('The reason in English prose.'),
+                causeCode: z
+                  .string()
+                  .nullable()
+                  .describe('Stable slug for `cause`, for callers that render their own wording.'),
+                detail: z
+                  .record(z.unknown())
+                  .nullable()
+                  .describe('The values behind `cause`, when it has any.'),
                 nodeId: z.string().nullable(),
                 createdAt: z.date(),
               }),

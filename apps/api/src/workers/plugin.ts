@@ -256,6 +256,7 @@ export const workersPlugin = fp(
       intervalMs: app.env.WEBHOOK_POLL_MS,
       batchSize: app.env.WEBHOOK_BATCH_SIZE,
       requestTimeoutMs: app.env.WEBHOOK_TIMEOUT_MS,
+      maxAttempts: app.env.WEBHOOK_MAX_ATTEMPTS,
       observeDelivery: (outcome, seconds) => {
         app.metrics.webhookDeliveries.inc({ outcome })
         app.metrics.webhookDuration.observe({ outcome }, seconds)

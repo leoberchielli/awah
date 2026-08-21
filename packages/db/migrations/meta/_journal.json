@@ -50,6 +50,13 @@
       "when": 1787256940650,
       "tag": "0006_medical_forge",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1787270370279,
+      "tag": "0007_tricky_baron_zemo",
+      "breakpoints": true
     }
   ]
 }

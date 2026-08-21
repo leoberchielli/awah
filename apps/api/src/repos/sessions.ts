@@ -29,7 +29,12 @@ export interface SessionEventRow {
   id: string
   type: SessionEventType
   rawCode: number | null
+  /** The reason in English prose. */
   cause: string | null
+  /** Stable slug for the same reason, so a client can word it itself. */
+  causeCode: string | null
+  /** The values behind the reason, when it has any. */
+  detail: Record<string, unknown> | null
   nodeId: string | null
   createdAt: Date
 }
@@ -156,6 +161,8 @@ export class SessionRepository extends TenantRepository {
     type: SessionEventType
     rawCode?: number | null
     cause?: string | null
+    /** Stable slug for `cause`, so the panel can translate it. */
+    causeCode?: string | null
     nodeId?: string | null
     detail?: Record<string, unknown>
   }): Promise<void> {
@@ -165,6 +172,7 @@ export class SessionRepository extends TenantRepository {
       type: input.type,
       rawCode: input.rawCode ?? null,
       cause: input.cause ?? null,
+      causeCode: input.causeCode ?? null,
       nodeId: input.nodeId ?? null,
       detail: input.detail ?? null,
     })
@@ -177,6 +185,8 @@ export class SessionRepository extends TenantRepository {
         type: schema.sessionEvents.type,
         rawCode: schema.sessionEvents.rawCode,
         cause: schema.sessionEvents.cause,
+        causeCode: schema.sessionEvents.causeCode,
+        detail: schema.sessionEvents.detail,
         nodeId: schema.sessionEvents.nodeId,
         createdAt: schema.sessionEvents.createdAt,
       })

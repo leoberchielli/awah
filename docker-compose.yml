@@ -30,6 +30,10 @@ x-api-env: &api-env
   TRUST_PROXY: ${TRUST_PROXY:-false}
   METRICS_TOKEN: ${METRICS_TOKEN:-}
   ENGINE_LOG_LEVEL: ${ENGINE_LOG_LEVEL:-silent}
+  # How deep the webhook retry ladder goes. Eight attempts with exponential
+  # backoff spans hours, which is right for a receiver that is down for the
+  # afternoon and far too long to watch.
+  WEBHOOK_MAX_ATTEMPTS: ${WEBHOOK_MAX_ATTEMPTS:-8}
   # Off by default, and the API refuses to boot with it on in production:
   # the simulator is not a WhatsApp client.
   SIMULATOR_ENABLED: ${SIMULATOR_ENABLED:-false}

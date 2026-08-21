@@ -321,6 +321,8 @@ export class SessionManager {
       sessionId,
       type: 'lease_acquired',
       cause: `Ownership acquired by node ${this.deps.nodeId}`,
+      causeCode: 'ownership_acquired',
+      detail: { node: this.deps.nodeId },
       nodeId: this.deps.nodeId,
     })
     await repo.recordEvent({
@@ -338,6 +340,7 @@ export class SessionManager {
         sessionId,
         type: 'error',
         cause: error instanceof Error ? error.message : 'failed to connect',
+        causeCode: 'connect_failed',
         nodeId: this.deps.nodeId,
       })
       throw error
@@ -372,6 +375,7 @@ export class SessionManager {
       sessionId,
       type: 'lease_lost',
       cause: 'Ownership expired and was taken over by another node',
+      causeCode: 'ownership_lost',
       nodeId: this.deps.nodeId,
     })
   }
@@ -444,6 +448,7 @@ export class SessionManager {
         sessionId,
         type: 'logged_out',
         cause: 'Logout requested',
+        causeCode: 'logout_requested',
         nodeId: this.deps.nodeId,
       })
     } else {
@@ -455,6 +460,7 @@ export class SessionManager {
         sessionId,
         type: 'disconnected',
         cause: 'Stopped by command',
+        causeCode: 'stopped_by_command',
         nodeId: this.deps.nodeId,
       })
     }
@@ -562,6 +568,7 @@ export class SessionManager {
       sessionId,
       type: 'pairing_requested',
       cause: 'Pairing code requested',
+      causeCode: 'pairing_code_requested',
       nodeId: this.deps.nodeId,
     })
 
@@ -585,6 +592,7 @@ export class SessionManager {
             sessionId,
             type: 'pairing_requested',
             cause: 'QR generated',
+            causeCode: 'qr_generated',
             nodeId: this.deps.nodeId,
           })
         }
@@ -639,6 +647,7 @@ export class SessionManager {
           sessionId,
           type: session?.pairedAt ? 'connected' : 'paired',
           cause: session?.pairedAt ? 'Connected' : 'Paired',
+          causeCode: session?.pairedAt ? 'connected' : 'paired',
           nodeId: this.deps.nodeId,
         })
 
@@ -676,6 +685,13 @@ export class SessionManager {
           type: event.loggedOut ? 'logged_out' : 'disconnected',
           rawCode: event.rawCode,
           cause: event.cause,
+          /*
+           * The protocol code is the stable identity here, so the panel keys
+           * off it rather than off the sentence. A cause the table does not
+           * know still arrives as prose, which is the right fallback: better
+           * an untranslated reason than a disconnect with no reason at all.
+           */
+          causeCode: event.rawCode != null ? `disconnect_${event.rawCode}` : null,
           nodeId: this.deps.nodeId,
         })
 
@@ -733,6 +749,8 @@ export class SessionManager {
           sessionId,
           type: 'error',
           cause: `Gave up reconnecting after ${this.maxAttempts} attempts`,
+          causeCode: 'gave_up_reconnecting',
+          detail: { attempts: this.maxAttempts },
           nodeId: this.deps.nodeId,
         })
         .catch(() => {})

@@ -120,6 +120,16 @@ const envSchema = z.object({
   WEBHOOK_POLL_MS: z.coerce.number().int().min(100).max(60_000).default(1000),
   WEBHOOK_BATCH_SIZE: z.coerce.number().int().positive().max(200).default(20),
   WEBHOOK_TIMEOUT_MS: z.coerce.number().int().positive().max(120_000).default(10_000),
+  /**
+   * How deep the retry ladder goes before a delivery is declared dead.
+   *
+   * Eight attempts with exponential backoff spans hours, which is right for a
+   * receiver that is down for the afternoon and wrong for anyone trying to
+   * observe the dead queue — including this project's own verification script,
+   * which could not reach that path at all while the depth was fixed in the
+   * table default.
+   */
+  WEBHOOK_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(50).default(8),
 
   /** Concurrent sends per node. Human jitter holds each one for seconds. */
   OUTBOX_MAX_CONCURRENT: z.coerce.number().int().positive().max(1000).default(50),

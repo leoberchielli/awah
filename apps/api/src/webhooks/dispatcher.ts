@@ -9,6 +9,15 @@ export interface WebhookDispatcherDeps {
   intervalMs: number
   batchSize: number
   requestTimeoutMs: number
+  /**
+   * Ceiling on the retry ladder, above whatever the row itself says.
+   *
+   * The column defaults to eight, which with exponential backoff spans hours —
+   * right for a receiver that is down for the afternoon, and impossible to
+   * observe. Applying the ceiling here rather than at insert time means it also
+   * governs deliveries that were already queued when it changed.
+   */
+  maxAttempts: number
   /** Outcome and duration of each attempt, for metrics. */
   observeDelivery?: (outcome: 'delivered' | 'retrying' | 'dead', seconds: number) => void
 }
@@ -188,7 +197,8 @@ export class WebhookDispatcher {
     responseBody: string | null,
     permanent: boolean,
   ): Promise<'retrying' | 'dead'> {
-    const exhausted = permanent || delivery.attempts >= delivery.maxAttempts
+    const teto = Math.min(delivery.maxAttempts, this.deps.maxAttempts)
+    const exhausted = permanent || delivery.attempts >= teto
     const delay = exponentialBackoff({
       attempt: delivery.attempts,
       baseMs: 5000,

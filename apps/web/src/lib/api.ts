@@ -198,6 +198,10 @@ export interface SessionEvent {
   type: string
   rawCode: number | null
   cause: string | null
+  /** Stable slug for `cause`, when the server had one. */
+  causeCode: string | null
+  /** The values behind `cause`, so the panel can word it in the user's language. */
+  detail: Record<string, string | number> | null
   nodeId: string | null
   createdAt: string
 }
