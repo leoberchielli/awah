@@ -1,0 +1,43 @@
+name: The documentation is wrong, missing, or lying
+description: Including a translation that reads like a machine wrote it.
+labels: ["documentation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Escreva em português se preferir.
+
+        Documentation that contradicts the code is a bug with a worse blast
+        radius than most bugs: it is believed. This is a good place to start
+        contributing, and the smallest fix is welcome.
+
+  - type: input
+    id: where
+    attributes:
+      label: Where
+      description: The file, or the page, and the section.
+      placeholder: "docs/production.md, section 'Backup'"
+    validations:
+      required: true
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What is wrong
+      description: |
+        What it says, and what is actually true — or what is missing and what
+        you had to find out the hard way.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: language
+    attributes:
+      label: Language
+      options:
+        - English
+        - Português
+        - Both
+        - Another interface language
+    validations:
+      required: true

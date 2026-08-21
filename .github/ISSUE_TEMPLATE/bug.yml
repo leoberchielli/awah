@@ -1,0 +1,87 @@
+name: Something is broken
+description: A behaviour that contradicts the documentation, or a crash.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Escreva em português se preferir — o projeto é bilíngue e ninguém aqui
+        vai reclamar do idioma.
+
+        **Before pasting anything:** remove phone numbers, message contents,
+        API keys, tokens, `appSecret` and connection strings. A log with a JID
+        in it is a customer's phone number. If a secret has already been pasted
+        somewhere public, rotate it — see
+        [SECURITY.md](https://github.com/leoberchielli/awah/blob/main/SECURITY.md).
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you expected, and what happened instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: How to reproduce it
+      description: |
+        The route or SDK call, and what the state was. A `curl` with the
+        credentials stripped is ideal.
+      render: bash
+    validations:
+      required: true
+
+  - type: dropdown
+    id: engine
+    attributes:
+      label: Engine
+      options:
+        - baileys
+        - cloud_api
+        - simulator
+        - not engine-specific / do not know
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Image tag, or the commit you are running from.
+      placeholder: "ghcr.io/leoberchielli/awah:latest, or 46954ca"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: how
+    attributes:
+      label: How it is running
+      options:
+        - docker compose, published image
+        - docker compose, built from source
+        - from source with pnpm
+        - several replicas
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: |
+        `docker compose logs awah-api`, trimmed to the relevant part. Setting
+        `ENGINE_LOG_LEVEL=debug` and restarting adds the engine's own lines,
+        which is what usually explains a session that will not pair.
+      render: text
+
+  - type: checkboxes
+    id: hygiene
+    attributes:
+      label: Before submitting
+      options:
+        - label: I removed phone numbers, message contents and every credential.
+          required: true
+        - label: I checked the [troubleshooting guide](https://github.com/leoberchielli/awah/blob/main/docs/troubleshooting.md).
+          required: false

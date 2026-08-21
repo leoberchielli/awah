@@ -1,0 +1,46 @@
+name: Propose something that does not exist yet
+description: A capability, a connector, a route. Bring the use case with it.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Escreva em português se preferir.
+
+        Two things this project deliberately does not have, so that nobody
+        spends an afternoon writing the proposal: **an inbox** and **a flow
+        builder**. Chatwoot and Typebot already solve those, and the HTTP
+        connector plugs in anything else. The reasoning is in the
+        [design decisions](https://github.com/leoberchielli/awah/wiki/Design-Decisions).
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: |
+        What you were trying to do when you hit the wall. Not the solution —
+        the situation. Most proposals get better once this is written down.
+    validations:
+      required: true
+
+  - type: textarea
+    id: today
+    attributes:
+      label: What you do today instead
+      description: The workaround, however ugly. "Nothing, I gave up" is an answer.
+    validations:
+      required: true
+
+  - type: textarea
+    id: shape
+    attributes:
+      label: What it could look like
+      description: A route, a field, a config knob. Rough is fine.
+
+  - type: checkboxes
+    id: hands
+    attributes:
+      label: Hands
+      options:
+        - label: I would be up for implementing this, with some guidance.
+          required: false

@@ -1,0 +1,21 @@
+# Issues are for things that are wrong or missing. Questions and ideas have a
+# better home in Discussions, where an answer stays findable instead of being
+# closed.
+blank_issues_enabled: false
+
+contact_links:
+  - name: Question, idea, or "am I holding it wrong?"
+    url: https://github.com/leoberchielli/awah/discussions
+    about: Ask in Discussions — no issue needed, and the answer stays searchable.
+
+  - name: FAQ and glossary
+    url: https://github.com/leoberchielli/awah/wiki
+    about: Media support, ban risk, how many numbers per instance, what each term means here.
+
+  - name: Ran it against a real number?
+    url: https://github.com/leoberchielli/awah/wiki/Field-Reports
+    about: That report is worth more than a pull request right now. Ban stories included.
+
+  - name: Security vulnerability
+    url: https://github.com/leoberchielli/awah/blob/main/SECURITY.md
+    about: Do not open a public issue. The threat model and the private channel are here.
