@@ -10,6 +10,8 @@
 [![Tests](https://img.shields.io/badge/tests-376%20passing-brightgreen.svg)](#measured-not-asserted)
 [![Verified](https://img.shields.io/badge/verification-45%20checks-brightgreen.svg)](docs/VERIFICATION.md)
 
+*The same thing on one page: [awah.99ia.com.br](https://awah.99ia.com.br)*
+
 Most gateways answer *"how do I send a message"*. AWAH exists for the second
 question: **"how do I send ten thousand without losing any of them, and without
 losing the number"**.
@@ -252,6 +254,7 @@ it uses SIGKILL.
 | [packages/sdk](packages/sdk/README.md) | TypeScript client, no dependencies |
 | [SECURITY.md](SECURITY.md) | Threat model and how to report a vulnerability |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | How to help, and what helps most right now |
+| [site/](site/README.md) | The landing page at awah.99ia.com.br, and how to publish it |
 
 With the instance up, `/docs` carries the interactive reference for every route.
 

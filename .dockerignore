@@ -12,3 +12,6 @@ coverage
 *.log
 .docker-data
 README.md
+# A página de divulgação não entra na imagem: são 2 MB de GIF que o gateway
+# nunca serve.
+site

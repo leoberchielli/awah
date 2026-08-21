@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://awah.99ia.com.br/sitemap.xml

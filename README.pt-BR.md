@@ -10,6 +10,8 @@
 [![Testes](https://img.shields.io/badge/testes-376%20passando-brightgreen.svg)](#medido-n%C3%A3o-afirmado)
 [![Verificado](https://img.shields.io/badge/verifica%C3%A7%C3%A3o-45%20checks-brightgreen.svg)](docs/VERIFICATION.md)
 
+*A mesma coisa em uma página: [awah.99ia.com.br](https://awah.99ia.com.br)*
+
 A maioria dos gateways resolve *"como envio uma mensagem"*. O AWAH existe para a
 segunda pergunta: **"como envio dez mil sem perder nenhuma e sem perder o
 número"**.
@@ -243,6 +245,7 @@ SIGKILL.
 | [packages/sdk](packages/sdk/README.pt-BR.md) | Cliente TypeScript, sem dependências |
 | [SECURITY.md](SECURITY.pt-BR.md) | Modelo de ameaça e como reportar vulnerabilidade |
 | [CONTRIBUTING.md](CONTRIBUTING.pt-BR.md) | Como ajudar, e o que ajuda mais agora |
+| [site/](site/README.pt-BR.md) | A página em awah.99ia.com.br, e como publicá-la |
 
 Com a instância no ar, `/docs` traz a referência interativa de todas as rotas.
 

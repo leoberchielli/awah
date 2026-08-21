@@ -1,0 +1,62 @@
+name: Site
+
+# The landing page at awah.99ia.com.br. It has no build step — the `site`
+# directory is uploaded as it stands — so this workflow only runs when
+# something in there actually changed.
+on:
+  push:
+    branches: [main]
+    paths: ['site/**', '.github/workflows/site.yml']
+  workflow_dispatch:
+
+# One deployment at a time, and never cancel one halfway: an interrupted
+# publish leaves the domain serving whatever the previous half was.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  publish:
+    name: Publish to GitHub Pages
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # The English dictionary is applied on top of the Portuguese HTML, so a
+      # key that exists in one and not in the other is a paragraph that silently
+      # stops translating. Nothing else in the page would notice.
+      - name: Translation keys match
+        run: |
+          node -e "
+          const f = require('fs');
+          const h = f.readFileSync('site/index.html', 'utf8');
+          const j = f.readFileSync('site/assets/i18n.js', 'utf8');
+          const keys = new Set([...h.matchAll(/data-i18n=\"([^\"]+)\"/g)].map(m => m[1]));
+          [...h.matchAll(/data-i18n-attr=\"([^\"]+)\"/g)].forEach(m =>
+            m[1].split(',').forEach(p => keys.add(p.split(':')[1].trim())));
+          const en = new Set([...j.matchAll(/^\s*'?([a-z0-9._]+)'?\s*:/gmi)].map(m => m[1]));
+          const missing = [...keys].filter(k => !en.has(k));
+          if (missing.length) {
+            console.error('::error::Keys used in index.html with no English string: ' + missing.join(', '));
+            process.exit(1);
+          }
+          console.log(keys.size + ' keys, all translated');
+          "
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - id: deploy
+        uses: actions/deploy-pages@v4

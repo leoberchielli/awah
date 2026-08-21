@@ -1,0 +1,773 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AWAH — Gateway de WhatsApp com fila durável, motor de risco e cluster</title>
+<meta name="description" content="Dez mil mensagens sem perder nenhuma, e sem perder o número. Gateway de WhatsApp open source: fila durável em Postgres, motor de risco com warm-up, sessões em cluster com failover e webhooks assinados.">
+<link rel="canonical" href="https://awah.99ia.com.br/">
+<link rel="alternate" hreflang="pt-BR" href="https://awah.99ia.com.br/">
+<link rel="alternate" hreflang="en" href="https://awah.99ia.com.br/?lang=en">
+<link rel="alternate" hreflang="x-default" href="https://awah.99ia.com.br/">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="AWAH">
+<meta property="og:title" content="AWAH — dez mil mensagens sem perder nenhuma, e sem perder o número">
+<meta property="og:description" content="Gateway de WhatsApp open source com fila durável, motor de risco e sessões em cluster. 376 testes, 45 checks verificados contra uma instância viva.">
+<meta property="og:url" content="https://awah.99ia.com.br/">
+<meta property="og:image" content="https://awah.99ia.com.br/assets/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="pt_BR">
+<meta property="og:locale:alternate" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="AWAH — dez mil mensagens sem perder nenhuma, e sem perder o número">
+<meta name="twitter:description" content="Gateway de WhatsApp open source com fila durável, motor de risco e sessões em cluster.">
+<meta name="twitter:image" content="https://awah.99ia.com.br/assets/og.png">
+
+<meta name="theme-color" content="#0e1117" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f2f4f7" media="(prefers-color-scheme: light)">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/favicon.svg">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="assets/styles.css">
+
+<script>
+/* Before paint: no theme flash, no language flash. */
+(() => {
+  const d = document.documentElement;
+  try {
+    const t = localStorage.getItem('awah-theme');
+    if (t === 'light' || t === 'dark') d.setAttribute('data-theme', t);
+    const q = new URLSearchParams(location.search).get('lang');
+    const l = q || localStorage.getItem('awah-lang') ||
+            ((navigator.language || 'pt').toLowerCase().indexOf('pt') === 0 ? 'pt' : 'en');
+    d.setAttribute('data-lang', l === 'en' ? 'en' : 'pt');
+  } catch (_e) { d.setAttribute('data-lang', 'pt'); }
+})();
+</script>
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "AWAH",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "Docker, Linux, macOS",
+  "url": "https://awah.99ia.com.br/",
+  "codeRepository": "https://github.com/leoberchielli/awah",
+  "description": "Gateway de WhatsApp open source com fila durável em Postgres, motor de risco com warm-up de número, sessões em cluster com failover e webhooks assinados.",
+  "license": "https://opensource.org/licenses/MIT",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+}
+</script>
+</head>
+
+<body>
+<a class="skip-link" href="#conteudo" data-i18n="skip">Ir para o conteúdo</a>
+
+<header class="nav" id="nav">
+  <div class="wrap nav__inner">
+    <a class="brand" href="#top" aria-label="AWAH">
+      <svg class="brand__mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+        <rect width="32" height="32" rx="7" fill="currentColor"/>
+        <path d="M6 11.5h3.1l2.2 6.6 2.2-6.6h2.6l2.2 6.6 2.2-6.6H23L19.2 22h-2.7l-2.2-6.3L12.1 22H9.4L6 11.5Z" fill="#fff"/>
+        <circle cx="24.5" cy="9" r="3" fill="#35C07A" stroke="currentColor" stroke-width="1.6"/>
+      </svg>
+      <span class="brand__name">AWAH</span>
+    </a>
+
+    <nav class="nav__links" aria-label="Seções">
+      <a href="#fluxo" data-i18n="nav.flow">O fluxo</a>
+      <a href="#risco" data-i18n="nav.risk">Motor de risco</a>
+      <a href="#medido" data-i18n="nav.measured">Medido</a>
+      <a href="#painel" data-i18n="nav.dashboard">Painel</a>
+      <a href="#comecar" data-i18n="nav.start">Começar</a>
+    </nav>
+
+    <div class="nav__actions">
+      <!--
+        Cada botão diz o idioma inteiro para quem usa leitor de tela: "PT" e
+        "EN" sozinhos são duas letras, e o par não precisa de um rótulo de
+        grupo para ficar claro.
+      -->
+      <div class="seg">
+        <button type="button" class="seg__btn" data-lang-set="pt" aria-pressed="true" aria-label="Português">PT</button>
+        <button type="button" class="seg__btn" data-lang-set="en" aria-pressed="false" aria-label="English">EN</button>
+      </div>
+      <button type="button" class="icon-btn" id="theme-toggle" aria-label="Alternar tema" data-i18n-attr="aria-label:theme.toggle">
+        <svg class="i-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.6M12 18.9v2.6M2.5 12h2.6M18.9 12h2.6M5.2 5.2l1.9 1.9M16.9 16.9l1.9 1.9M18.8 5.2l-1.9 1.9M7.1 16.9l-1.9 1.9"/></svg>
+        <svg class="i-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.2A8.2 8.2 0 0 1 9.8 4a8.4 8.4 0 1 0 10.2 10.2Z"/></svg>
+      </button>
+      <a class="btn btn--ghost btn--star" href="https://github.com/leoberchielli/awah" target="_blank" rel="noopener">
+        <svg viewBox="0 0 16 16" aria-hidden="true" class="i-gh"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8a8 8 0 0 0 5.47 7.59c.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.4 7.4 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+        <span data-i18n="nav.star">Estrela</span>
+        <span class="star-count" id="star-count" hidden></span>
+      </a>
+    </div>
+  </div>
+</header>
+
+<main id="conteudo">
+
+<!-- ── HERO ─────────────────────────────────────────────────────────── -->
+<section class="hero" id="top">
+  <div class="hero__glow" aria-hidden="true"></div>
+  <div class="wrap hero__inner">
+    <div class="hero__copy">
+      <p class="eyebrow reveal">
+        <span class="dot dot--ok" aria-hidden="true"></span>
+        <span data-i18n="hero.eyebrow">Open source · MIT · imagem Docker multi-arquitetura</span>
+      </p>
+
+      <h1 class="hero__title reveal">
+        <span data-i18n="hero.title1">Dez mil mensagens sem perder nenhuma.</span>
+        <span class="grad" data-i18n="hero.title2">E sem perder o número.</span>
+      </h1>
+
+      <p class="lede reveal" data-i18n="hero.lede">
+        A maioria dos gateways de WhatsApp resolve <em>“como envio uma mensagem”</em>.
+        O AWAH existe para a segunda pergunta — a que aparece quando o volume chega:
+        fila durável em Postgres, motor de risco que protege o número e sessões em
+        cluster com failover automático.
+      </p>
+
+      <div class="hero__cta reveal">
+        <a class="btn btn--primary" href="#comecar" data-i18n="hero.cta1">Subir em 2 minutos</a>
+        <a class="btn btn--ghost" href="https://github.com/leoberchielli/awah" target="_blank" rel="noopener">
+          <svg viewBox="0 0 16 16" aria-hidden="true" class="i-gh"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8a8 8 0 0 0 5.47 7.59c.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.4 7.4 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+          <span data-i18n="hero.cta2">Ver no GitHub</span>
+        </a>
+      </div>
+
+      <div class="copybar reveal">
+        <code>curl -O https://raw.githubusercontent.com/leoberchielli/awah/main/docker-compose.yml &amp;&amp; docker compose up -d</code>
+        <button type="button" class="copy" data-copy="curl -O https://raw.githubusercontent.com/leoberchielli/awah/main/docker-compose.yml && docker compose up -d" data-i18n-attr="aria-label:copy.aria">
+          <span class="copy__label" data-i18n="copy.label">Copiar</span>
+        </button>
+      </div>
+
+      <ul class="trust reveal">
+        <li><strong>376</strong> <span data-i18n="trust.tests">testes</span></li>
+        <li><strong>45</strong> <span data-i18n="trust.checks">checks verificados</span></li>
+        <li><strong>10</strong> <span data-i18n="trust.langs">idiomas</span></li>
+        <li><strong>MIT</strong> <span data-i18n="trust.license">licença</span></li>
+      </ul>
+    </div>
+
+    <div class="hero__visual reveal" aria-hidden="true">
+      <div class="term">
+        <div class="term__bar">
+          <span class="term__dots"><i></i><i></i><i></i></span>
+          <span class="term__title">bash — awah</span>
+        </div>
+        <pre class="term__body"><span class="ln"><span class="p">$</span> docker compose up -d</span>
+<span class="ln ok">✔ postgres    healthy</span>
+<span class="ln ok">✔ redis       healthy</span>
+<span class="ln ok">✔ awah-api    <span class="mut">listening on</span> :2900</span>
+<span class="ln"> </span>
+<span class="ln"><span class="p">$</span> curl -X POST :2900/v1/sessions/$ID/messages \</span>
+<span class="ln">    -d '{"chatId":"5511987654321","text":"olá"}'</span>
+<span class="ln"><span class="code-202">202</span> accepted  <span class="mut">{"id":"out_9f31","status":"queued"}</span></span>
+<span class="ln cur"><span class="p">$</span> <span class="caret"></span></span></pre>
+      </div>
+      <p class="term__note"><strong>202</strong>, <span data-i18n="hero.note">não 200. A mensagem foi persistida — não entregue. A diferença é a tese do projeto.</span></p>
+    </div>
+  </div>
+</section>
+
+<!-- ── TESE ─────────────────────────────────────────────────────────── -->
+<section class="section section--tight" id="tese">
+  <div class="wrap">
+    <div class="thesis reveal">
+      <p class="thesis__q" data-i18n="thesis.q">“Como envio dez mil mensagens sem perder nenhuma, e sem perder o número?”</p>
+      <p class="thesis__a" data-i18n="thesis.a">
+        A fila é o produto. A API responde no instante em que a linha fica durável,
+        <strong>antes de qualquer I/O de rede</strong> — então um processo que morre não
+        perde nada. Isso não é uma promessa de README: é medido matando um processo
+        com <code>SIGKILL</code> no meio da drenagem.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ── FLUXO ────────────────────────────────────────────────────────── -->
+<section class="section" id="fluxo">
+  <div class="wrap">
+    <header class="sec-head reveal">
+      <p class="kicker" data-i18n="flow.kicker">O que acontece com uma mensagem</p>
+      <h2 data-i18n="flow.title">Nada é descartado. O que não passa agora espera — e diz por quê.</h2>
+      <p class="sec-sub" data-i18n="flow.sub">
+        A parte que separa isto de um botão de enviar. Cada etapa registra sua decisão,
+        e cada decisão continua consultável meses depois.
+      </p>
+    </header>
+
+    <div class="flow reveal">
+      <div class="flow__diagram">
+        <svg viewBox="0 0 1120 340" preserveAspectRatio="xMidYMid meet" role="img"
+             data-i18n-attr="aria-label:flow.aria"
+             aria-label="Fluxo de uma mensagem: POST, outbox no Postgres, orçamento, score de risco, jitter humano, engine, reconciliação de ACK e webhook assinado.">
+          <title data-i18n="flow.aria">Fluxo de uma mensagem: POST, outbox no Postgres, orçamento, score de risco, jitter humano, engine, reconciliação de ACK e webhook assinado.</title>
+          <defs>
+            <marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0 0 L10 5 L0 10 z" fill="var(--line-strong)"/>
+            </marker>
+            <marker id="ar-warn" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0 0 L10 5 L0 10 z" fill="var(--warn)"/>
+            </marker>
+            <marker id="ar-crit" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0 0 L10 5 L0 10 z" fill="var(--crit)"/>
+            </marker>
+          </defs>
+
+          <!-- trilha principal -->
+          <g class="edges">
+            <path class="e flowing" d="M150 150 H210"/>
+            <path class="e flowing" d="M330 150 H390"/>
+            <path class="e flowing" d="M510 150 H570"/>
+            <path class="e flowing" d="M690 150 H750"/>
+            <path class="e flowing" d="M870 150 H930"/>
+          </g>
+
+          <!-- desvios -->
+          <g class="edges">
+            <path class="e e--warn" d="M450 186 V246 H330 V186" marker-end="url(#ar-warn)"/>
+            <path class="e e--crit" d="M810 186 V286 H620" marker-end="url(#ar-crit)"/>
+            <path class="e e--crit" d="M810 186 V246 H270 V186" marker-end="url(#ar-crit)"/>
+          </g>
+
+          <g class="nodes">
+            <g class="n"><rect x="30" y="118" width="120" height="64" rx="12"/>
+              <text x="90" y="144" class="n__t">POST</text>
+              <text x="90" y="164" class="n__s">/messages</text></g>
+
+            <g class="n n--store"><rect x="210" y="118" width="120" height="64" rx="12"/>
+              <text x="270" y="144" class="n__t">outbox</text>
+              <text x="270" y="164" class="n__s">Postgres</text></g>
+
+            <g class="n"><rect x="390" y="118" width="120" height="64" rx="12"/>
+              <text x="450" y="144" class="n__t" data-i18n="flow.n.budget">orçamento</text>
+              <text x="450" y="164" class="n__s" data-i18n="flow.n.budgetS">tem vaga?</text></g>
+
+            <g class="n"><rect x="570" y="118" width="120" height="64" rx="12"/>
+              <text x="630" y="144" class="n__t">score</text>
+              <text x="630" y="164" class="n__s">0–100</text></g>
+
+            <g class="n"><rect x="750" y="118" width="120" height="64" rx="12"/>
+              <text x="810" y="144" class="n__t">engine</text>
+              <text x="810" y="164" class="n__s" data-i18n="flow.n.engineS">jitter humano</text></g>
+
+            <g class="n n--ok"><rect x="930" y="118" width="160" height="64" rx="12"/>
+              <text x="1010" y="144" class="n__t" data-i18n="flow.n.ack">ACK + webhook</text>
+              <text x="1010" y="164" class="n__s">sent → delivered → read</text></g>
+
+            <g class="n n--warn"><rect x="370" y="252" width="160" height="56" rx="12"/>
+              <text x="450" y="276" class="n__t" data-i18n="flow.n.held">segurada</text>
+              <text x="450" y="294" class="n__s" data-i18n="flow.n.heldS">com motivo e previsão</text></g>
+
+            <g class="n n--crit"><rect x="620" y="252" width="190" height="56" rx="12"/>
+              <text x="715" y="276" class="n__t" data-i18n="flow.n.dlq">fila morta</text>
+              <text x="715" y="294" class="n__s" data-i18n="flow.n.dlqS">consultável, reenviável</text></g>
+          </g>
+
+          <g class="elabels">
+            <text x="180" y="140" data-i18n="flow.l.202">202</text>
+            <text x="360" y="140" data-i18n="flow.l.reserved">reservada</text>
+            <text x="540" y="140" data-i18n="flow.l.scored">avaliada</text>
+            <text x="720" y="140" data-i18n="flow.l.sent">enviada</text>
+            <text x="900" y="140" data-i18n="flow.l.ack">ACK</text>
+          </g>
+        </svg>
+      </div>
+
+      <!-- Equivalente textual: é o que aparece no celular, e é o que o leitor de tela lê. -->
+      <ol class="flow__steps">
+        <li><span class="step__n">1</span><div><strong data-i18n="flow.s1t">POST /messages → 202</strong><span data-i18n="flow.s1">A linha fica durável no outbox antes de qualquer I/O de rede. <code>clientMessageId</code> é a chave de idempotência: repetir o POST devolve o envio original.</span></div></li>
+        <li><span class="step__n">2</span><div><strong data-i18n="flow.s2t">Orçamento</strong><span data-i18n="flow.s2">Janelas deslizantes por minuto, hora e dia, mais um teto de novos contatos. Sem vaga, a mensagem volta para a fila com o motivo e o horário real em que a janela abre.</span></div></li>
+        <li><span class="step__n">3</span><div><strong data-i18n="flow.s3t">Score 0–100</strong><span data-i18n="flow.s3">Quatro sinais com pesos próprios. Acima de 40 o ritmo cai; acima de 90 vai a 10% da vazão. Nunca chega a zero — parar sozinho seria indistinguível de um bug.</span></div></li>
+        <li><span class="step__n">4</span><div><strong data-i18n="flow.s4t">Jitter humano</strong><span data-i18n="flow.s4">Intervalo log-normal entre envios e presença de digitação proporcional ao texto. Intervalo uniforme produz padrão regular — que é exatamente o que se evita.</span></div></li>
+        <li><span class="step__n">5</span><div><strong data-i18n="flow.s5t">Recusa → retentativa → fila morta</strong><span data-i18n="flow.s5">Backoff exponencial. Sessão caída não consome tentativa. Esgotadas as tentativas, a mensagem fica em <code>GET /v1/outbox?status=dead</code>, pronta para replay.</span></div></li>
+        <li><span class="step__n">6</span><div><strong data-i18n="flow.s6t">Webhook assinado</strong><span data-i18n="flow.s6">HMAC sobre <code>timestamp.body</code> — não só o body. Uma entrega capturada não pode ser reenviada depois: mexer no timestamp invalida a assinatura.</span></div></li>
+      </ol>
+    </div>
+
+    <div class="cards reveal">
+      <article class="card">
+        <h3 data-i18n="grt.1t">Ordem por conversa</h3>
+        <p data-i18n="grt.1">Dentro de um chat, as mensagens saem na ordem em que entraram, e nunca há dois envios simultâneos para o mesmo destinatário. Chats diferentes correm em paralelo.</p>
+      </article>
+      <article class="card">
+        <h3 data-i18n="grt.2t">Nada se perde</h3>
+        <p data-i18n="grt.2">A linha existe no banco antes de qualquer I/O de rede. Se o processo morre no meio, a mensagem sai depois.</p>
+      </article>
+      <article class="card">
+        <h3 data-i18n="grt.3t">Indisponibilidade não é falha</h3>
+        <p data-i18n="grt.3">Sessão caída, ou ainda pareando, devolve o envio à fila sem consumir tentativa. Só erro real de entrega conta.</p>
+      </article>
+      <article class="card">
+        <h3 data-i18n="grt.4t">Nada é descartado</h3>
+        <p data-i18n="grt.4">Esgotadas as tentativas, a mensagem vai para a DLQ e continua consultável — com replay em um POST.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ── RISCO ────────────────────────────────────────────────────────── -->
+<section class="section section--alt" id="risco">
+  <div class="wrap">
+    <header class="sec-head reveal">
+      <p class="kicker" data-i18n="risk.kicker">Motor de risco</p>
+      <h2 data-i18n="risk.title">Toda outra garantia vale zero se o número deixar de existir numa terça-feira.</h2>
+      <p class="sec-sub" data-i18n="risk.sub">
+        Engine não oficial faz número ser banido. O motor impõe um ritmo humano — e o
+        ritmo não é constante: ele abre conforme o número envelhece.
+      </p>
+    </header>
+
+    <div class="risk-grid">
+      <figure class="chart-card reveal" id="warmup-card">
+        <figcaption>
+          <h3 data-i18n="risk.chart.title">Warm-up: o teto cresce com a idade do número</h3>
+          <p data-i18n="risk.chart.sub">Percentual do limite configurado que o motor libera, por dia desde o pareamento.</p>
+        </figcaption>
+        <div class="chart" id="chart-warmup"></div>
+        <details class="table-view">
+          <summary data-i18n="table.summary">Ver os dados em tabela</summary>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th data-i18n="risk.tbl.day">Dia</th><th data-i18n="risk.tbl.pct">Teto liberado</th><th data-i18n="risk.tbl.rate">Envios/min (teto de 12)</th></tr></thead>
+              <tbody id="warmup-tbody"></tbody>
+            </table>
+          </div>
+        </details>
+        <p class="chart-note" data-i18n="risk.chart.note">
+          Configurar 5.000 por dia numa sessão pareada hoje dá 250 na prática. Isso é
+          deliberado: um número recém-pareado que dispara mil mensagens no dia um é o
+          padrão de conta descartável mais óbvio que existe.
+        </p>
+      </figure>
+
+      <figure class="chart-card reveal" id="signals-card">
+        <figcaption>
+          <h3 data-i18n="risk.sig.title">O score, e o peso de cada sinal</h3>
+          <p data-i18n="risk.sig.sub">Quatro sinais, cada um com seu peso e seu motivo em texto claro.</p>
+        </figcaption>
+        <div class="chart" id="chart-signals"></div>
+        <details class="table-view">
+          <summary data-i18n="table.summary">Ver os dados em tabela</summary>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th data-i18n="risk.sig.th1">Sinal</th><th data-i18n="risk.sig.th2">Peso</th><th data-i18n="risk.sig.th3">Por quê</th></tr></thead>
+              <tbody id="signals-tbody"></tbody>
+            </table>
+          </div>
+        </details>
+        <p class="chart-note" data-i18n="risk.sig.note">
+          <code>GET /v1/risk/events</code> guarda cada decisão com um retrato do orçamento
+          naquele instante — responde por que um envio específico atrasou, meses depois.
+        </p>
+      </figure>
+    </div>
+
+    <div class="cards reveal">
+      <article class="card card--accent">
+        <h3 data-i18n="risk.c1t">Recusar não é uma das opções</h3>
+        <p data-i18n="risk.c1">Quando o orçamento acaba, o envio volta para a fila carregando o horário em que a janela abre — calculado a partir do envio mais antigo ainda dentro dela. Nenhuma mensagem é jogada fora.</p>
+      </article>
+      <article class="card">
+        <h3 data-i18n="risk.c2t">Janela deslizante, não balde de hora cheia</h3>
+        <p data-i18n="risk.c2">Um balde deixaria enviar o teto inteiro às 13h59 e o teto inteiro de novo às 14h00. A janela desliza.</p>
+      </article>
+      <article class="card">
+        <h3 data-i18n="risk.c3t">Novos contatos por dia</h3>
+        <p data-i18n="risk.c3">Um teto separado, porque falar com muito desconhecido é o sinal de spam mais forte que o WhatsApp lê.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ── MEDIDO ───────────────────────────────────────────────────────── -->
+<section class="section" id="medido">
+  <div class="wrap">
+    <header class="sec-head reveal">
+      <p class="kicker" data-i18n="meas.kicker">Medido, não afirmado</p>
+      <h2 data-i18n="meas.title">Quatro afirmações baratas de escrever e caras de verificar — então há um script que verifica.</h2>
+      <p class="sec-sub" data-i18n="meas.sub">
+        Os números abaixo saem de <code>node scripts/benchmark.mjs</code>, que está no
+        repositório e que você pode rodar de novo.
+      </p>
+    </header>
+
+    <div class="tiles reveal">
+      <div class="tile">
+        <p class="tile__label" data-i18n="meas.t1l">Fora de ordem dentro de uma conversa</p>
+        <p class="tile__value"><span class="tile__num">0</span><span class="tile__unit" data-i18n="meas.t1u">de 192 pares</span></p>
+        <p class="tile__note" data-i18n="meas.t1n">Na primeira tentativa, sob concorrência.</p>
+      </div>
+      <div class="tile">
+        <p class="tile__label" data-i18n="meas.t2l">Envios recusados recuperados</p>
+        <p class="tile__value"><span class="tile__num" data-i18n="meas.t2v">todos</span></p>
+        <p class="tile__note" data-i18n="meas.t2n">Nenhum chegou à fila morta.</p>
+      </div>
+      <div class="tile">
+        <p class="tile__label" data-i18n="meas.t3l">Ingestão pela API</p>
+        <p class="tile__value"><span class="tile__num">~450</span><span class="tile__unit">envios/s</span></p>
+        <p class="tile__note"><code>POST /v1/sessions/:id/messages</code></p>
+      </div>
+      <div class="tile">
+        <p class="tile__label" data-i18n="meas.t4l">Warm-up: dia 0 · 3 · 30</p>
+        <p class="tile__value"><span class="tile__num">1,2 · 2,4 · 14,4</span></p>
+        <p class="tile__note" data-i18n="meas.t4n">Envios/min contra tetos de 1 · 2 · 12.</p>
+      </div>
+    </div>
+
+    <div class="split reveal">
+      <div class="split__col">
+        <h3 data-i18n="meas.v.title">45 checks, cada um com sua evidência</h3>
+        <p data-i18n="meas.v.body">
+          Um segundo script pergunta se as garantias se sustentam, e registra o que viu
+          em vez de só dizer se ficou satisfeito: uma chave de leitor recusada, um
+          webhook com assinatura recomputada a partir do corpo e do segredo, uma
+          entrega recusada duas vezes e aceita na terceira, sessenta mensagens
+          sobrevivendo a um <code>docker kill</code> no meio da drenagem e uma sessão
+          assumida pela réplica sobrevivente depois que a dona foi morta.
+        </p>
+        <p class="muted-p" data-i18n="meas.v.note">
+          O script dirige o Docker de propósito: durabilidade e failover não se
+          verificam sem parar um processo — e parada graciosa é o caso fácil, então ele
+          usa <code>SIGKILL</code>.
+        </p>
+        <div class="links">
+          <a class="link-arrow" href="https://github.com/leoberchielli/awah/blob/main/docs/VERIFICATION.md" target="_blank" rel="noopener"><span data-i18n="meas.v.link">Ler o relatório de verificação</span></a>
+          <a class="link-arrow" href="https://github.com/leoberchielli/awah/blob/main/docs/BENCHMARK.md" target="_blank" rel="noopener"><span data-i18n="meas.b.link">Ler o benchmark completo</span></a>
+        </div>
+      </div>
+      <div class="split__col">
+        <div class="honesty">
+          <p class="honesty__tag"><span class="dot dot--warn" aria-hidden="true"></span><span data-i18n="honest.tag">O que ainda não foi medido</span></p>
+          <p data-i18n="honest.body">
+            <strong>Nada foi exercitado ponta a ponta contra um número real.</strong> O QR é
+            gerado e o socket conecta, e é até aí que um aparelho de verdade levou isto.
+            Tudo antes do último salto foi medido contra um engine <code>simulator</code>
+            que fica atrás do mesmo contrato do Baileys. O que isso ainda não conta é
+            como o WhatsApp reage a um número ao longo de semanas.
+          </p>
+          <p class="honesty__sig" data-i18n="honest.sig">A mecânica tem 376 testes cobrindo. E um teste continua sendo um teste.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── PAINEL ───────────────────────────────────────────────────────── -->
+<section class="section section--alt" id="painel">
+  <div class="wrap">
+    <header class="sec-head reveal">
+      <p class="kicker" data-i18n="dash.kicker">O painel</p>
+      <h2 data-i18n="dash.title">Servido pela própria API, na mesma origem — e isso não é detalhe de empacotamento.</h2>
+      <p class="sec-sub" data-i18n="dash.sub">
+        É o que permite a credencial do painel ser um cookie <code>httpOnly</code> em vez
+        de um token no <code>localStorage</code>. Em origens separadas o navegador exigiria
+        <code>SameSite=None</code>, e o cookie passaria a viajar em requisição de terceiro.
+      </p>
+    </header>
+
+    <figure class="shot reveal">
+      <img src="assets/dashboard.gif" width="1200" height="750" loading="lazy" decoding="async"
+           data-i18n-attr="alt:dash.alt"
+           alt="Painel do AWAH: funil de entrega, vazão, decisões do motor de risco e o painel de risco de uma sessão — terminando com a interface inteira trocando de idioma.">
+      <figcaption data-i18n="dash.cap">
+        Gravado contra uma instância viva. Os últimos segundos são o painel mudando de
+        idioma: são dez, e os motivos de queda de uma sessão também são traduzidos, em
+        vez de ficarem em inglês dentro de uma tela traduzida.
+      </figcaption>
+    </figure>
+
+    <div class="split split--pair reveal">
+      <figure class="shot shot--sm">
+        <img src="assets/pairing.gif" width="900" height="600" loading="lazy" decoding="async"
+             data-i18n-attr="alt:pair.alt"
+             alt="Pareamento de um número: o QR code ao lado dos quatro passos, e a sessão marcada como Pareando até o telefone aceitar.">
+        <figcaption data-i18n="pair.cap">O código se renova sozinho e o painel se fecha no instante em que o telefone aceita. Sem curl.</figcaption>
+      </figure>
+      <div class="split__col">
+        <h3 data-i18n="dash.legib.title">Sobre legibilidade visual</h3>
+        <p data-i18n="dash.legib.body">
+          Estado é forma <strong>e</strong> cor: cada pílula carrega um ponto além do tom,
+          porque daltonismo é comum e um painel que fala só em cor exclui parte de quem
+          opera. Todo número em fonte monoespaçada com dígitos tabulares — uma coluna que
+          não dança quando o valor muda.
+        </p>
+        <ul class="ticks">
+          <li data-i18n="dash.li1">A janela de tempo e o filtro de sessão vivem na <strong>URL</strong>: quem vê algo estranho manda o link e o colega abre exatamente a mesma tela.</li>
+          <li data-i18n="dash.li2">O painel destaca a divergência que custa dinheiro em silêncio: sessão com <code>desired_state=running</code> que não está rodando.</li>
+          <li data-i18n="dash.li3">Tema claro, tema escuro e “o do sistema”, que é o padrão.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── ARQUITETURA ──────────────────────────────────────────────────── -->
+<section class="section" id="arquitetura">
+  <div class="wrap">
+    <header class="sec-head reveal">
+      <p class="kicker" data-i18n="arch.kicker">Como é montado</p>
+      <h2 data-i18n="arch.title">N réplicas atrás de um balanceador. Uma sessão pertence a uma réplica por vez.</h2>
+      <p class="sec-sub" data-i18n="arch.sub">
+        A posse é um lease no Redis. Quando a réplica dona morre, outra percebe e assume
+        — o que também é checado matando uma.
+      </p>
+    </header>
+
+    <div class="arch reveal">
+      <div class="arch__col">
+        <p class="arch__cap" data-i18n="arch.c1">Seu sistema</p>
+        <div class="arch__box"><strong>SDK TypeScript</strong><span data-i18n="arch.c1s">ou HTTP puro</span></div>
+      </div>
+      <div class="arch__flow" aria-hidden="true"><span></span></div>
+      <div class="arch__col arch__col--main">
+        <p class="arch__cap">AWAH <span class="mut" data-i18n="arch.c2s">— N réplicas</span></p>
+        <div class="arch__box arch__box--accent"><strong data-i18n="arch.b1">API REST + painel</strong><span data-i18n="arch.b1s">mesma origem, mesma porta</span></div>
+        <div class="arch__box"><strong data-i18n="arch.b2">motor de risco</strong><span data-i18n="arch.b2s">orçamento, warm-up, freio</span></div>
+        <div class="arch__box"><strong data-i18n="arch.b3">scheduler</strong><span data-i18n="arch.b3s">FIFO por conversa</span></div>
+        <div class="arch__box"><strong data-i18n="arch.b4">dispatcher de webhook</strong><span data-i18n="arch.b4s">HMAC, retry, DLQ</span></div>
+      </div>
+      <div class="arch__flow" aria-hidden="true"><span></span></div>
+      <div class="arch__col">
+        <p class="arch__cap" data-i18n="arch.c3">Estado</p>
+        <div class="arch__box"><strong>Postgres</strong><span data-i18n="arch.b5s">outbox, mensagens, auth state cifrado</span></div>
+        <div class="arch__box"><strong>Redis</strong><span data-i18n="arch.b6s">leases, janelas de orçamento</span></div>
+        <p class="arch__cap arch__cap--2" data-i18n="arch.c4">Engines, um contrato</p>
+        <div class="arch__box"><strong>Baileys</strong><span data-i18n="arch.b7s">não oficial, grátis</span></div>
+        <div class="arch__box"><strong>Cloud API</strong><span data-i18n="arch.b8s">oficial, cobrado</span></div>
+        <div class="arch__box"><strong>simulator</strong><span data-i18n="arch.b9s">para testar</span></div>
+      </div>
+    </div>
+
+    <div class="table-card reveal">
+      <h3 data-i18n="eng.title">O que muda quando você troca de engine</h3>
+      <p class="sec-sub sec-sub--in" data-i18n="eng.sub">
+        Os dois ficam atrás do mesmo <code>EngineAdapter</code>: quem integra escreve o
+        código uma vez e migra do não oficial para o oficial trocando uma linha.
+      </p>
+      <div class="table-scroll">
+        <table class="cmp">
+          <thead><tr><th></th><th><code>baileys</code></th><th><code>cloud_api</code></th></tr></thead>
+          <tbody>
+            <tr><th scope="row" data-i18n="eng.r1">Pareamento por QR</th><td class="y" data-i18n="eng.yes">sim</td><td class="n" data-i18n="eng.r1b">não — é um token</td></tr>
+            <tr><th scope="row" data-i18n="eng.r2">Grupos</th><td class="y" data-i18n="eng.yes">sim</td><td class="n" data-i18n="eng.no">não</td></tr>
+            <tr><th scope="row" data-i18n="eng.r3">Presença de digitação</th><td class="y" data-i18n="eng.yes">sim</td><td class="n" data-i18n="eng.r3b">não existe na API</td></tr>
+            <tr><th scope="row" data-i18n="eng.r4">Conversa livre</th><td class="y" data-i18n="eng.r4a">sempre</td><td class="n" data-i18n="eng.r4b">só dentro da janela de 24 h</td></tr>
+            <tr><th scope="row" data-i18n="eng.r5">Risco de ban</th><td class="n" data-i18n="eng.r5a">real</td><td class="y" data-i18n="eng.r5b">nenhum</td></tr>
+            <tr><th scope="row" data-i18n="eng.r6">Custo</th><td class="y" data-i18n="eng.r6a">zero</td><td class="n" data-i18n="eng.r6b">por conversa, cobrado pela Meta</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── INTEGRAÇÕES ──────────────────────────────────────────────────── -->
+<section class="section section--alt" id="integracoes">
+  <div class="wrap">
+    <header class="sec-head reveal">
+      <p class="kicker" data-i18n="int.kicker">Integrações</p>
+      <h2 data-i18n="int.title">Não há inbox nem construtor de fluxo aqui. É decisão, não lacuna.</h2>
+      <p class="sec-sub" data-i18n="int.sub">
+        O Chatwoot já resolve atendimento humano; o Typebot já resolve fluxos. O que
+        falta a todos eles é exatamente o que o gateway tem.
+      </p>
+    </header>
+
+    <div class="table-card reveal">
+      <div class="table-scroll">
+        <table class="cmp">
+          <thead><tr><th></th><th data-i18n="int.h1">Ligado direto na Meta</th><th data-i18n="int.h2">Com o AWAH embaixo</th></tr></thead>
+          <tbody>
+            <tr><th scope="row" data-i18n="int.r1">Ordem por conversa</th><td class="n" data-i18n="int.r1a">sem garantia</td><td class="y" data-i18n="int.r1b">FIFO por chat, chats em paralelo</td></tr>
+            <tr><th scope="row" data-i18n="int.r2">Mensagem perdida</th><td class="n" data-i18n="int.r2a">dispara e esquece</td><td class="y" data-i18n="int.r2b">fila durável, retry, DLQ com replay</td></tr>
+            <tr><th scope="row" data-i18n="int.r3">Ritmo de envio</th><td class="n" data-i18n="int.r3a">o que a ferramenta decidir</td><td class="y" data-i18n="int.r3b">orçamento, warm-up e freio adaptativo</td></tr>
+            <tr><th scope="row" data-i18n="int.r4">Reentrega duplicada</th><td class="n" data-i18n="int.r4a">manda de novo</td><td class="y" data-i18n="int.r4b">idempotência por chave</td></tr>
+            <tr><th scope="row" data-i18n="int.r5">Estado de entrega</th><td class="n" data-i18n="int.r5a">“eu enviei”</td><td class="y" data-i18n="int.r5b">funil enviada → entregue → lida</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="cards reveal">
+      <article class="card">
+        <h3>Chatwoot</h3>
+        <p data-i18n="int.c1">Dois campos: endereço e token. O gateway descobre o resto — a conta, as inboxes — e <strong>cria a inbox de API já com o webhook apontado para ele mesmo</strong>. Os três passos que faziam a maioria desistir não existem mais.</p>
+      </article>
+      <article class="card">
+        <h3>Typebot</h3>
+        <p data-i18n="int.c2">Pede só o link de compartilhamento do fluxo. O endereço e o id saem dele.</p>
+      </article>
+      <article class="card">
+        <h3 data-i18n="int.c3t">Qualquer outra plataforma</h3>
+        <p data-i18n="int.c3">O conector HTTP posta cada mensagem recebida na sua URL e envia de volta o que a resposta trouxer. Com isso n8n, Make, uma função serverless ou o sistema de casa viram o bot.</p>
+      </article>
+    </div>
+    <p class="note-line reveal" data-i18n="int.note">A conexão é testada antes de ser salva: credencial errada guardada em silêncio só apareceria na primeira mensagem de um cliente real.</p>
+  </div>
+</section>
+
+<!-- ── AVISO ────────────────────────────────────────────────────────── -->
+<section class="section section--tight" id="aviso">
+  <div class="wrap">
+    <div class="warn-card reveal">
+      <h2 data-i18n="warn.title">Leia isto antes de usar</h2>
+      <p data-i18n="warn.body">
+        Engines não oficiais (Baileys, whatsapp-web.js, whatsmeow) funcionam por
+        engenharia reversa do protocolo e <strong>violam os termos de serviço do
+        WhatsApp</strong>. O risco de banimento da conta é real e permanente.
+      </p>
+      <ul>
+        <li data-i18n="warn.l1">Use um número dedicado. Nunca o seu pessoal, nunca o número crítico da empresa.</li>
+        <li data-i18n="warn.l2">O motor de risco diminui as chances de um ban. Ele <strong>não garante nada</strong>.</li>
+        <li data-i18n="warn.l3">Para carga comercial séria, use o engine <code>cloud_api</code> — o oficial da Meta, sem risco de ban, cobrado por conversa.</li>
+      </ul>
+      <p class="warn-card__foot" data-i18n="warn.foot">Este projeto não é afiliado, associado nem endossado pelo WhatsApp ou pela Meta.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ── COMEÇAR ──────────────────────────────────────────────────────── -->
+<section class="section" id="comecar">
+  <div class="wrap">
+    <header class="sec-head reveal">
+      <p class="kicker" data-i18n="start.kicker">Começar</p>
+      <h2 data-i18n="start.title">Sem clonar nada, sem arquivo de configuração para escrever.</h2>
+      <p class="sec-sub" data-i18n="start.sub">
+        A imagem vem pronta do registro — multi-arquitetura, amd64 e arm64: roda igual
+        num VPS barato, num Mac Apple Silicon ou num Raspberry Pi.
+      </p>
+    </header>
+
+    <ol class="steps reveal">
+      <li>
+        <div class="steps__head"><span class="step__n">1</span><h3 data-i18n="start.s1">Baixe o compose e suba</h3></div>
+        <div class="copybar copybar--block">
+          <code>curl -O https://raw.githubusercontent.com/leoberchielli/awah/main/docker-compose.yml
+docker compose up -d</code>
+          <button type="button" class="copy" data-copy="curl -O https://raw.githubusercontent.com/leoberchielli/awah/main/docker-compose.yml
+docker compose up -d" data-i18n-attr="aria-label:copy.aria"><span class="copy__label" data-i18n="copy.label">Copiar</span></button>
+        </div>
+        <p data-i18n="start.s1p">Sobe Postgres e Redis, aplica as migrações e inicia a API em <code>http://localhost:2900</code>.</p>
+      </li>
+      <li>
+        <div class="steps__head"><span class="step__n">2</span><h3 data-i18n="start.s2">Abra no navegador</h3></div>
+        <div class="copybar copybar--block">
+          <code>http://localhost:2900</code>
+          <button type="button" class="copy" data-copy="http://localhost:2900" data-i18n-attr="aria-label:copy.aria"><span class="copy__label" data-i18n="copy.label">Copiar</span></button>
+        </div>
+        <p data-i18n="start.s2p">Na primeira vez aparece a tela de setup, onde você cria a organização e seu usuário. Ela se fecha depois disso, e novos usuários entram por convite.</p>
+      </li>
+      <li>
+        <div class="steps__head"><span class="step__n">3</span><h3 data-i18n="start.s3">Pareie, conecte, acompanhe</h3></div>
+        <p data-i18n="start.s3p">Três passos, todos no painel: pareie o número na aba <strong>Sessões</strong>, conecte a ferramenta em <strong>Integrações</strong> e acompanhe em <strong>Operações</strong>. A referência interativa de cada rota fica em <code>/docs</code>, com a instância no ar.</p>
+      </li>
+    </ol>
+
+    <div class="sdk reveal">
+      <div class="sdk__copy">
+        <h3 data-i18n="sdk.title">SDK TypeScript, sem dependências</h3>
+        <p data-i18n="sdk.body">
+          Construído sobre <code>fetch</code> e WebCrypto — roda em Node, Deno, Bun,
+          Cloudflare Workers e no navegador. Repete <code>408</code>, <code>429</code>,
+          <code>5xx</code> e falha de rede sozinho, e não repete os outros <code>4xx</code>,
+          porque enviar de novo produz a mesma recusa.
+        </p>
+        <p data-i18n="sdk.body2">
+          <strong>Ele gera o <code>clientMessageId</code> quando você não passa um</strong>, e é
+          isso que torna a retentativa automática segura: sem chave de idempotência,
+          repetir um POST depois de um timeout de rede mandaria a mesma mensagem duas
+          vezes para o cliente final.
+        </p>
+      </div>
+      <div class="code-card">
+        <div class="code-card__bar"><span>TypeScript</span>
+          <button type="button" class="copy copy--bare" data-copy="import { Awah } from '@awah/sdk'
+
+const awah = new Awah({ baseUrl: 'https://awah.suaempresa.com', apiKey: process.env.AWAH_KEY! })
+
+await awah.messages.sendText(sessionId, {
+  chatId: '5511987654321',
+  text: 'olá',
+  clientMessageId: 'pedido-4821',
+})" data-i18n-attr="aria-label:copy.aria"><span class="copy__label" data-i18n="copy.label">Copiar</span></button>
+        </div>
+<pre class="code-card__body"><code><span class="k">import</span> { Awah } <span class="k">from</span> <span class="s">'@awah/sdk'</span>
+
+<span class="k">const</span> awah = <span class="k">new</span> <span class="t">Awah</span>({ baseUrl: <span class="s">'https://awah.suaempresa.com'</span>, apiKey: process.env.AWAH_KEY! })
+
+<span class="k">await</span> awah.messages.<span class="f">sendText</span>(sessionId, {
+  chatId: <span class="s">'5511987654321'</span>,
+  text: <span class="s">'olá'</span>,
+  clientMessageId: <span class="s">'pedido-4821'</span>,
+})</code></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── CTA ──────────────────────────────────────────────────────────── -->
+<section class="cta" id="cta">
+  <div class="wrap cta__inner reveal">
+    <h2 data-i18n="cta.title">Falta uso real — e é aí que você entra.</h2>
+    <p data-i18n="cta.body">
+      As doze ondas estão fechadas: fila, risco, cluster, telemetria, painel, engine
+      oficial, SDK, conectores e imagem publicada. O que falta para a v1.0 não é
+      código. Se você subir isto contra um número de verdade, o relato é a
+      contribuição mais valiosa que existe agora.
+    </p>
+    <div class="cta__actions">
+      <a class="btn btn--primary btn--lg" href="https://github.com/leoberchielli/awah" target="_blank" rel="noopener">
+        <svg viewBox="0 0 16 16" aria-hidden="true" class="i-gh"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8a8 8 0 0 0 5.47 7.59c.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.4 7.4 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+        <span data-i18n="cta.b1">Dar uma estrela no GitHub</span>
+      </a>
+      <a class="btn btn--ghost btn--lg" href="https://github.com/leoberchielli/awah/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener" data-i18n="cta.b2">Como contribuir</a>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="foot">
+  <div class="wrap foot__inner">
+    <div class="foot__brand">
+      <svg class="brand__mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="currentColor"/><path d="M6 11.5h3.1l2.2 6.6 2.2-6.6h2.6l2.2 6.6 2.2-6.6H23L19.2 22h-2.7l-2.2-6.3L12.1 22H9.4L6 11.5Z" fill="#fff"/><circle cx="24.5" cy="9" r="3" fill="#35C07A" stroke="currentColor" stroke-width="1.6"/></svg>
+      <p><strong>AWAH</strong><br><span data-i18n="foot.tag">Gateway de WhatsApp com fila durável, motor de risco e sessões em cluster.</span></p>
+    </div>
+    <nav class="foot__links" aria-label="Documentação">
+      <p class="foot__h" data-i18n="foot.docs">Documentação</p>
+      <a href="https://github.com/leoberchielli/awah/blob/main/docs/getting-started.pt-BR.md" target="_blank" rel="noopener" data-i18n="foot.d1">Primeiros passos</a>
+      <a href="https://github.com/leoberchielli/awah/blob/main/docs/integrations.pt-BR.md" target="_blank" rel="noopener" data-i18n="foot.d2">Integrações</a>
+      <a href="https://github.com/leoberchielli/awah/blob/main/docs/any-platform.pt-BR.md" target="_blank" rel="noopener" data-i18n="foot.d3">Qualquer plataforma</a>
+      <a href="https://github.com/leoberchielli/awah/blob/main/docs/production.pt-BR.md" target="_blank" rel="noopener" data-i18n="foot.d4">Produção</a>
+      <a href="https://github.com/leoberchielli/awah/blob/main/docs/troubleshooting.pt-BR.md" target="_blank" rel="noopener" data-i18n="foot.d5">Solução de problemas</a>
+    </nav>
+    <nav class="foot__links" aria-label="Projeto">
+      <p class="foot__h" data-i18n="foot.project">Projeto</p>
+      <a href="https://github.com/leoberchielli/awah" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://github.com/leoberchielli/awah/blob/main/CHANGELOG.pt-BR.md" target="_blank" rel="noopener" data-i18n="foot.p1">Changelog</a>
+      <a href="https://github.com/leoberchielli/awah/blob/main/SECURITY.pt-BR.md" target="_blank" rel="noopener" data-i18n="foot.p2">Segurança</a>
+      <a href="https://github.com/leoberchielli/awah/blob/main/CONTRIBUTING.pt-BR.md" target="_blank" rel="noopener" data-i18n="foot.p3">Contribuir</a>
+      <a href="https://github.com/leoberchielli/awah/blob/main/LICENSE" target="_blank" rel="noopener" data-i18n="foot.p4">Licença MIT</a>
+    </nav>
+  </div>
+  <div class="wrap foot__legal">
+    <p data-i18n="foot.legal">Não afiliado, associado nem endossado pelo WhatsApp ou pela Meta. WhatsApp é marca da Meta Platforms, Inc.</p>
+    <p class="foot__made">awah.99ia.com.br</p>
+  </div>
+</footer>
+
+<script src="assets/i18n.js"></script>
+<script src="assets/main.js"></script>
+</body>
+</html>

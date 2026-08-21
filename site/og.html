@@ -1,0 +1,74 @@
+<!doctype html>
+<!--
+  Source of the share image. Rendered to assets/og.png by
+  `node site/make-og.mjs` from the SVG twin — never edit the PNG by hand.
+-->
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    width: 1200px; height: 630px; overflow: hidden;
+    background: #0e1117; color: #e9ecf2;
+    font-family: "IBM Plex Sans", system-ui, sans-serif;
+    display: flex; flex-direction: column; justify-content: space-between;
+    padding: 62px 68px; position: relative;
+  }
+  .grid, .glow { position: absolute; inset: 0; pointer-events: none; }
+  .grid {
+    background-image: linear-gradient(rgba(255,255,255,.05) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(255,255,255,.05) 1px, transparent 1px);
+    background-size: 60px 60px;
+    mask-image: radial-gradient(115% 80% at 22% 0%, #000 25%, transparent 75%);
+  }
+  .glow {
+    background: radial-gradient(520px 380px at 12% -12%, rgba(125,125,240,.45), transparent 70%),
+                radial-gradient(460px 340px at 96% 108%, rgba(34,166,184,.30), transparent 70%);
+  }
+  .top { position: relative; display: flex; align-items: center; gap: 16px; }
+  .top svg { width: 46px; height: 46px; }
+  .name { font-weight: 600; letter-spacing: .2em; font-size: 25px; }
+  .tag {
+    margin-left: 12px; font-family: "IBM Plex Mono", monospace; font-size: 15px;
+    color: #949daf; border-left: 1px solid #2a3140; padding-left: 16px; letter-spacing: .02em;
+  }
+  h1 {
+    position: relative; font-size: 68px; line-height: 1.08; letter-spacing: -.033em;
+    font-weight: 700; max-width: 17ch;
+  }
+  .grad { background: linear-gradient(96deg, #a3a3f7, #22a6b8 92%); -webkit-background-clip: text; color: transparent; }
+  .bottom { position: relative; display: flex; align-items: flex-end; justify-content: space-between; gap: 40px; }
+  .stats { display: flex; gap: 46px; }
+  .stat b { display: block; font-family: "IBM Plex Mono", monospace; font-size: 30px; font-weight: 500; letter-spacing: -.01em; }
+  .stat span { font-size: 15px; color: #949daf; }
+  .url {
+    font-family: "IBM Plex Mono", monospace; font-size: 18px; color: #a3a3f7;
+    border: 1px solid #2a3140; background: #151a22; border-radius: 10px; padding: 11px 18px;
+  }
+</style>
+</head>
+<body>
+  <div class="grid"></div><div class="glow"></div>
+
+  <div class="top">
+    <svg viewBox="0 0 32 32"><title>AWAH</title><rect width="32" height="32" rx="7" fill="#7d7df0"/><path d="M6 11.5h3.1l2.2 6.6 2.2-6.6h2.6l2.2 6.6 2.2-6.6H23L19.2 22h-2.7l-2.2-6.3L12.1 22H9.4L6 11.5Z" fill="#fff"/><circle cx="24.5" cy="9" r="3" fill="#35C07A" stroke="#7d7df0" stroke-width="1.6"/></svg>
+    <span class="name">AWAH</span>
+    <span class="tag">gateway de WhatsApp · fila durável · motor de risco · cluster</span>
+  </div>
+
+  <h1>Dez mil mensagens sem perder nenhuma.<br><span class="grad">E sem perder o número.</span></h1>
+
+  <div class="bottom">
+    <div class="stats">
+      <div class="stat"><b>376</b><span>testes</span></div>
+      <div class="stat"><b>45</b><span>checks verificados</span></div>
+      <div class="stat"><b>~450</b><span>envios/s de ingestão</span></div>
+      <div class="stat"><b>MIT</b><span>open source</span></div>
+    </div>
+    <div class="url">awah.99ia.com.br</div>
+  </div>
+</body>
+</html>
