@@ -1,0 +1,118 @@
+name: awah-demo
+
+# The public demo, runnable on any machine with Docker.
+#
+#   curl -O https://raw.githubusercontent.com/leoberchielli/awah/main/docker-compose.demo.yml
+#   docker compose -f docker-compose.demo.yml up -d
+#
+# Then open http://localhost:2900 and sign in with admin@awah.demo / admin.
+# The credentials are printed on the login screen too — they are fixed, and the
+# instance refuses to let anyone change or remove that account.
+#
+# What this is: a real instance. The same durable queue, the same risk engine,
+# the same ACK reconciliation, the same signed webhooks. A message sent from the
+# panel goes through the outbox, the budget, the score and the jitter exactly as
+# it would against a real number.
+#
+# What it is not: a WhatsApp client. The engine is the simulator, so nothing
+# reaches a phone — and the panel says so on every screen, because a fake engine
+# that does not announce itself is how an operation ends up believing it
+# delivered messages that never left.
+#
+# The instance ships a month of generated history so the dashboards open with
+# something to read, and rebuilds itself every three hours: whatever a visitor
+# does to it, the next visitor finds the demo the README describes.
+#
+# To run your own gateway, use `docker-compose.yml` — not this file.
+
+x-image: &image ${AWAH_IMAGE:-ghcr.io/leoberchielli/awah:latest}
+x-api-env: &api-env
+  # Deliberately not production: this instance is meant to be reachable over
+  # plain HTTP on a laptop, and `secure` cookies would lock the visitor out.
+  NODE_ENV: development
+  PORT: "2900"
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+  DATABASE_URL: postgres://awah:awah@postgres:5432/awah
+  REDIS_URL: redis://redis:6379
+
+  # Published secrets, and it costs nothing here: the only account is one whose
+  # password is on the login screen, the only engine is a simulator, and the
+  # whole database is thrown away every few hours. Never reuse these anywhere
+  # a real number is paired — this key is what protects the auth state at rest.
+  ENCRYPTION_KEY: YXdhaC1kZW1vLWtleS1wdWJsaWMtbm90LXNlY3JldCE=
+  COOKIE_SECRET: awah-demo-cookie-secret-published-on-purpose
+
+  DEMO_MODE: "true"
+  # The demo has no phone: without this its sessions would never connect.
+  SIMULATOR_ENABLED: "true"
+  DEMO_EMAIL: ${DEMO_EMAIL:-admin@awah.demo}
+  DEMO_PASSWORD: ${DEMO_PASSWORD:-admin}
+  DEMO_RESET_MINUTES: ${DEMO_RESET_MINUTES:-180}
+
+  # Registration stays shut: the instance already has an organization, and the
+  # bootstrap closes itself the moment one exists.
+  ALLOW_OPEN_REGISTRATION: "false"
+  PUBLIC_URL: ${PUBLIC_URL:-}
+  TRUST_PROXY: ${TRUST_PROXY:-false}
+  ENGINE_LOG_LEVEL: silent
+
+  # A demo where the funnel takes five minutes to move is a demo nobody waits
+  # for. In a real deployment the default is right; here it is not.
+  AGGREGATOR_INTERVAL_MS: ${AGGREGATOR_INTERVAL_MS:-30000}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: awah
+      POSTGRES_PASSWORD: awah
+      POSTGRES_DB: awah
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U awah -d awah"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  migrate:
+    image: *image
+    command: ["node", "apps/api/dist/migrate.js"]
+    environment: *api-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    image: *image
+    environment:
+      <<: *api-env
+      NODE_ID: awah-demo
+    ports:
+      - "${PORT:-2900}:2900"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:2900/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
+    restart: unless-stopped
+
+# No named volumes on purpose. The demo rebuilds itself anyway, and a `docker
+# compose down` that leaves a month of generated traffic on someone's disk is a
+# surprise, not a feature.

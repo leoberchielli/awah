@@ -4,7 +4,7 @@ import { LanguagePicker } from '../components/LanguagePicker'
 import { Brand } from '../components/Shell'
 import { useQuery } from '../hooks/useQuery'
 import { useT } from '../i18n'
-import type { Bootstrap } from '../lib/api'
+import type { Bootstrap, DemoInfo } from '../lib/api'
 import { ApiError, post } from '../lib/api'
 import { FirstRun } from './FirstRun'
 
@@ -43,6 +43,8 @@ export function SignIn() {
 
   if (bootstrap.data?.needsSetup) return <FirstRun />
 
+  const demo = bootstrap.data?.demo ?? null
+
   return (
     <div className="grid min-h-dvh place-items-center bg-ground px-4">
       <div className="w-full max-w-sm">
@@ -55,6 +57,16 @@ export function SignIn() {
           </div>
           <p className="text-sm text-muted">{t('app.tagline')}</p>
         </div>
+
+        {demo && (
+          <DemoCard
+            demo={demo}
+            onUse={() => {
+              setEmail(demo.email)
+              setPassword(demo.password)
+            }}
+          />
+        )}
 
         <form onSubmit={send} className="card flex flex-col gap-4 p-5">
           <Field
@@ -91,6 +103,40 @@ export function SignIn() {
 
         <p className="mt-4 text-center text-xs text-muted">{t('login.noAccount')}</p>
       </div>
+    </div>
+  )
+}
+
+/**
+ * The credentials, on the screen that asks for them.
+ *
+ * A public demo that keeps its password in the README is a demo half the
+ * visitors never get into: they arrive at a login form from a link, with no
+ * README in sight. The button fills the form instead of signing in on its own —
+ * seeing the values go into the fields is what tells someone these are ordinary
+ * credentials, not a bypass, and it leaves the ordinary sign-in path as the only
+ * way in.
+ */
+function DemoCard({ demo, onUse }: { demo: DemoInfo; onUse: () => void }) {
+  const t = useT()
+
+  return (
+    <div className="card mb-4 flex flex-col gap-2 border-accent/40 p-4">
+      <span className="eyebrow text-accent">{t('demo.badge')}</span>
+      <p className="text-xs text-muted">{t('demo.signInHint')}</p>
+      <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
+        <dt className="text-muted">{t('login.email')}</dt>
+        <dd className="font-mono text-ink">{demo.email}</dd>
+        <dt className="text-muted">{t('login.password')}</dt>
+        <dd className="font-mono text-ink">{demo.password}</dd>
+      </dl>
+      <button
+        type="button"
+        onClick={onUse}
+        className="self-start rounded-md border border-accent/50 px-2.5 py-1 text-xs font-medium text-accent transition-opacity hover:opacity-80"
+      >
+        {t('demo.fillCredentials')}
+      </button>
     </div>
   )
 }

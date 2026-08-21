@@ -11,6 +11,24 @@ import { IdentityRepository, normalizeEmail } from '../../repos/identity'
 const emailField = z.string().email().max(254)
 const passwordField = z.string().min(12, 'use at least 12 characters').max(200, 'password too long')
 
+/**
+ * What a public demo says about itself.
+ *
+ * It is nullable rather than absent so a client can branch on one field instead
+ * of on the shape of the response — and so the panel's demo banner is a
+ * property of the API's answer, not a build-time flag someone can forget to
+ * flip.
+ */
+const demoSchema = z
+  .object({
+    email: z.string(),
+    password: z.string(),
+    apiKey: z.string(),
+    orgSlug: z.string(),
+    resetMinutes: z.number().describe('How often the demo returns to its baseline. 0 is never.'),
+  })
+  .nullable()
+
 export async function authRoutes(app: FastifyInstance) {
   const route = app.withTypeProvider<ZodTypeProvider>()
   const identity = new IdentityRepository(app.db)
@@ -47,6 +65,14 @@ export async function authRoutes(app: FastifyInstance) {
           200: z.object({
             needsSetup: z.boolean().describe('true while no organization exists.'),
             openRegistration: z.boolean().describe('false when ALLOW_OPEN_REGISTRATION is off.'),
+            /**
+             * Present only on a public demo, and it carries the password.
+             *
+             * That is not a leak: the credentials are printed on the login
+             * screen and in the README, because a demo whose password has to be
+             * asked for is not a demo. Anywhere else this field is null.
+             */
+            demo: demoSchema,
           }),
         },
       },
@@ -54,6 +80,7 @@ export async function authRoutes(app: FastifyInstance) {
     async () => ({
       needsSetup: (await identity.organizationCount()) === 0,
       openRegistration: app.env.ALLOW_OPEN_REGISTRATION,
+      demo: app.demo,
     }),
   )
 
@@ -225,6 +252,8 @@ export async function authRoutes(app: FastifyInstance) {
             userId: z.string().nullable(),
             apiKeyId: z.string().nullable(),
             sessionScope: z.array(z.string()).nullable(),
+            /** Repeated from the bootstrap so a signed-in panel can say so too. */
+            demo: demoSchema,
           }),
         },
       },
@@ -238,6 +267,7 @@ export async function authRoutes(app: FastifyInstance) {
         userId: auth.userId,
         apiKeyId: auth.apiKeyId,
         sessionScope: auth.sessionScope,
+        demo: app.demo,
       }
     },
   )

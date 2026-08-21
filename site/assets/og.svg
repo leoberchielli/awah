@@ -44,7 +44,7 @@
 
   <!-- números -->
   <g font-family="'IBM Plex Mono', 'DejaVu Sans Mono', monospace">
-    <text x="68" y="556" fill="#e9ecf2" font-size="30" font-weight="500">376</text>
+    <text x="68" y="556" fill="#e9ecf2" font-size="30" font-weight="500">398</text>
     <text x="68" y="580" fill="#949daf" font-size="15" font-family="'IBM Plex Sans', 'DejaVu Sans', sans-serif">testes</text>
 
     <text x="196" y="556" fill="#e9ecf2" font-size="30" font-weight="500">45</text>

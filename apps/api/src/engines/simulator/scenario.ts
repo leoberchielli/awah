@@ -167,3 +167,35 @@ export const SCENARIOS: Record<string, Partial<Scenario>> = {
 export function scenarioForSessionName(name: string): Partial<Scenario> {
   return SCENARIOS[name.split(':')[1] ?? 'healthy'] ?? SCENARIOS.healthy ?? {}
 }
+
+/**
+ * The scenario described by `sessions.config.simulator`, when there is one.
+ *
+ * The name prefix is right for a load run, where the session is created and
+ * thrown away in the same command. It is wrong for a session someone reads on a
+ * screen: the demo's numbers are called Support, Sales and Billing, and calling
+ * them `sim:degraded:billing` would put the test harness in front of the
+ * operator. Config is checked first and the name remains the fallback, so every
+ * existing run keeps working unchanged.
+ *
+ * The shape is `{ scenario?: string, …overrides }`: the name picks the base and
+ * the remaining keys replace individual fields — which is how three demo
+ * numbers can share the `healthy` baseline and still each answer with their own
+ * phone number.
+ */
+export function scenarioFromConfig(config: unknown): Partial<Scenario> | null {
+  if (typeof config !== 'object' || config === null) return null
+
+  const simulator = (config as { simulator?: unknown }).simulator
+  if (typeof simulator !== 'object' || simulator === null) return null
+
+  const { scenario: named, ...overrides } = simulator as { scenario?: unknown } & Partial<Scenario>
+  const base = typeof named === 'string' ? SCENARIOS[named] : undefined
+
+  /*
+   * An unknown name is a mistake worth ignoring rather than failing on: the
+   * overrides are still valid, and a session that refuses to start because a
+   * scenario was renamed would be a worse outcome than one that starts healthy.
+   */
+  return { ...(base ?? {}), ...overrides }
+}

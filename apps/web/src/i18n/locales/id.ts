@@ -45,6 +45,12 @@ export const id: Catalog = {
   'login.noAccount': 'Belum punya akun? Minta undangan ke pengelola instans ini.',
   'login.failed': 'Email atau kata sandi salah.',
 
+  'demo.badge': 'Demo',
+  'demo.signInHint': 'Ini demo publik. Masuk dengan kredensial di bawah — sama untuk semua orang.',
+  'demo.fillCredentials': 'Isi kredensialnya',
+  'demo.bannerEngine': 'Mesin simulasi: tidak ada yang sampai ke ponsel sungguhan.',
+  'demo.bannerReset': 'Semuanya kembali ke keadaan awal setiap {minutes} menit.',
+
   'setup.title': 'Mari mulai',
   'setup.hint':
     'Instans ini masih kosong. Buat organisasi Anda dan pengguna pertama — setelah itu layar ini tidak muncul lagi, dan pengguna baru masuk lewat undangan.',

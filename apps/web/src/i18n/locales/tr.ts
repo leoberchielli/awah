@@ -45,6 +45,13 @@ export const tr: Catalog = {
   'login.noAccount': 'Hesabınız yok mu? Bu sunucuyu yönetenden davet isteyin.',
   'login.failed': 'E-posta veya parola hatalı.',
 
+  'demo.badge': 'Demo',
+  'demo.signInHint':
+    'Bu herkese açık demo. Aşağıdaki bilgilerle giriş yapın — herkes için aynıdır.',
+  'demo.fillCredentials': 'Bilgileri doldur',
+  'demo.bannerEngine': 'Simüle motor: buradan hiçbir şey gerçek bir telefona ulaşmaz.',
+  'demo.bannerReset': 'Her {minutes} dakikada bir her şey başlangıç durumuna döner.',
+
   'setup.title': 'Başlayalım',
   'setup.hint':
     'Bu sunucu henüz boş. Kuruluşunuzu ve ilk kullanıcıyı oluşturun — ondan sonra bu ekran bir daha görünmez ve yeni kullanıcılar davetle katılır.',

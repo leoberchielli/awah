@@ -107,8 +107,42 @@ export function Shell({ children, actions }: { children: ReactNode; actions?: Re
       <div className={cx('flex min-h-dvh min-w-0 flex-col', RAIL_OFFSET)}>
         <MobileHeader />
         <TopBar actions={actions} />
+        <DemoBanner />
         <main className="flex-1 px-3 pt-4 pb-10 sm:px-5">{children}</main>
       </div>
+    </div>
+  )
+}
+
+/**
+ * Says, on every screen, that these numbers came from a simulator.
+ *
+ * This is the price of running the fake engine on a public instance, and it is
+ * worth paying: what makes a simulated engine dangerous is that nothing looks
+ * wrong — sends are accepted, everything reports delivered, and the dashboard
+ * is indistinguishable from one watching real phones. A line at the top of the
+ * page is the difference between a demo and a trap.
+ *
+ * It renders nothing anywhere else, because `me.demo` is null anywhere else.
+ */
+function DemoBanner() {
+  const me = useMe()
+  const t = useT()
+
+  if (!me.demo) return null
+
+  return (
+    <div
+      role="status"
+      className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-warn/30 bg-warn/10 px-3 py-1.5 text-xs text-ink sm:px-5"
+    >
+      <span className="font-semibold uppercase tracking-wide text-warn">{t('demo.badge')}</span>
+      <span className="text-muted">{t('demo.bannerEngine')}</span>
+      {me.demo.resetMinutes > 0 && (
+        <span className="text-muted">
+          {t('demo.bannerReset', { minutes: me.demo.resetMinutes })}
+        </span>
+      )}
     </div>
   )
 }

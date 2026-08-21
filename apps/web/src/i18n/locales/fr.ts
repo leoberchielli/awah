@@ -45,6 +45,13 @@ export const fr: Catalog = {
   'login.noAccount': 'Pas de compte ? Demandez une invitation à qui administre cette instance.',
   'login.failed': 'E-mail ou mot de passe incorrect.',
 
+  'demo.badge': 'Démo',
+  'demo.signInHint':
+    'Ceci est la démo publique. Connectez-vous avec les identifiants ci-dessous : ils sont les mêmes pour tout le monde.',
+  'demo.fillCredentials': 'Remplir les identifiants',
+  'demo.bannerEngine': "Moteur simulé : rien ici n'atteint un vrai téléphone.",
+  'demo.bannerReset': 'Tout revient au point de départ toutes les {minutes} minutes.',
+
   'setup.title': 'Commençons',
   'setup.hint':
     'Cette instance est encore vide. Créez votre organisation et le premier utilisateur — ensuite cet écran ne réapparaît plus, et les nouveaux utilisateurs entrent sur invitation.',

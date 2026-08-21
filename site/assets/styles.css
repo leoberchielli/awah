@@ -601,6 +601,29 @@ em {
   gap: 12px;
 }
 
+/*
+ * The demo's credentials, under the buttons that lead to it.
+ *
+ * Smaller than the lede and larger than a footnote: whoever is about to click
+ * needs it, and whoever has decided to read the page should not trip over it.
+ */
+.hero__demo {
+  margin-top: 14px;
+  max-width: 56ch;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--ink-2);
+}
+.hero__demo code {
+  font-family: var(--mono);
+  font-size: 13px;
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  color: var(--ink);
+}
+
 .copybar {
   display: flex;
   align-items: center;

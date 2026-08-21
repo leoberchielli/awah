@@ -1,4 +1,4 @@
-import type { Database, SessionStatus } from '@awah/db'
+import { type Database, eq, type SessionStatus, schema } from '@awah/db'
 import pino from 'pino'
 import type { CommandBus } from '../cluster/commands'
 import type { SessionLease } from '../cluster/lease'
@@ -9,7 +9,12 @@ import { CloudApiAdapter } from '../engines/cloud-api/adapter'
 import { clearCloudApiCredentials, loadCloudApiCredentials } from '../engines/cloud-api/credentials'
 import { reconnectDelayMs } from '../engines/disconnect'
 import { SimulatorAdapter } from '../engines/simulator/adapter'
-import { DEFAULT_SCENARIO, scenarioForSessionName } from '../engines/simulator/scenario'
+import {
+  DEFAULT_SCENARIO,
+  type Scenario,
+  scenarioForSessionName,
+  scenarioFromConfig,
+} from '../engines/simulator/scenario'
 import type { EngineAdapter, EngineEvent } from '../engines/types'
 
 import { badRequest, conflict, notFound } from '../lib/errors'
@@ -151,6 +156,24 @@ export class SessionManager {
   }
 
   /**
+   * Which simulator scenario this session runs.
+   *
+   * `config` is not part of `SessionRow` — it is a jsonb bag several areas
+   * write into, and putting it in the row every route returns would publish
+   * whatever any of them happens to store. One narrow read here costs a
+   * statement on a path that is already opening a socket.
+   */
+  private async simulatorScenario(sessionId: string, name: string): Promise<Partial<Scenario>> {
+    const [row] = await this.deps.db
+      .select({ config: schema.sessions.config })
+      .from(schema.sessions)
+      .where(eq(schema.sessions.id, sessionId))
+      .limit(1)
+
+    return scenarioFromConfig(row?.config) ?? scenarioForSessionName(name)
+  }
+
+  /**
    * The current QR. Reads local memory first and falls back to Redis when the
    * session is pairing on another replica — the pairing request can land on any
    * node.
@@ -234,12 +257,12 @@ export class SessionManager {
 
     if (session.engine === 'simulator') {
       /*
-       * There is no credential and nothing to persist: the scenario is picked
-       * from the session name, so a run is set up by naming the session rather
-       * than by adding a config surface that only exists for testing. A name
-       * that matches no scenario gets the healthy one.
+       * There is no credential and nothing to persist: the scenario comes from
+       * `config.scenario` when the session names one, and otherwise from the
+       * session's own name — `sim:<scenario>:…` — so a load run is still set up
+       * by naming the session. Neither matching anything gets the healthy one.
        */
-      const scenario = scenarioForSessionName(session.name)
+      const scenario = await this.simulatorScenario(sessionId, session.name)
       adapter = new SimulatorAdapter({ sessionId, onEvent, scenario })
       clearAuth = async () => {}
     } else if (session.engine === 'cloud_api') {
@@ -631,7 +654,8 @@ export class SessionManager {
          */
         const ageDays =
           session?.engine === 'simulator'
-            ? (scenarioForSessionName(session.name).ageDays ?? DEFAULT_SCENARIO.ageDays)
+            ? ((await this.simulatorScenario(sessionId, session.name)).ageDays ??
+              DEFAULT_SCENARIO.ageDays)
             : 0
         const pairedAt = ageDays > 0 ? new Date(now.getTime() - ageDays * 86_400_000) : now
 

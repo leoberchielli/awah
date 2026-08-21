@@ -63,6 +63,29 @@ v1.0, once the whole thing has been exercised against real traffic at scale.
 - `/metrics` in Prometheus format, protected by a token.
 - Instrumentation with the OpenTelemetry API, no bundled SDK.
 
+**Public demo**
+
+- `DEMO_MODE`: an instance that publishes its own admin credentials, seeds a
+  month of generated history and rebuilds itself on a timer. Live at
+  [awah-demo.99ia.com.br](https://awah-demo.99ia.com.br) and runnable anywhere
+  with `docker-compose.demo.yml`.
+- It is the only thing that lifts the production ban on `SIMULATOR_ENABLED`, and
+  it earns that by removing the reason for the ban: the instance says it is a
+  demo on the login screen, in `/v1/auth/bootstrap`, in `/v1/auth/me` and in a
+  banner across every panel. What makes a fake engine dangerous is silence.
+- Three seeded numbers — mature, warming and degraded — plus messages in the
+  dead-letter queue and messages held by the risk engine. A demo where
+  everything is green teaches nothing about a gateway that exists for the day
+  things stop being green.
+- The published account cannot be removed or demoted and the organization cannot
+  be deleted; everything else a visitor does is real and lasts until the next
+  reset. No engine but the simulator may open a session, because the instance
+  runs with published secrets and `ENCRYPTION_KEY` is what protects a paired
+  number's auth state.
+- Simulator scenarios can now come from `sessions.config.simulator` instead of
+  only from the `sim:<scenario>:…` naming convention, so a demo number can be
+  called `Billing` and still be the degraded one.
+
 **Dashboard**
 
 - React dashboard served by the API itself, on the same origin — this is what

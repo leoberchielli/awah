@@ -14,6 +14,7 @@ import {
 import Redis from 'ioredis'
 import { authPlugin } from './auth/plugin'
 import { dashboardPlugin, isServerRoute } from './dashboard/plugin'
+import { demoPlugin } from './demo/plugin'
 import type { Env } from './env'
 import { AppError } from './lib/errors'
 import { authRoutes } from './modules/auth/routes'
@@ -195,6 +196,8 @@ export async function buildApp(env: Env): Promise<FastifyInstance> {
   await app.register(sessionsPlugin)
   await app.register(telemetryPlugin)
   await app.register(workersPlugin)
+  // A no-op unless DEMO_MODE is on, and it decorates `app.demo` either way.
+  await app.register(demoPlugin)
 
   /**
    * One error shape for the whole API. Clients branch on `error.code`, so it

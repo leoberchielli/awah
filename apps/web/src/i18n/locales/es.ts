@@ -45,6 +45,13 @@ export const es: Catalog = {
   'login.noAccount': '¿Sin cuenta? Pide una invitación a quien administra esta instancia.',
   'login.failed': 'Correo o contraseña incorrectos.',
 
+  'demo.badge': 'Demostración',
+  'demo.signInHint':
+    'Esta es la demostración pública. Entra con las credenciales de abajo: son las mismas para todos.',
+  'demo.fillCredentials': 'Rellenar las credenciales',
+  'demo.bannerEngine': 'Motor simulado: nada de esto llega a un teléfono real.',
+  'demo.bannerReset': 'Todo vuelve al punto de partida cada {minutes} minutos.',
+
   'setup.title': 'Empecemos',
   'setup.hint':
     'Esta instancia todavía está vacía. Crea tu organización y el primer usuario: después de eso esta pantalla no vuelve a aparecer, y los usuarios nuevos entran por invitación.',

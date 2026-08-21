@@ -46,6 +46,13 @@ export const de: Catalog = {
   'login.noAccount': 'Kein Konto? Bitten Sie die Verwaltung dieser Instanz um eine Einladung.',
   'login.failed': 'E-Mail oder Passwort ist falsch.',
 
+  'demo.badge': 'Demo',
+  'demo.signInHint':
+    'Das ist die öffentliche Demo. Melde dich mit den Zugangsdaten unten an — sie gelten für alle.',
+  'demo.fillCredentials': 'Zugangsdaten einsetzen',
+  'demo.bannerEngine': 'Simulierte Engine: nichts davon erreicht ein echtes Telefon.',
+  'demo.bannerReset': 'Alles kehrt alle {minutes} Minuten zum Ausgangszustand zurück.',
+
   'setup.title': 'Los geht’s',
   'setup.hint':
     'Diese Instanz ist noch leer. Legen Sie Ihre Organisation und den ersten Benutzer an — danach erscheint dieser Bildschirm nicht wieder, und neue Benutzer kommen per Einladung dazu.',

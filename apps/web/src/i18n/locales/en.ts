@@ -61,6 +61,14 @@ export const en = {
   'login.noAccount': 'No account? Ask whoever administers this instance for an invite.',
   'login.failed': 'Email or password is incorrect.',
 
+  // ---- public demo ----
+  'demo.badge': 'Demo',
+  'demo.signInHint':
+    'This is the public demo. Sign in with the credentials below — they are the same for everyone.',
+  'demo.fillCredentials': 'Fill in the credentials',
+  'demo.bannerEngine': 'Simulated engine: nothing here reaches a real phone.',
+  'demo.bannerReset': 'Everything goes back to the starting point every {minutes} minutes.',
+
   // ---- first run ----
   'setup.title': 'Let’s get started',
   'setup.hint':

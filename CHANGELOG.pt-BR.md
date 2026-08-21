@@ -63,6 +63,28 @@ quando o conjunto estiver exercitado contra tráfego real em escala.
 - `/metrics` em formato Prometheus, protegido por token.
 - Instrumentação com a API do OpenTelemetry, sem SDK embutido.
 
+**Demonstração pública**
+
+- `DEMO_MODE`: uma instância que publica as próprias credenciais de admin, gera
+  um mês de histórico e se reconstrói sozinha de tempos em tempos. No ar em
+  [awah-demo.99ia.com.br](https://awah-demo.99ia.com.br) e reproduzível em
+  qualquer lugar com o `docker-compose.demo.yml`.
+- É a única coisa que libera o `SIMULATOR_ENABLED` em produção, e ela paga esse
+  direito eliminando o motivo da trava: a instância diz que é demo na tela de
+  login, em `/v1/auth/bootstrap`, em `/v1/auth/me` e numa faixa em todo o
+  painel. O que torna uma engine falsa perigosa é o silêncio.
+- Três números no seed — maduro, aquecendo e degradado — mais mensagens na
+  dead-letter e mensagens seguradas pelo motor de risco. Demo com tudo verde não
+  ensina nada sobre um gateway que existe para o dia em que para de estar verde.
+- A conta publicada não pode ser removida nem rebaixada, e a organização não
+  pode ser apagada; todo o resto que o visitante fizer é real e dura até o
+  próximo reset. Nenhuma engine além do simulador abre sessão, porque a
+  instância roda com segredos publicados e a `ENCRYPTION_KEY` é o que protege o
+  auth state de um número pareado.
+- O cenário do simulador agora pode vir de `sessions.config.simulator`, e não só
+  da convenção de nome `sim:<cenário>:…` — assim um número da demo se chama
+  `Billing` e mesmo assim é o degradado.
+
 **Painel**
 
 - Dashboard React servido pela própria API, na mesma origem — é o que permite

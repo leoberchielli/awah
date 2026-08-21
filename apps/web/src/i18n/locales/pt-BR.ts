@@ -45,6 +45,14 @@ export const ptBR: Catalog = {
   'login.noAccount': 'Sem conta? Peça um convite a quem administra esta instância.',
   'login.failed': 'E-mail ou senha incorretos.',
 
+  // ---- demonstração pública ----
+  'demo.badge': 'Demonstração',
+  'demo.signInHint':
+    'Esta é a demonstração pública. Entre com as credenciais abaixo — são as mesmas para todo mundo.',
+  'demo.fillCredentials': 'Preencher as credenciais',
+  'demo.bannerEngine': 'Motor simulado: nada daqui chega a um telefone real.',
+  'demo.bannerReset': 'Tudo volta ao ponto de partida a cada {minutes} minutos.',
+
   'setup.title': 'Vamos começar',
   'setup.hint':
     'Esta instância ainda está vazia. Crie a sua organização e o primeiro usuário — depois disso, esta tela não aparece mais e novos usuários entram por convite.',

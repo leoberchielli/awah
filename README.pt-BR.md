@@ -7,9 +7,15 @@
 [![CI](https://github.com/leoberchielli/awah/actions/workflows/ci.yml/badge.svg)](https://github.com/leoberchielli/awah/actions/workflows/ci.yml)
 [![Imagem](https://github.com/leoberchielli/awah/actions/workflows/image.yml/badge.svg)](https://github.com/leoberchielli/awah/actions/workflows/image.yml)
 [![Licença: MIT](https://img.shields.io/badge/licen%C3%A7a-MIT-blue.svg)](LICENSE)
-[![Testes](https://img.shields.io/badge/testes-376%20passando-brightgreen.svg)](#medido-n%C3%A3o-afirmado)
+[![Testes](https://img.shields.io/badge/testes-398%20passando-brightgreen.svg)](#medido-n%C3%A3o-afirmado)
 [![Verificado](https://img.shields.io/badge/verifica%C3%A7%C3%A3o-45%20checks-brightgreen.svg)](docs/VERIFICATION.md)
 [![Site](https://img.shields.io/badge/site-awah.99ia.com.br-5B5BD6.svg)](https://awah.99ia.com.br)
+[![Demo](https://img.shields.io/badge/demo-no%20ar-22a06b.svg)](https://awah-demo.99ia.com.br)
+
+**[Demonstração ao vivo](https://awah-demo.99ia.com.br)** — `admin@awah.demo` /
+`admin`, sem cadastro. Uma instância de verdade com um mês de tráfego dentro: a
+fila real, o motor de risco real, os webhooks reais, e um simulador no lugar do
+telefone. [O que é real e o que não é](docs/demo.pt-BR.md).
 
 **[awah.99ia.com.br](https://awah.99ia.com.br)** — a mesma coisa em uma página, para quem ainda não decidiu ler um README.
 
@@ -187,7 +193,7 @@ em escala.**
 > **O que ainda falta é escala e tempo.** Quatro números e alguns milhares de
 > mensagens dizem que o caminho funciona; não dizem que ele aguenta dez vezes
 > esse volume, e nada aqui ainda conta como o WhatsApp trata um número ao longo
-> de meses. A mecânica é coberta por 376 testes, e um teste continua sendo um
+> de meses. A mecânica é coberta por 398 testes, e um teste continua sendo um
 > teste.
 
 ## Medido, não afirmado
@@ -245,6 +251,7 @@ SIGKILL.
 
 | Documento | Sobre |
 | --- | --- |
+| [docs/demo.pt-BR.md](docs/demo.pt-BR.md) | A demonstração pública: o que é real, o que é simulado e como rodar uma |
 | [docs/comecando.md](docs/getting-started.pt-BR.md) | Do zero a uma conversa no Chatwoot, sem curl nenhum |
 | [docs/BENCHMARK.md](docs/BENCHMARK.md) | Ordem, retentativa, vazão e a curva de warm-up, medidos |
 | [docs/VERIFICATION.md](docs/VERIFICATION.md) | 45 checks contra instância viva, cada um com sua evidência |
@@ -262,7 +269,17 @@ Com a instância no ar, `/docs` traz a referência interativa de todas as rotas.
 
 ## Subir
 
-Sem clonar nada:
+Antes de instalar qualquer coisa, a demo responde o que um README não responde:
+**[awah-demo.99ia.com.br](https://awah-demo.99ia.com.br)**, entrando com
+`admin@awah.demo` / `admin`. Ela também roda local, e é uma instância de
+verdade — só a engine é simulada:
+
+```bash
+curl -O https://raw.githubusercontent.com/leoberchielli/awah/main/docker-compose.demo.yml
+docker compose -f docker-compose.demo.yml up -d
+```
+
+Para um gateway seu, sem clonar nada:
 
 ```bash
 curl -O https://raw.githubusercontent.com/leoberchielli/awah/main/docker-compose.yml

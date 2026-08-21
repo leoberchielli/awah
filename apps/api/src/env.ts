@@ -181,6 +181,44 @@ const envSchema = z.object({
    */
   SIMULATOR_ENABLED: boolish.default(false),
 
+  // ---- demo ----
+  /**
+   * Turns the instance into a public demo.
+   *
+   * It is the only thing that lifts the production ban on `SIMULATOR_ENABLED`,
+   * and it earns that by removing the reason for the ban. What makes a fake
+   * engine dangerous in production is silence: sends are accepted, everything
+   * reports delivered, and nothing reaches a phone. In demo mode the instance
+   * says what it is on the login screen, on `/v1/auth/bootstrap`, on
+   * `/v1/auth/me` and in a banner across the top of every panel — and it
+   * refuses to open a session on any engine other than the simulator, so no
+   * real number is ever paired against a published key.
+   *
+   * Everything else stays real: the same queue, the same risk engine, the same
+   * ACK reconciliation, the same webhooks.
+   */
+  DEMO_MODE: boolish.default(false),
+
+  /**
+   * The demo's fixed credentials, published on the login screen.
+   *
+   * They cannot be changed from inside the instance — that is the point of a
+   * demo everyone shares — and the guard in `demo/guard.ts` refuses any request
+   * that would remove the account, demote it or take the organization away.
+   */
+  DEMO_EMAIL: z.string().email().default('admin@awah.demo'),
+  DEMO_PASSWORD: z.string().min(1).default('admin'),
+
+  /**
+   * How often the demo goes back to its baseline. Zero switches the reset off.
+   *
+   * A public instance where anyone signs in as owner accumulates whatever
+   * visitors leave behind — deleted sessions, revoked keys, an organization
+   * renamed to something unrepeatable. The reset is what lets the next visitor
+   * find the same demo the README describes.
+   */
+  DEMO_RESET_MINUTES: z.coerce.number().int().min(0).max(10_080).default(180),
+
   // ---- dashboard ----
   /**
    * Where the panel's files live. Empty, the API looks in `public`,
@@ -231,6 +269,23 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
     NODE_ID: parsed.data.NODE_ID ?? hostname(),
   }
 
+  /*
+   * A demo with no engine is a login screen over an empty database. Enabling
+   * the simulator on its own is legitimate — that is what the load script uses
+   * — but the other direction is always a mistake, and it is cheaper to say so
+   * at boot than to let someone find out from a session that never connects.
+   */
+  if (env.DEMO_MODE && !env.SIMULATOR_ENABLED) {
+    throw new Error(
+      [
+        'DEMO_MODE is on and SIMULATOR_ENABLED is off.',
+        'The demo has no phone to pair: its sessions run on the simulator, and',
+        'without it nothing in the panel would ever connect. Set',
+        'SIMULATOR_ENABLED=true.',
+      ].join('\n'),
+    )
+  }
+
   if (env.NODE_ENV === 'production') {
     const weak = (
       [
@@ -241,13 +296,21 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
       .filter(([, value]) => DEV_SECRETS.has(value))
       .map(([name]) => name)
 
-    if (env.SIMULATOR_ENABLED) {
+    /*
+     * DEMO_MODE is the one way past this, and it is not a bypass: it turns the
+     * silence into an announcement. The instance declares itself a demo on the
+     * login screen, in the API and in a banner over every panel, and refuses
+     * every engine but the simulator. What the ban protects against — a fake
+     * engine nobody knows is fake — cannot happen there.
+     */
+    if (env.SIMULATOR_ENABLED && !env.DEMO_MODE) {
       throw new Error(
         [
           'SIMULATOR_ENABLED is on and NODE_ENV is production.',
           'The simulator is not a WhatsApp client: it accepts every send and',
           'reports it delivered without anything reaching a phone. Nothing in',
           'the dashboard would look wrong.',
+          'A public demo is the exception, and it has to say so: DEMO_MODE=true.',
         ].join('\n'),
       )
     }

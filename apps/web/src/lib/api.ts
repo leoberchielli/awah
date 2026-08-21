@@ -62,11 +62,29 @@ export const del = <T>(path: string) => api<T>(path, { method: 'DELETE' })
 
 export type Role = 'viewer' | 'operator' | 'admin' | 'owner'
 
+/**
+ * What a public demo says about itself, straight from the API.
+ *
+ * Null on any ordinary instance. The panel never hardcodes any of this: an
+ * instance is a demo because its own API says so, which is what keeps the
+ * banner from surviving a build that was meant to be a real deployment.
+ */
+export interface DemoInfo {
+  email: string
+  /** Published on purpose — it is printed on the login screen. */
+  password: string
+  apiKey: string
+  orgSlug: string
+  /** Minutes between resets. Zero means the demo is never rebuilt. */
+  resetMinutes: number
+}
+
 export interface Me {
   kind: 'user' | 'api_key'
   organizationId: string
   role: Role
   userId: string | null
+  demo: DemoInfo | null
 }
 
 export interface Member {
@@ -233,6 +251,7 @@ export interface Bootstrap {
   /** true for as long as no organization exists on this instance. */
   needsSetup: boolean
   openRegistration: boolean
+  demo: DemoInfo | null
 }
 
 export interface ChatwootAccount {

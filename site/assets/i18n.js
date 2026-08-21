@@ -26,8 +26,11 @@
     'hero.title2': 'And the number still alive.',
     'hero.lede':
       'Most WhatsApp gateways answer <em>“how do I send a message”</em>. AWAH exists for the second question — the one that shows up when volume does: a durable queue in Postgres, a risk engine that protects the number, and clustered sessions with automatic failover.',
+    'hero.cta0': 'Open the demo',
     'hero.cta1': 'Up in 2 minutes',
     'hero.cta2': 'View on GitHub',
+    'hero.demo':
+      'A real instance with a month of traffic in it — sign in with <code>admin@awah.demo</code> / <code>admin</code>, no sign-up. Only the engine is simulated: nothing there reaches a phone.',
     'hero.note':
       'not 200. The message was persisted — not delivered. That difference is the project’s thesis.',
 
@@ -150,7 +153,7 @@
     'honest.tag': 'What has not been measured yet',
     'honest.body':
       '<strong>This has now run against real numbers</strong> — four of them, roughly 3,700 messages through the Baileys engine, with signed webhooks running throughout and the risk engine pacing the sending, and no number blocked. What is still missing is scale and time: four numbers and a few thousand messages say the path works, not that it holds at ten times the volume, nor how WhatsApp treats a number over months.',
-    'honest.sig': 'The mechanics are covered by 376 tests. And a test is still a test.',
+    'honest.sig': 'The mechanics are covered by 398 tests. And a test is still a test.',
 
     'dash.kicker': 'The dashboard',
     'dash.title':
@@ -286,6 +289,7 @@
 
     'foot.tag': 'WhatsApp gateway with a durable queue, a risk engine and clustered sessions.',
     'foot.docs': 'Documentation',
+    'foot.d0': 'Live demo',
     'foot.d1': 'Getting started',
     'foot.d2': 'Integrations',
     'foot.d3': 'Any platform',

@@ -7,9 +7,15 @@
 [![CI](https://github.com/leoberchielli/awah/actions/workflows/ci.yml/badge.svg)](https://github.com/leoberchielli/awah/actions/workflows/ci.yml)
 [![Image](https://github.com/leoberchielli/awah/actions/workflows/image.yml/badge.svg)](https://github.com/leoberchielli/awah/actions/workflows/image.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-376%20passing-brightgreen.svg)](#measured-not-asserted)
+[![Tests](https://img.shields.io/badge/tests-398%20passing-brightgreen.svg)](#measured-not-asserted)
 [![Verified](https://img.shields.io/badge/verification-45%20checks-brightgreen.svg)](docs/VERIFICATION.md)
 [![Site](https://img.shields.io/badge/site-awah.99ia.com.br-5B5BD6.svg)](https://awah.99ia.com.br)
+[![Demo](https://img.shields.io/badge/demo-live-22a06b.svg)](https://awah-demo.99ia.com.br)
+
+**[Live demo](https://awah-demo.99ia.com.br)** — `admin@awah.demo` / `admin`, no
+sign-up. A running instance with a month of traffic in it: the real queue, the
+real risk engine, the real webhooks, and a simulator where the phone would be.
+[What is real and what is not](docs/demo.md).
 
 **[awah.99ia.com.br](https://awah.99ia.com.br)** — the same thing on one page, for anyone who has not decided to read a README yet.
 
@@ -189,7 +195,7 @@ is not code: it is use at scale.**
 > **What is still missing is scale and time.** Four numbers and a few thousand
 > messages say the path works; they do not say it holds at ten times the volume,
 > and nothing here can yet tell you how WhatsApp treats a number over months.
-> The mechanics are covered by 376 tests, and a test is still a test.
+> The mechanics are covered by 398 tests, and a test is still a test.
 
 ## Measured, not asserted
 
@@ -246,6 +252,7 @@ it uses SIGKILL.
 
 | Document | About |
 | --- | --- |
+| [docs/demo.md](docs/demo.md) | The public demo: what is real in it, what is simulated, and how to run one |
 | [docs/getting-started.md](docs/getting-started.md) | From zero to a conversation in Chatwoot, with no curl at all |
 | This README | What the project does and how to use each part |
 | [docs/BENCHMARK.md](docs/BENCHMARK.md) | Ordering, retries, throughput and the warm-up curve, measured |
@@ -263,7 +270,17 @@ With the instance up, `/docs` carries the interactive reference for every route.
 
 ## Bringing it up
 
-Without cloning anything:
+Before installing anything, the demo answers most of what a README cannot:
+**[awah-demo.99ia.com.br](https://awah-demo.99ia.com.br)**, signing in with
+`admin@awah.demo` / `admin`. It also runs locally, and it is a real instance —
+only the engine is simulated:
+
+```bash
+curl -O https://raw.githubusercontent.com/leoberchielli/awah/main/docker-compose.demo.yml
+docker compose -f docker-compose.demo.yml up -d
+```
+
+For a gateway of your own, without cloning anything:
 
 ```bash
 curl -O https://raw.githubusercontent.com/leoberchielli/awah/main/docker-compose.yml

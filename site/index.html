@@ -17,12 +17,12 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="AWAH">
 <meta property="og:title" content="AWAH — dez mil mensagens sem perder nenhuma, e sem perder o número">
-<meta property="og:description" content="Gateway de WhatsApp open source com fila durável, motor de risco e sessões em cluster. 376 testes, 45 checks verificados contra uma instância viva.">
+<meta property="og:description" content="Gateway de WhatsApp open source com fila durável, motor de risco e sessões em cluster. 398 testes, 45 checks verificados contra uma instância viva.">
 <meta property="og:url" content="https://awah.99ia.com.br/">
 <meta property="og:image" content="https://awah.99ia.com.br/assets/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="AWAH — dez mil mensagens sem perder nenhuma, e sem perder o número. 376 testes, 45 checks verificados, ~450 envios/s de ingestão, MIT.">
+<meta property="og:image:alt" content="AWAH — dez mil mensagens sem perder nenhuma, e sem perder o número. 398 testes, 45 checks verificados, ~450 envios/s de ingestão, MIT.">
 <meta property="og:locale" content="pt_BR">
 <meta property="og:locale:alternate" content="en_US">
 <meta name="twitter:card" content="summary_large_image">
@@ -144,12 +144,19 @@
       </p>
 
       <div class="hero__cta reveal">
-        <a class="btn btn--primary" href="#comecar" data-i18n="hero.cta1">Subir em 2 minutos</a>
+        <a class="btn btn--primary" href="https://awah-demo.99ia.com.br" target="_blank" rel="noopener" data-i18n="hero.cta0">Abrir a demo</a>
+        <a class="btn btn--ghost" href="#comecar" data-i18n="hero.cta1">Subir em 2 minutos</a>
         <a class="btn btn--ghost" href="https://github.com/leoberchielli/awah" target="_blank" rel="noopener">
           <svg viewBox="0 0 16 16" aria-hidden="true" class="i-gh"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8a8 8 0 0 0 5.47 7.59c.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.4 7.4 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
           <span data-i18n="hero.cta2">Ver no GitHub</span>
         </a>
       </div>
+
+      <p class="hero__demo reveal" data-i18n="hero.demo">
+        Instância de verdade, com um mês de tráfego dentro — entre com
+        <code>admin@awah.demo</code> / <code>admin</code>, sem cadastro.
+        Só a engine é simulada: nada dali chega a um telefone.
+      </p>
 
       <div class="copybar reveal">
         <code>curl -O https://raw.githubusercontent.com/leoberchielli/awah/main/docker-compose.yml &amp;&amp; docker compose up -d</code>
@@ -159,7 +166,7 @@
       </div>
 
       <ul class="trust reveal">
-        <li><strong>376</strong> <span data-i18n="trust.tests">testes</span></li>
+        <li><strong>398</strong> <span data-i18n="trust.tests">testes</span></li>
         <li><strong>45</strong> <span data-i18n="trust.checks">checks verificados</span></li>
         <li><strong>10</strong> <span data-i18n="trust.langs">idiomas</span></li>
         <li><strong>MIT</strong> <span data-i18n="trust.license">licença</span></li>
@@ -465,7 +472,7 @@
             que o caminho funciona, não que ele aguenta dez vezes esse volume, nem como o
             WhatsApp trata um número ao longo de meses.
           </p>
-          <p class="honesty__sig" data-i18n="honest.sig">A mecânica tem 376 testes cobrindo. E um teste continua sendo um teste.</p>
+          <p class="honesty__sig" data-i18n="honest.sig">A mecânica tem 398 testes cobrindo. E um teste continua sendo um teste.</p>
         </div>
       </div>
     </div>
@@ -755,6 +762,7 @@ await awah.messages.sendText(sessionId, {
     </div>
     <nav class="foot__links" aria-label="Documentação">
       <p class="foot__h" data-i18n="foot.docs">Documentação</p>
+      <a href="https://awah-demo.99ia.com.br" target="_blank" rel="noopener" data-i18n="foot.d0">Demonstração ao vivo</a>
       <a href="https://github.com/leoberchielli/awah/blob/main/docs/getting-started.pt-BR.md" target="_blank" rel="noopener" data-i18n="foot.d1">Primeiros passos</a>
       <a href="https://github.com/leoberchielli/awah/blob/main/docs/integrations.pt-BR.md" target="_blank" rel="noopener" data-i18n="foot.d2">Integrações</a>
       <a href="https://github.com/leoberchielli/awah/blob/main/docs/any-platform.pt-BR.md" target="_blank" rel="noopener" data-i18n="foot.d3">Qualquer plataforma</a>
