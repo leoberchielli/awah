@@ -9,8 +9,9 @@
 [![Licença: MIT](https://img.shields.io/badge/licen%C3%A7a-MIT-blue.svg)](LICENSE)
 [![Testes](https://img.shields.io/badge/testes-376%20passando-brightgreen.svg)](#medido-n%C3%A3o-afirmado)
 [![Verificado](https://img.shields.io/badge/verifica%C3%A7%C3%A3o-45%20checks-brightgreen.svg)](docs/VERIFICATION.md)
+[![Site](https://img.shields.io/badge/site-awah.99ia.com.br-5B5BD6.svg)](https://awah.99ia.com.br)
 
-*A mesma coisa em uma página: [awah.99ia.com.br](https://awah.99ia.com.br)*
+**[awah.99ia.com.br](https://awah.99ia.com.br)** — a mesma coisa em uma página, para quem ainda não decidiu ler um README.
 
 A maioria dos gateways resolve *"como envio uma mensagem"*. O AWAH existe para a
 segunda pergunta: **"como envio dez mil sem perder nenhuma e sem perder o

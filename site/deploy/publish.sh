@@ -45,6 +45,19 @@ rsync -a --delete \
   --exclude 'make-og.mjs' \
   "$REPO/site/" "$REL/"
 
+# Os arquivos de /assets/ ficam uma semana no cache da borda do Cloudflare, e
+# mantêm o nome entre releases — então uma correção de CSS publicada não chega
+# a ninguém até a semana virar. O endereço passa a carregar o hash do conteúdo:
+# arquivo igual, mesmo endereço e mesmo cache; arquivo diferente, endereço
+# diferente, e o cache velho deixa de ser consultado sozinho.
+#
+# A troca é feita na cópia da release, não no repositório: o que está
+# versionado continua legível, sem sujeira de build.
+for f in styles.css i18n.js main.js; do
+  hash=$(md5sum "$REL/assets/$f" | cut -c1-8)
+  sed -i "s|assets/$f\"|assets/$f?v=$hash\"|g" "$REL/index.html"
+done
+
 # O servidor fica ao lado do que ele serve, e não dentro do checkout: um
 # serviço que aponta para o diretório de trabalho de alguém quebra no dia em
 # que esse alguém move a pasta.

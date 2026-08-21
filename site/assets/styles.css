@@ -140,7 +140,14 @@ body {
   font-size: 17px;
   line-height: 1.65;
   -webkit-font-smoothing: antialiased;
+  /*
+   * `clip` e não `hidden`: os dois cortam o que passa da largura, mas `hidden`
+   * cria um contêiner de rolagem, e um contêiner de rolagem no body é o motivo
+   * clássico de `position: sticky` parar de grudar. A barra do topo depende
+   * disso.
+   */
   overflow-x: hidden;
+  overflow-x: clip;
 }
 
 h1,
@@ -253,6 +260,9 @@ em {
   top: 0;
   z-index: 50;
   background: color-mix(in srgb, var(--ground) 82%, transparent);
+  /* Sem o prefixo, o Safari não desfoca e a barra fica só translúcida — o
+     conteúdo passa por trás dela e a barra parece quebrada. */
+  -webkit-backdrop-filter: saturate(1.4) blur(12px);
   backdrop-filter: saturate(1.4) blur(12px);
   border-bottom: 1px solid transparent;
   transition:
@@ -266,8 +276,11 @@ em {
 .nav__inner {
   display: flex;
   align-items: center;
-  gap: 20px;
+  /* No estreito o espaçamento cede antes do conteúdo. */
+  gap: clamp(10px, 3vw, 20px);
   height: 64px;
+  flex-wrap: nowrap;
+  min-width: 0;
 }
 
 .brand {
@@ -311,11 +324,18 @@ em {
   background: var(--surface-2);
 }
 
+/*
+ * `margin-left: auto` e não o `margin-inline: auto` dos links: quando os links
+ * somem no mobile, quem empurrava as ações para a direita some junto, e elas
+ * ficavam encostadas na marca — com a última sobrando para fora da tela, que o
+ * `overflow-x: hidden` do body então cortava.
+ */
 .nav__actions {
   display: flex;
   align-items: center;
   gap: 8px;
   flex: none;
+  margin-left: auto;
 }
 
 .seg {
@@ -1662,6 +1682,24 @@ td {
     grid-column: 1 / -1;
   }
 }
+/*
+ * A barra encolhe por partes, e nesta ordem: primeiro o rótulo do botão de
+ * estrela (o ícone do GitHub já diz o que é), depois a contagem, e só num
+ * telefone muito estreito o nome da marca. Some o que é redundante antes do
+ * que identifica.
+ */
+@media (max-width: 720px) {
+  .btn--star > span[data-i18n] {
+    display: none;
+  }
+  .btn--star {
+    padding: 8px 10px;
+    gap: 7px;
+  }
+  .star-count {
+    padding-left: 7px;
+  }
+}
 @media (max-width: 560px) {
   body {
     font-size: 16px;
@@ -1669,13 +1707,26 @@ td {
   .trust {
     gap: 8px 18px;
   }
-  .brand__name {
-    display: none;
-  }
   .foot__inner {
     grid-template-columns: 1fr;
   }
   .cta__actions .btn {
     width: 100%;
+  }
+}
+@media (max-width: 400px) {
+  .wrap {
+    padding-inline: 16px;
+  }
+  .star-count {
+    display: none;
+  }
+  .seg__btn {
+    padding: 8px 7px;
+  }
+}
+@media (max-width: 340px) {
+  .brand__name {
+    display: none;
   }
 }
