@@ -11,6 +11,11 @@ export interface MetricSeries {
   points: SeriesPoint[]
 }
 
+/** Metrics that are already an average, so combining them is not a sum. */
+function isAverage(metric: string): boolean {
+  return metric.endsWith('.avg') || metric.includes('latency.')
+}
+
 /**
  * Reads of the hourly aggregates.
  *
@@ -50,15 +55,21 @@ export class MetricsRepository extends TenantRepository {
     /**
      * With no session filter, there is one row per session in each bucket.
      * Summing is the right behavior for counts — which is what practically
-     * every metric here is. Percentiles are the exception, and that is why they
-     * have a route of their own, always per session.
+     * every metric here is.
+     *
+     * It is the wrong behavior for an average, and `risk.score.avg` is one: the
+     * score runs from 0 to 100 and a chart labelled "100 is the edge of a ban"
+     * was drawing 128, because three sessions each around 40 were being added
+     * together. The `.avg` suffix already exists in the aggregator; here it also
+     * decides how the sessions combine.
      */
-    const grouped = new Map<string, Map<number, number>>()
+    const grouped = new Map<string, Map<number, { total: number; rows: number }>>()
 
     for (const row of rows) {
-      const byMetric = grouped.get(row.metric) ?? new Map<number, number>()
+      const byMetric = grouped.get(row.metric) ?? new Map<number, { total: number; rows: number }>()
       const key = row.bucket.getTime()
-      byMetric.set(key, (byMetric.get(key) ?? 0) + row.value)
+      const cell = byMetric.get(key) ?? { total: 0, rows: 0 }
+      byMetric.set(key, { total: cell.total + row.value, rows: cell.rows + 1 })
       grouped.set(row.metric, byMetric)
     }
 
@@ -66,8 +77,50 @@ export class MetricsRepository extends TenantRepository {
       metric,
       points: [...points.entries()]
         .sort(([a], [b]) => a - b)
-        .map(([bucket, value]) => ({ bucket: new Date(bucket), value })),
+        .map(([bucket, cell]) => ({
+          bucket: new Date(bucket),
+          value: isAverage(metric) ? cell.total / cell.rows : cell.total,
+        })),
     }))
+  }
+
+  /**
+   * Mean of a metric across every row in the period, and not the sum.
+   *
+   * For a percentile this is the only honest read without the raw data: each
+   * row is already one session's percentile for one hour, so averaging them
+   * answers "how long a message usually took". Summing them answers nothing,
+   * and on an instance with three sessions it answers it three times over.
+   */
+  async means(
+    metrics: string[],
+    since: Date,
+    sessionId?: string | null,
+  ): Promise<Record<string, number | null>> {
+    if (metrics.length === 0) return {}
+
+    const filters = [
+      eq(schema.metricsHourly.orgId, this.orgId),
+      inArray(schema.metricsHourly.metric, metrics),
+      gte(schema.metricsHourly.bucket, since),
+    ]
+    if (sessionId) filters.push(eq(schema.metricsHourly.sessionId, sessionId))
+
+    const rows = await this.db
+      .select({
+        metric: schema.metricsHourly.metric,
+        mean: sql<number | null>`avg(${schema.metricsHourly.value})`,
+      })
+      .from(schema.metricsHourly)
+      .where(and(...filters))
+      .groupBy(schema.metricsHourly.metric)
+
+    // Absent is null, not zero: "no measurement" and "zero milliseconds" are
+    // different answers, and the panel prints an em dash for the first.
+    const result: Record<string, number | null> = {}
+    for (const metric of metrics) result[metric] = null
+    for (const row of rows) result[row.metric] = row.mean === null ? null : Number(row.mean)
+    return result
   }
 
   /** Sum of one metric over the period. */

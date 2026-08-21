@@ -7,7 +7,7 @@
 [![CI](https://github.com/leoberchielli/awah/actions/workflows/ci.yml/badge.svg)](https://github.com/leoberchielli/awah/actions/workflows/ci.yml)
 [![Image](https://github.com/leoberchielli/awah/actions/workflows/image.yml/badge.svg)](https://github.com/leoberchielli/awah/actions/workflows/image.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-398%20passing-brightgreen.svg)](#measured-not-asserted)
+[![Tests](https://img.shields.io/badge/tests-399%20passing-brightgreen.svg)](#measured-not-asserted)
 [![Verified](https://img.shields.io/badge/verification-45%20checks-brightgreen.svg)](docs/VERIFICATION.md)
 [![Site](https://img.shields.io/badge/site-awah.99ia.com.br-5B5BD6.svg)](https://awah.99ia.com.br)
 [![Demo](https://img.shields.io/badge/demo-live-22a06b.svg)](https://awah-demo.99ia.com.br)
@@ -195,7 +195,7 @@ is not code: it is use at scale.**
 > **What is still missing is scale and time.** Four numbers and a few thousand
 > messages say the path works; they do not say it holds at ten times the volume,
 > and nothing here can yet tell you how WhatsApp treats a number over months.
-> The mechanics are covered by 398 tests, and a test is still a test.
+> The mechanics are covered by 399 tests, and a test is still a test.
 
 ## Measured, not asserted
 

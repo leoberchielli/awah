@@ -576,6 +576,17 @@ export async function seedDemo(deps: DemoSeedDeps): Promise<DemoSeedResult> {
             scenario: session.scenario,
             phoneNumber: session.phoneNumber,
             ageDays: session.ageDays,
+            /*
+             * The one thing the demo's numbers never do is log out.
+             *
+             * A 401 is terminal by design — it means the credentials died and
+             * only a new pairing brings the session back. There is no phone
+             * here to scan anything, so a single logout would leave that number
+             * dark until the next reset, and the degraded one draws a logout
+             * every few minutes. Drops still happen, and they still reconnect
+             * on their own: that is the part worth watching.
+             */
+            logoutShare: 0,
           },
         },
       })

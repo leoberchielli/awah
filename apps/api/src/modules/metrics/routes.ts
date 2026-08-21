@@ -202,19 +202,21 @@ export async function metricsRoutes(app: FastifyInstance) {
       const delivered = totals['status.delivered'] ?? 0
       const read = totals['status.read'] ?? 0
 
-      // Percentiles do not sum across sessions; the bucket average is the honest read.
-      const percentis = await repo.totals(
+      /*
+       * Percentiles do not sum, so they are averaged in the database.
+       *
+       * This used to sum them and divide by the number of *buckets*, which is
+       * only right on an instance with a single session: with three, each
+       * bucket carried three rows and the p50 came out three times what any of
+       * them had measured. The demo, running three numbers, is where that
+       * finally showed — 14 seconds for messages that arrive in under two.
+       */
+      const percentis = await repo.means(
         ['latency.delivered.p50', 'latency.delivered.p95', 'latency.delivered.p99'],
         since,
         scope,
       )
-      const buckets = await repo.series({
-        metrics: ['latency.delivered.p95'],
-        since,
-        sessionId: scope,
-      })
-      const bucketCount = buckets[0]?.points.length ?? 0
-      const mean = (value: number) => (bucketCount > 0 ? Math.round(value / bucketCount) : null)
+      const mean = (value: number | null) => (value === null ? null : Math.round(value))
 
       const queue = await app.db.execute(sql`
         SELECT status, count(*)::int AS total FROM outbox_messages
@@ -237,9 +239,9 @@ export async function metricsRoutes(app: FastifyInstance) {
           readRate: sent > 0 ? Number((read / sent).toFixed(4)) : 0,
         },
         latencyMs: {
-          p50: mean(percentis['latency.delivered.p50'] ?? 0),
-          p95: mean(percentis['latency.delivered.p95'] ?? 0),
-          p99: mean(percentis['latency.delivered.p99'] ?? 0),
+          p50: mean(percentis['latency.delivered.p50'] ?? null),
+          p95: mean(percentis['latency.delivered.p95'] ?? null),
+          p99: mean(percentis['latency.delivered.p99'] ?? null),
         },
         queue: {
           queued: byStatus.queued ?? 0,

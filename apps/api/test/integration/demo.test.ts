@@ -2,7 +2,7 @@ import { eq, schema, sql } from '@awah/db'
 import type { FastifyInstance } from 'fastify'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { buildApp } from '../../src/app'
-import { DEMO_API_KEY, DEMO_ORG_ID, DEMO_USER_ID } from '../../src/demo/seed'
+import { DEMO_API_KEY, DEMO_ORG_ID, DEMO_SESSION_IDS, DEMO_USER_ID } from '../../src/demo/seed'
 import { loadEnv } from '../../src/env'
 
 const hasInfra = Boolean(process.env.DATABASE_URL && process.env.REDIS_URL)
@@ -114,6 +114,39 @@ describe.skipIf(!hasInfra)('public demo', () => {
     expect(business.responseRate).toBeGreaterThan(0)
     expect(business.firstResponseSeconds.p50).toBeGreaterThan(0)
     expect(business.topChats.length).toBeGreaterThan(0)
+  })
+
+  /**
+   * Three sessions is where an average that was being summed shows itself.
+   *
+   * Both numbers below are per-session readings that the org-wide view has to
+   * combine by averaging: a score is capped at 100 by definition, and a p50 of
+   * a few seconds does not become fifteen because there are three numbers.
+   */
+  it('combines averages across sessions without adding them up', async () => {
+    const risk = await app
+      .inject({ method: 'GET', url: '/v1/kpi/risk?hours=720', headers: { cookie } })
+      .then((r) => r.json())
+
+    const scores = risk.scoreSeries.flatMap((s: { points: Array<{ value: number }> }) =>
+      s.points.map((p) => p.value),
+    )
+    expect(scores.length).toBeGreaterThan(0)
+    expect(Math.max(...scores)).toBeLessThanOrEqual(100)
+
+    const all = await app
+      .inject({ method: 'GET', url: '/v1/kpi/delivery?hours=720', headers: { cookie } })
+      .then((r) => r.json())
+    const one = await app
+      .inject({
+        method: 'GET',
+        url: `/v1/kpi/delivery?hours=720&sessionId=${DEMO_SESSION_IDS.billing}`,
+        headers: { cookie },
+      })
+      .then((r) => r.json())
+
+    // The slowest number on its own cannot be faster than the three together.
+    expect(all.latencyMs.p50).toBeLessThanOrEqual(one.latencyMs.p50)
   })
 
   /**
