@@ -23,6 +23,13 @@ Then open `http://localhost:2900`. There is no configuration file to write and
 no curl to run: the dashboard walks you through the first organization, the
 first number and the first integration.
 
+![The AWAH dashboard: delivery funnel, throughput, risk engine decisions, and a
+session's risk panel — ending with the whole interface switching language](docs/img/dashboard.gif)
+
+*Recorded against a live instance. The last few seconds are the panel changing
+language: it ships in ten, and the reasons a session dropped are translated too,
+not left in English inside a translated screen.*
+
 ---
 
 ## What happens to a message

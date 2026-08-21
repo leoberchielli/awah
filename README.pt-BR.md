@@ -23,6 +23,14 @@ Depois abra `http://localhost:2900`. Não há arquivo de configuração para
 escrever nem curl para rodar: o painel conduz a primeira organização, o primeiro
 número e a primeira integração.
 
+![O painel do AWAH: funil de entrega, vazão, decisões do motor de risco e o
+painel de risco de uma sessão — terminando com a interface inteira trocando de
+idioma](docs/img/dashboard.gif)
+
+*Gravado contra uma instância viva. Os últimos segundos são o painel mudando de
+idioma: são dez, e os motivos de queda de uma sessão também são traduzidos, em
+vez de ficarem em inglês dentro de uma tela traduzida.*
+
 ---
 
 ## O que acontece com uma mensagem
