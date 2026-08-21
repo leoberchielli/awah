@@ -181,6 +181,17 @@ const envSchema = z.object({
    */
   SIMULATOR_ENABLED: boolish.default(false),
 
+  /**
+   * Lets webhooks and integrations point at private addresses.
+   *
+   * Off by default. A URL the user chooses is a URL the *server* fetches, and
+   * without this restriction the HTTP connector's test button is a proxy into
+   * loopback, the LAN and cloud metadata — with the response body shown on
+   * screen. Turn it on when the destination genuinely is internal: a Chatwoot
+   * on the same Docker network, an n8n on the LAN.
+   */
+  ALLOW_PRIVATE_INTEGRATION_TARGETS: boolish.default(false),
+
   // ---- demo ----
   /**
    * Turns the instance into a public demo.
@@ -282,6 +293,22 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
         'The demo has no phone to pair: its sessions run on the simulator, and',
         'without it nothing in the panel would ever connect. Set',
         'SIMULATOR_ENABLED=true.',
+      ].join('\n'),
+    )
+  }
+
+  /*
+   * A public demo cannot be the exception that reaches the private network: it
+   * hands owner credentials to anyone who opens the page, and the connector's
+   * test button returns the body of whatever it fetched.
+   */
+  if (env.DEMO_MODE && env.ALLOW_PRIVATE_INTEGRATION_TARGETS) {
+    throw new Error(
+      [
+        'DEMO_MODE and ALLOW_PRIVATE_INTEGRATION_TARGETS are both on.',
+        'Everyone who opens a demo signs in as owner, and the HTTP connector',
+        'shows the body of whatever it fetches. Together those two turn the',
+        'instance into a proxy into its own network.',
       ].join('\n'),
     )
   }

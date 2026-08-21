@@ -63,6 +63,32 @@ quando o conjunto estiver exercitado contra tráfego real em escala.
 - `/metrics` em formato Prometheus, protegido por token.
 - Instrumentação com a API do OpenTelemetry, sem SDK embutido.
 
+**Segurança**
+
+- Destino escolhido pelo usuário — assinatura de webhook, endereço base do
+  Chatwoot e do Typebot, o conector HTTP e o botão de teste dele — é recusado
+  quando resolve para loopback, faixa privada, link-local (inclusive
+  `169.254.169.254`), CGNAT ou multicast. Antes disso o botão de teste era uma
+  primitiva de leitura da rede do próprio servidor: na demo pública ele devolveu
+  o corpo da página do roteador da LAN e de uma porta de métricas em 127.0.0.1.
+  `ALLOW_PRIVATE_INTEGRATION_TARGETS=true` devolve o comportamento antigo para
+  quem realmente fala com ferramenta interna.
+- A entrega de webhook confere o destino de novo na hora de enviar. Um nome que
+  resolvia para endereço público quando a assinatura foi criada pode resolver
+  para outro depois, e linhas gravadas antes desta checagem continuam na tabela.
+- O rate limit parou de aceitar qualquer header `Authorization` como sujeito do
+  limite. Lixo nesse header abria uma cota nova a cada requisição, o que
+  transformava os dez-por-cinco-minutos do login em limite nenhum: quinze
+  tentativas de senha seguidas, nenhuma recusada. Agora só chave bem formada
+  conta, pelo prefixo público; o resto é limitado por IP.
+- O 403 de uma chave de API agora diz qual das duas recusas é. "Chave nenhuma
+  faz isto, use uma sessão de usuário" vinha também para chave cujo papel era só
+  baixo demais, o que manda a pessoa fazer login quando a resposta era uma chave
+  admin.
+- O redirecionamento pós-login do painel recusa `return` protocol-relative.
+  `?return=//outro.lugar` começa com barra e era tratado como caminho interno —
+  open redirect na tela onde a pessoa acabou de digitar a senha.
+
 **Demonstração pública**
 
 - `DEMO_MODE`: uma instância que publica as próprias credenciais de admin, gera

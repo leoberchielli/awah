@@ -153,7 +153,7 @@
     'honest.tag': 'What has not been measured yet',
     'honest.body':
       '<strong>This has now run against real numbers</strong> — four of them, roughly 3,700 messages through the Baileys engine, with signed webhooks running throughout and the risk engine pacing the sending, and no number blocked. What is still missing is scale and time: four numbers and a few thousand messages say the path works, not that it holds at ten times the volume, nor how WhatsApp treats a number over months.',
-    'honest.sig': 'The mechanics are covered by 399 tests. And a test is still a test.',
+    'honest.sig': 'The mechanics are covered by 419 tests. And a test is still a test.',
 
     'dash.kicker': 'The dashboard',
     'dash.title':

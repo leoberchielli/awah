@@ -1,5 +1,7 @@
+import { count, eq, schema } from '@awah/db'
 import type { FastifyInstance } from 'fastify'
 import fp from 'fastify-plugin'
+import { forbidden } from '../lib/errors'
 import { enforceDemo } from './guard'
 import {
   DEMO_API_KEY,
@@ -66,6 +68,7 @@ export const demoPlugin = fp(
      */
     app.addHook('preHandler', async (request) => {
       enforceDemo(request)
+      await enforceSessionCeiling(app, request)
     })
 
     /**
@@ -132,4 +135,35 @@ async function reset(app: FastifyInstance, deps: Parameters<typeof resetDemo>[0]
 
   const result = await resetDemo(deps)
   app.log.info({ messages: result.messages }, 'demo reset to its baseline')
+}
+
+/**
+ * How many sessions a demo may hold at once.
+ *
+ * Twelve is the three seeded numbers plus room to create a few and watch them
+ * connect, which is the whole point of letting a visitor create any. Without a
+ * ceiling, a loop over `POST /v1/sessions` is a hundred simulators an hour,
+ * each with its own timers producing inbound traffic — measured here: five
+ * sessions created in five seconds, no refusal, and nothing but the three-hour
+ * reset standing between that and the machine's memory.
+ */
+const DEMO_SESSION_CEILING = 12
+
+async function enforceSessionCeiling(
+  app: FastifyInstance,
+  request: { method: string; url: string },
+): Promise<void> {
+  const path = request.url.split('?')[0] ?? request.url
+  if (request.method.toUpperCase() !== 'POST' || path !== '/v1/sessions') return
+
+  const [row] = await app.db
+    .select({ total: count() })
+    .from(schema.sessions)
+    .where(eq(schema.sessions.orgId, DEMO_ORG_ID))
+
+  if (Number(row?.total ?? 0) >= DEMO_SESSION_CEILING) {
+    throw forbidden(
+      `This demo holds at most ${DEMO_SESSION_CEILING} sessions at a time, and it is full. Remove one, or wait for the reset — it rebuilds the demo from scratch.`,
+    )
+  }
 }

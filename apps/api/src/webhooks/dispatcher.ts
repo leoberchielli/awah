@@ -1,5 +1,6 @@
 import { type Database, sql } from '@awah/db'
 import { exponentialBackoff } from '../lib/backoff'
+import { assertPublicTarget } from '../lib/net-guard'
 import type { ManagerLogger } from '../sessions/manager'
 import { SIGNATURE_HEADER, sign, TIMESTAMP_HEADER } from './signature'
 
@@ -18,6 +19,25 @@ export interface WebhookDispatcherDeps {
    * governs deliveries that were already queued when it changed.
    */
   maxAttempts: number
+  /**
+   * Whether a private address is an acceptable destination.
+   *
+   * Checked again here, and not only when the subscription was created,
+   * because a name that resolved to a public address then can resolve to
+   * 127.0.0.1 now — and because rows written before this check existed are
+   * still in the table.
+   */
+  allowPrivateTargets: boolean
+  /**
+   * Destinations that skip the check, matched exactly.
+   *
+   * One caller uses it: the demo's own sink, which is this instance posting to
+   * itself on loopback. That is a loop, not a way into a network the caller
+   * could not already reach — and without the exception a demo on a laptop
+   * would show every webhook dead, which is the opposite of what it is there
+   * to demonstrate.
+   */
+  allowTargets?: readonly string[]
   /** Outcome and duration of each attempt, for metrics. */
   observeDelivery?: (outcome: 'delivered' | 'retrying' | 'dead', seconds: number) => void
 }
@@ -125,6 +145,27 @@ export class WebhookDispatcher {
 
     const startedAt = Date.now()
     const elapsed = () => (Date.now() - startedAt) / 1000
+
+    if (!this.deps.allowPrivateTargets && !this.deps.allowTargets?.includes(delivery.url)) {
+      try {
+        await assertPublicTarget(delivery.url, { allowPrivate: false })
+      } catch (error) {
+        /*
+         * Straight to the dead queue rather than retried: the address will not
+         * become public on the fourth attempt, and each attempt is a request
+         * this server makes into its own network.
+         */
+        await this.markFailed(
+          delivery,
+          error instanceof Error ? error.message : 'refused destination',
+          null,
+          null,
+          true,
+        )
+        this.deps.observeDelivery?.('dead', elapsed())
+        return
+      }
+    }
 
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), this.deps.requestTimeoutMs)

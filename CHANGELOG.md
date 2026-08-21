@@ -63,6 +63,34 @@ v1.0, once the whole thing has been exercised against real traffic at scale.
 - `/metrics` in Prometheus format, protected by a token.
 - Instrumentation with the OpenTelemetry API, no bundled SDK.
 
+**Security**
+
+- Destinations chosen by a user — webhook subscriptions, the Chatwoot and
+  Typebot base URLs, the HTTP connector and its test button — are refused when
+  they resolve to loopback, a private range, link-local (`169.254.169.254`
+  included), CGNAT or multicast. Before this, the connector's test button was a
+  read primitive into the server's own network: on the public demo it returned
+  the body of the LAN router's home page and of a metrics port on 127.0.0.1.
+  `ALLOW_PRIVATE_INTEGRATION_TARGETS=true` restores the old behaviour for an
+  instance that really does talk to an internal tool.
+- Webhook deliveries check the destination again at delivery time. A name that
+  resolved to a public address when the subscription was created can resolve
+  somewhere else later, and rows written before this existed are still in the
+  table.
+- The rate limiter stopped taking any `Authorization` header as the subject of
+  the limit. Junk in that header used to open a fresh allowance on every
+  request, which took the login route's ten-per-five-minutes down to no limit at
+  all: fifteen consecutive password attempts, none refused. Only a well-formed
+  key counts now, by its public prefix; everything else is limited by IP.
+- A 403 for an API key now says which of the two refusals it is. "No key ever
+  does this, use a user session" was being returned for a key whose role was
+  simply too low, which sends the reader to sign in when the answer was an admin
+  key.
+- The panel's post-login redirect refuses a protocol-relative `return`.
+  `?return=//somewhere.else` starts with a slash and was treated as an internal
+  path, which is an open redirect on the screen where someone has just typed
+  their password.
+
 **Public demo**
 
 - `DEMO_MODE`: an instance that publishes its own admin credentials, seeds a

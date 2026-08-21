@@ -12,6 +12,7 @@ import {
   validatorCompiler,
 } from 'fastify-type-provider-zod'
 import Redis from 'ioredis'
+import { bearerFrom, parseApiKey } from './auth/api-key'
 import { authPlugin } from './auth/plugin'
 import { dashboardPlugin, isServerRoute } from './dashboard/plugin'
 import { demoPlugin } from './demo/plugin'
@@ -162,10 +163,22 @@ export async function buildApp(env: Env): Promise<FastifyInstance> {
     max: 300,
     timeWindow: '1 minute',
     redis,
-    // The API key is the limit's subject when there is one; otherwise the IP.
+    /**
+     * The API key is the limit's subject when there is one; otherwise the IP.
+     *
+     * "When there is one" has to mean a well-formed key, and it did not: any
+     * `Authorization` header at all became the bucket, so a client that sent a
+     * different piece of junk on every request got a fresh allowance every
+     * time. Measured on the demo before the fix — fifteen consecutive password
+     * attempts on `POST /v1/auth/login`, a route whose whole protection is a
+     * limit of ten per five minutes, and not one of them was refused.
+     *
+     * Only the public prefix goes into the key. It identifies the credential
+     * without the secret ever reaching the limiter's storage.
+     */
     keyGenerator: (request) => {
-      const header = request.headers.authorization
-      return header ? `k:${header.slice(-24)}` : `i:${request.ip}`
+      const parsed = parseApiKey(bearerFrom(request.headers.authorization) ?? '')
+      return parsed ? `k:${parsed.prefix}` : `i:${request.ip}`
     },
   })
 

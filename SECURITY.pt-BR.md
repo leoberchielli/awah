@@ -49,6 +49,17 @@ o que é decisão consciente.
 - **Falsificação de evento da Meta.** O callback é o único endpoint público, e o
   `appSecret` é obrigatório justamente por isso. A conferência é HMAC sobre os
   bytes crus.
+- **A rede do próprio servidor.** Quatro recursos aceitam uma URL do usuário e
+  fazem o servidor buscá-la: assinatura de webhook, os endereços base do
+  Chatwoot e do Typebot, e o conector HTTP — cujo botão de teste devolve o corpo
+  da resposta na tela. Todos recusam destino que resolva para loopback, faixa
+  privada, link-local (inclusive `169.254.169.254`, onde os provedores guardam
+  credencial de instância), CGNAT ou multicast. A entrega de webhook é conferida
+  de novo na hora do envio, não só quando a assinatura foi criada.
+
+  `ALLOW_PRIVATE_INTEGRATION_TARGETS=true` desliga a restrição para uma
+  instância que realmente conversa com um Chatwoot ou n8n interno. Não ligue em
+  nada que o público alcance.
 
 ### O que não é protegido
 
@@ -66,6 +77,14 @@ o que é decisão consciente.
 - **Negação de serviço distribuída.** Há rate limit por chave e por IP, e teto de
   corpo. Isso segura abuso comum, não um ataque coordenado — para isso, ponha um
   proxy ou CDN na frente.
+- **DNS rebinding numa URL de saída.** A checagem resolve o nome e recusa
+  resposta privada, mas a conexão acontece um instante depois e pode cair em
+  outro lugar se o nome for de quem ataca e responder diferente a cada consulta.
+  Fechar isso exige prender o socket ao endereço já conferido, o que o `fetch`
+  da plataforma não expõe. Numa instância em que qualquer um cria webhook — uma
+  demo pública, por exemplo — a resposta é política de rede embaixo do processo,
+  não checagem dentro dele: a demo roda com as faixas privadas negadas no kernel
+  pelo systemd.
 
 ## Antes de expor uma instância
 
@@ -102,6 +121,11 @@ Lista mínima. As três primeiras o processo cobra sozinho; as outras não.
 
 7. **Feche o registro.** `POST /v1/auth/register` já fecha sozinho quando existe
    uma organização, mas confira que ela existe antes de abrir a porta.
+
+8. **Deixe `ALLOW_PRIVATE_INTEGRATION_TARGETS` desligada.** Ligada ela não vem, e
+   assim deve ficar onde gente não confiável cria webhook ou integração: a URL
+   que essa pessoa escolhe é uma requisição que o seu servidor faz, de dentro da
+   sua rede.
 
 ## Divulgação
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { apiKeyCan, can, isRole, ROLES, roleAtLeast } from '../src/auth/rbac'
+import { apiKeyCan, apiKeyDenied, can, isRole, ROLES, roleAtLeast } from '../src/auth/rbac'
 
 describe('role hierarchy', () => {
   it('covers every role below', () => {
@@ -68,6 +68,18 @@ describe('API key permissions', () => {
   it('still respects the hierarchy within what is allowed', () => {
     expect(apiKeyCan('viewer', 'message:send')).toBe(false)
     expect(apiKeyCan('operator', 'session:write')).toBe(false)
+  })
+
+  /**
+   * The two refusals are not the same refusal, and the API used to say the
+   * first for both: an operator key that only needed to be an admin key was
+   * told that no key ever does this, and to go and sign in.
+   */
+  it('separates "no key ever" from "not this key"', () => {
+    expect(apiKeyDenied('apikey:write')).toBe(true)
+    expect(apiKeyDenied('member:write')).toBe(true)
+    expect(apiKeyDenied('session:write')).toBe(false)
+    expect(apiKeyDenied('message:send')).toBe(false)
   })
 })
 

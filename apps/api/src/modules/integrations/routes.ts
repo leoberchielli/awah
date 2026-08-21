@@ -22,6 +22,7 @@ import { findLinkByExternal } from '../../integrations/links'
 import { deriveFromLink, TypebotClient } from '../../integrations/typebot/client'
 import { randomToken, safeEqual } from '../../lib/crypto'
 import { badRequest, forbidden, notFound } from '../../lib/errors'
+import { assertPublicTarget } from '../../lib/net-guard'
 import { OutboxRepository } from '../../repos/outbox'
 import { SessionRepository } from '../../repos/sessions'
 
@@ -208,6 +209,10 @@ export async function integrationRoutes(app: FastifyInstance) {
     },
     async (request) => {
       const { baseUrl, apiAccessToken, accountId } = request.body
+      await assertPublicTarget(baseUrl, {
+        allowPrivate: app.env.ALLOW_PRIVATE_INTEGRATION_TARGETS,
+        field: 'Chatwoot address',
+      })
 
       const client = new ChatwootClient({
         baseUrl: baseUrl.replace(/\/+$/, ''),
@@ -282,6 +287,14 @@ export async function integrationRoutes(app: FastifyInstance) {
     },
     async (request) => {
       const config = httpConfigSchema.parse(request.body)
+      /*
+       * The reason this endpoint is the one that mattered: it returns the body
+       * of whatever it fetched. Before the check it read the LAN router's home
+       * page on the public demo.
+       */
+      await assertPublicTarget(config.url, {
+        allowPrivate: app.env.ALLOW_PRIVATE_INTEGRATION_TARGETS,
+      })
 
       try {
         const result = await new HttpConnector(config).send(TEST_EVENT)
@@ -398,6 +411,11 @@ export async function integrationRoutes(app: FastifyInstance) {
       }
 
       const config = parseConfig(kind, raw)
+      /*
+       * Checked after parsing, so the URL being validated is the normalized one
+       * — the same string the dispatcher will fetch, not what arrived.
+       */
+      await assertTargets(kind, config, app.env.ALLOW_PRIVATE_INTEGRATION_TARGETS)
       const { detail } = await verify(kind, config)
 
       const integration = await saveIntegration(app.db, encryptionKey, {
@@ -567,4 +585,33 @@ async function processar(
     payload: { text: content },
     maxAttempts: app.env.OUTBOX_MAX_ATTEMPTS,
   })
+}
+
+/**
+ * The addresses a saved integration will reach.
+ *
+ * Chatwoot and Typebot get called with a token attached, and the HTTP connector
+ * gets every incoming message; all three are URLs someone else chose, and all
+ * three are fetched by this server. The check belongs where the configuration
+ * is accepted, so a bad target is refused with an explanation instead of
+ * failing later inside a dispatcher nobody is watching.
+ */
+async function assertTargets(
+  kind: IntegrationKind,
+  config: unknown,
+  allowPrivate: boolean,
+): Promise<void> {
+  const values = config as { baseUrl?: unknown; url?: unknown }
+
+  if (kind === 'http' && typeof values.url === 'string') {
+    await assertPublicTarget(values.url, { allowPrivate })
+    return
+  }
+
+  if (typeof values.baseUrl === 'string') {
+    await assertPublicTarget(values.baseUrl, {
+      allowPrivate,
+      field: kind === 'chatwoot' ? 'Chatwoot address' : 'Typebot address',
+    })
+  }
 }

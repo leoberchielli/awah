@@ -7,7 +7,7 @@
 [![CI](https://github.com/leoberchielli/awah/actions/workflows/ci.yml/badge.svg)](https://github.com/leoberchielli/awah/actions/workflows/ci.yml)
 [![Imagem](https://github.com/leoberchielli/awah/actions/workflows/image.yml/badge.svg)](https://github.com/leoberchielli/awah/actions/workflows/image.yml)
 [![Licença: MIT](https://img.shields.io/badge/licen%C3%A7a-MIT-blue.svg)](LICENSE)
-[![Testes](https://img.shields.io/badge/testes-399%20passando-brightgreen.svg)](#medido-n%C3%A3o-afirmado)
+[![Testes](https://img.shields.io/badge/testes-419%20passando-brightgreen.svg)](#medido-n%C3%A3o-afirmado)
 [![Verificado](https://img.shields.io/badge/verifica%C3%A7%C3%A3o-45%20checks-brightgreen.svg)](docs/VERIFICATION.md)
 [![Site](https://img.shields.io/badge/site-awah.99ia.com.br-5B5BD6.svg)](https://awah.99ia.com.br)
 [![Demo](https://img.shields.io/badge/demo-no%20ar-22a06b.svg)](https://awah-demo.99ia.com.br)
@@ -193,7 +193,7 @@ em escala.**
 > **O que ainda falta é escala e tempo.** Quatro números e alguns milhares de
 > mensagens dizem que o caminho funciona; não dizem que ele aguenta dez vezes
 > esse volume, e nada aqui ainda conta como o WhatsApp trata um número ao longo
-> de meses. A mecânica é coberta por 399 testes, e um teste continua sendo um
+> de meses. A mecânica é coberta por 419 testes, e um teste continua sendo um
 > teste.
 
 ## Medido, não afirmado

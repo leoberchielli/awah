@@ -534,7 +534,15 @@ export async function seedDemo(deps: DemoSeedDeps): Promise<DemoSeedResult> {
       name: 'Published demo key',
       prefix: DEMO_KEY_PREFIX,
       secretHash: hashToken(DEMO_KEY_SECRET),
-      role: 'admin',
+      /*
+       * Operator, not admin. The key is printed in the documentation, which
+       * means it belongs to everyone — and admin reaches session creation and
+       * the integration connector, the one endpoint that fetches a URL of the
+       * caller's choosing and shows the answer. Reading the KPIs and sending a
+       * message is what the published example needs; anything beyond that is a
+       * sign-in away, behind the login screen's own limits.
+       */
+      role: 'operator',
       createdByUserId: DEMO_USER_ID,
     })
     .onConflictDoNothing()

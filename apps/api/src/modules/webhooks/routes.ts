@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { requireAuth } from '../../auth/plugin'
 import { randomToken } from '../../lib/crypto'
 import { notFound } from '../../lib/errors'
+import { assertPublicTarget } from '../../lib/net-guard'
 import { replayDeadDeliveries, WEBHOOK_EVENTS } from '../../webhooks/emit'
 
 const webhookSchema = z.object({
@@ -70,6 +71,9 @@ export async function webhookRoutes(app: FastifyInstance) {
     },
     async (request, reply) => {
       const auth = requireAuth(request)
+      await assertPublicTarget(request.body.url, {
+        allowPrivate: app.env.ALLOW_PRIVATE_INTEGRATION_TARGETS,
+      })
       const secret = randomToken(32)
 
       const [webhook] = await app.db
@@ -114,6 +118,14 @@ export async function webhookRoutes(app: FastifyInstance) {
     },
     async (request) => {
       const auth = requireAuth(request)
+      // A subscription that starts public and is edited to point inside would
+      // walk straight past a check that only ran on creation.
+      if (request.body.url) {
+        await assertPublicTarget(request.body.url, {
+          allowPrivate: app.env.ALLOW_PRIVATE_INTEGRATION_TARGETS,
+        })
+      }
+
       const [updated] = await app.db
         .update(schema.webhooks)
         .set({ ...request.body, updatedAt: new Date() })

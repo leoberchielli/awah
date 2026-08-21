@@ -68,8 +68,21 @@ const API_KEY_DENIED = new Set<Permission>([
 ])
 
 export function apiKeyCan(role: Role, permission: Permission): boolean {
-  if (API_KEY_DENIED.has(permission)) return false
+  if (apiKeyDenied(permission)) return false
   return can(role, permission)
+}
+
+/**
+ * Whether the operation is closed to API keys whatever their role.
+ *
+ * Separate from `apiKeyCan` because the two refusals need different answers.
+ * "No key does this, use a user session" and "this key's role is too low" send
+ * the reader in opposite directions, and the API used to give the first message
+ * for both — so the operator who only needed an admin key was told to go and
+ * sign in instead.
+ */
+export function apiKeyDenied(permission: Permission): boolean {
+  return API_KEY_DENIED.has(permission)
 }
 
 export function isRole(value: string): value is Role {

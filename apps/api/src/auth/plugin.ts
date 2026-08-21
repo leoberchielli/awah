@@ -5,7 +5,7 @@ import { badRequest, forbidden, unauthorized } from '../lib/errors'
 import { findApiKeyByPrefix, touchApiKey } from '../repos/api-keys'
 import { IdentityRepository } from '../repos/identity'
 import { bearerFrom, parseApiKey } from './api-key'
-import { apiKeyCan, can, type Permission, type Role } from './rbac'
+import { apiKeyCan, apiKeyDenied, can, type Permission, type Role } from './rbac'
 
 export const SESSION_COOKIE = 'awah_session'
 /** Picks the organization when the user belongs to more than one. */
@@ -154,9 +154,10 @@ export const authPlugin = fp(
             : can(context.role, permission)
 
         if (!allowed) {
+          const closedToKeys = context.kind === 'api_key' && apiKeyDenied(permission)
           throw forbidden(
-            context.kind === 'api_key'
-              ? 'API keys do not run this operation — use a user session.'
+            closedToKeys
+              ? 'API keys do not run this operation, whatever their role — use a user session.'
               : `Your role (${context.role}) does not cover this operation.`,
           )
         }

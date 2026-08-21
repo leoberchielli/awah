@@ -1,5 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import fp from 'fastify-plugin'
+import { DEMO_WEBHOOK_PATH } from '../demo/seed'
+import type { Env } from '../env'
 import { IntegrationDispatcher } from '../integrations/dispatcher'
 import { OutboxDispatcher } from '../messaging/dispatcher'
 import { purgeExpiredContent, recordMessage, recordStatus } from '../messaging/persistence'
@@ -257,6 +259,8 @@ export const workersPlugin = fp(
       batchSize: app.env.WEBHOOK_BATCH_SIZE,
       requestTimeoutMs: app.env.WEBHOOK_TIMEOUT_MS,
       maxAttempts: app.env.WEBHOOK_MAX_ATTEMPTS,
+      allowPrivateTargets: app.env.ALLOW_PRIVATE_INTEGRATION_TARGETS,
+      allowTargets: app.env.DEMO_MODE ? [demoSinkUrl(app.env)] : [],
       observeDelivery: (outcome, seconds) => {
         app.metrics.webhookDeliveries.inc({ outcome })
         app.metrics.webhookDuration.observe({ outcome }, seconds)
@@ -283,3 +287,8 @@ export const workersPlugin = fp(
   },
   { name: 'awah-workers', dependencies: ['awah-sessions'] },
 )
+
+/** Where the demo's seeded subscription posts: this instance, to itself. */
+function demoSinkUrl(env: Env): string {
+  return `${env.PUBLIC_URL ?? `http://localhost:${env.PORT}`}${DEMO_WEBHOOK_PATH}`
+}

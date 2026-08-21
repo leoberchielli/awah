@@ -33,8 +33,18 @@ export function SignIn() {
 
     try {
       await post('/v1/auth/login', { email, password: password })
+      /**
+       * `//evil.example` also starts with a slash.
+       *
+       * A protocol-relative URL is a full address to the browser, so the
+       * "internal path only" check let `?return=//somewhere.else` send whoever
+       * had just typed their password straight off the site. The second
+       * character has to be part of the test, and a backslash counts as a
+       * slash in more parsers than one would like.
+       */
       const goBack = params.get('return')
-      window.location.assign(goBack?.startsWith('/') ? goBack : '/operacao')
+      const internal = goBack && /^\/[^/\\]/.test(goBack) ? goBack : '/operations'
+      window.location.assign(internal)
     } catch (failure) {
       setError(failure instanceof ApiError ? failure.message : t('login.failed'))
       setSending(false)

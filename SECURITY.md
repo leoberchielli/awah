@@ -49,6 +49,17 @@ reporting a deliberate decision as a flaw.
   signature.
 - **Forged Meta events.** The callback is the only public endpoint, and that is
   exactly why `appSecret` is required. The check is an HMAC over the raw bytes.
+- **The server's own network.** Four features take a URL from a user and make
+  the server fetch it: webhook subscriptions, the Chatwoot and Typebot base
+  URLs, and the HTTP connector — whose test button returns the response body on
+  screen. Every one of them refuses a destination that resolves to loopback, a
+  private range, link-local (including `169.254.169.254`, where cloud providers
+  keep instance credentials), CGNAT or multicast. Webhook deliveries are checked
+  again at delivery time, not only when the subscription was created.
+
+  `ALLOW_PRIVATE_INTEGRATION_TARGETS=true` turns the restriction off for an
+  instance that genuinely talks to an internal Chatwoot or n8n. Do not set it on
+  anything the public can reach.
 
 ### What is not protected
 
@@ -67,6 +78,14 @@ reporting a deliberate decision as a flaw.
 - **Distributed denial of service.** There is rate limiting per key and per IP,
   and a body size cap. That holds off ordinary abuse, not a coordinated attack —
   for that, put a proxy or CDN in front.
+- **DNS rebinding on an outbound URL.** The destination check resolves the name
+  and refuses private answers, but the connection happens a moment later and can
+  land somewhere else if the name is under an attacker's control and answers
+  differently each time. Closing that means pinning the socket to the address
+  that was checked, which the platform's `fetch` does not expose. On an instance
+  where anyone can register a webhook — a public demo, say — the answer is a
+  network policy underneath the process, not a check inside it: the demo runs
+  with the private ranges denied at the kernel by systemd.
 
 ## Before exposing an instance
 
@@ -104,6 +123,11 @@ does not.
 
 7. **Close registration.** `POST /v1/auth/register` already closes itself once an
    organization exists, but check that it does exist before opening the door.
+
+8. **Leave `ALLOW_PRIVATE_INTEGRATION_TARGETS` off.** On by default it is not,
+   and it should stay that way anywhere untrusted people can create a webhook or
+   an integration: the URL they choose is a request your server makes, from
+   inside your network.
 
 ## Disclosure
 
