@@ -29,6 +29,11 @@ A primeira vez que você abre, o painel mostra a tela de setup: nome da
 organização, seu nome, e-mail e senha. Você entra como **owner** e essa tela
 nunca mais aparece — daí em diante, novos usuários entram por convite.
 
+Se essa tela disser que o setup está fechado em vez de aceitar o formulário, a
+API está com `ALLOW_OPEN_REGISTRATION` desligado — ele vem ligado por padrão,
+então isso só acontece num deploy que o define explicitamente. O conserto está
+no [guia de problemas](troubleshooting.pt-BR.md#a-tela-de-setup-se-recusa-a-criar-a-organização).
+
 ## 3. Parear o número
 
 Aba **Sessões** → **Nova sessão** → dê um nome → **Iniciar**.

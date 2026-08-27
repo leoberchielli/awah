@@ -30,6 +30,12 @@ The first time you open it, the dashboard shows the setup screen: organization
 name, your name, email and password. You come in as **owner** and that screen
 never shows up again — from there on, new users join by invite.
 
+If that screen says setup is closed instead of accepting the form, the API has
+`ALLOW_OPEN_REGISTRATION` off — it is on by default, so this only happens on a
+deployment that sets it explicitly.
+[Troubleshooting](troubleshooting.md#the-setup-screen-refuses-to-create-the-organization)
+has the fix.
+
 ## 3. Pair the number
 
 **Sessions** tab → **New session** → give it a name → **Start**.

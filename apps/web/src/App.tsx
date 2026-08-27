@@ -59,7 +59,8 @@ function Authenticated({ children }: { children: React.ReactNode }) {
 
   if (!settled || !bootstrap.settled) return <Loading />
 
-  if (bootstrap.data?.needsSetup) return <FirstRun />
+  if (bootstrap.data?.needsSetup)
+    return <FirstRun openRegistration={bootstrap.data.openRegistration} />
 
   if (error || !data) {
     const returnTo = `${window.location.pathname}${window.location.search}`

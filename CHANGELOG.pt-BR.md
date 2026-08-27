@@ -238,6 +238,29 @@ quando o conjunto estiver exercitado contra tráfego real em escala.
 
 ### Corrigido
 
+**Instância que nunca conseguia ser inicializada.**
+
+O padrão de `ALLOW_OPEN_REGISTRATION` era `false`, e a única coisa que o ligava
+era uma linha do `docker-compose.yml` deste repositório. Quem entrou por outra
+porta — `docker run` na imagem publicada, template de PaaS, manifesto de
+Kubernetes, um compose próprio — ganhava um painel que oferecia a tela de setup
+e uma API que recusava cada envio. Não havia saída pelo navegador: convite exige
+uma conta, e a conta era justamente o que aquela tela ia criar. A variável não
+aparecia em documento nenhum, então também não havia o que procurar.
+
+O padrão agora é `true`. Isso não afrouxa nada: a rota de bootstrap se fecha
+sozinha assim que existe qualquer organização, e é isso que de fato impede o
+registro de ficar aberto — a flag só barrava instância ainda vazia. O
+`docs/production.pt-BR.md` manda fechá-la depois do setup, e o comentário no
+`.env.example` passa a dizer o padrão e o que custa desligar.
+
+Vieram junto duas coisas menores. O painel lia `needsSetup` e ignorava
+`openRegistration`, que vinha na mesma resposta — então o caso fechado
+desenhava um formulário que só sabia responder 403 seco; agora ele diz qual
+variável definir. E as duas recusas dentro da rota estavam na ordem errada, de
+modo que instância fechada depois do setup ouvia que o registro estava
+desligado, como se religá-lo fosse o caminho.
+
 **O orçamento não segurava sob concorrência.**
 
 O motor de risco lia as janelas deslizantes, decidia, e registrava o envio

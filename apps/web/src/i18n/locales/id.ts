@@ -64,6 +64,11 @@ export const id: Catalog = {
   'setup.ownerNote':
     'Anda masuk sebagai <strong>owner</strong> — satu-satunya peran yang bisa mengangkat owner lain dan menghapus organisasi.',
   'setup.apiUnreachable': 'Tidak bisa menghubungi server API.',
+  'setup.closed.title': 'Penyiapan awal tertutup di instance ini',
+  'setup.closed.body':
+    'Instance ini belum punya organisasi, tetapi pendaftaran terbuka <strong>nonaktif</strong> — jadi layar ini tidak bisa membuatnya, dan undangan memerlukan akun yang belum ada. Setel ini di environment API:',
+  'setup.closed.restart':
+    'Lalu mulai ulang API. Dengan Docker Compose, itu satu baris di file .env di samping docker-compose.yml, diikuti docker compose up -d. Setelah organisasi ada, layar ini tidak muncul lagi, dan variabelnya bisa dinonaktifkan kembali.',
 
   'keys.gate':
     'Menerbitkan dan mencabut kunci termasuk administrasi identitas, khusus untuk administrator. Hubungi pengelola organisasi.',

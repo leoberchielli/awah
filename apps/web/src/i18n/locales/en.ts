@@ -83,6 +83,11 @@ export const en = {
   'setup.ownerNote':
     'You sign in as <strong>owner</strong> — the only role that can promote another owner and delete the organization.',
   'setup.apiUnreachable': 'Could not reach the API server.',
+  'setup.closed.title': 'Setup is closed on this instance',
+  'setup.closed.body':
+    'This instance has no organization yet, but open registration is <strong>off</strong> — so this screen cannot create one, and invitations need an account that does not exist yet. Set this in the API environment:',
+  'setup.closed.restart':
+    'Then restart the API. With Docker Compose that is one line in the .env file next to docker-compose.yml, followed by docker compose up -d. Once the organization exists this screen never comes back, and the variable can go off again.',
 
   // ---- keys ----
   'keys.gate':

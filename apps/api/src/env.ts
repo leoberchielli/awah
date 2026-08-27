@@ -93,7 +93,27 @@ const envSchema = z.object({
     .default(1_048_576),
 
   SESSION_TTL_HOURS: z.coerce.number().int().positive().default(168),
-  ALLOW_OPEN_REGISTRATION: boolish.default(false),
+
+  /**
+   * Whether `POST /v1/auth/register` may create the first organization.
+   *
+   * On by default, and that is not a loosening: the route closes itself the
+   * moment any organization exists, so what this flag gates is the bootstrap of
+   * an instance that is still empty — nothing else reads it.
+   *
+   * It defaulted to `false`, and the only thing standing between a new user and
+   * a dead end was one line in this repository's `docker-compose.yml`. Anyone
+   * arriving by another door — `docker run` on the published image, a PaaS
+   * template, a Kubernetes manifest, a compose file of their own — got an
+   * instance that showed the setup screen and refused every submission, with no
+   * invite path to fall back on because invites need an account that cannot be
+   * created yet. The variable is named in no document, so there was nothing to
+   * find either.
+   *
+   * Set it to `false` to shut the door explicitly — on an instance that is
+   * already initialized it changes nothing.
+   */
+  ALLOW_OPEN_REGISTRATION: boolish.default(true),
 
   /**
    * The WhatsApp engine's log, kept apart from the API's. Baileys is extremely

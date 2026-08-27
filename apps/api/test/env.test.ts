@@ -1,7 +1,11 @@
 import { randomBytes } from 'node:crypto'
+import { readFileSync } from 'node:fs'
 import { hostname } from 'node:os'
 import { describe, expect, it } from 'vitest'
 import { loadEnv } from '../src/env'
+
+const repoFile = (name: string) =>
+  readFileSync(new URL(`../../../${name}`, import.meta.url), 'utf8')
 
 const valid = {
   DATABASE_URL: 'postgres://awah:awah@localhost:5432/awah',
@@ -16,7 +20,35 @@ describe('environment validation', () => {
     expect(env.PORT).toBe(2900)
     expect(env.NODE_ENV).toBe('development')
     expect(env.SESSION_TTL_HOURS).toBe(168)
-    expect(env.ALLOW_OPEN_REGISTRATION).toBe(false)
+  })
+
+  /**
+   * The regression this test prevents: the default was `false`, and the only
+   * thing that opened the bootstrap was one line in this repository's
+   * docker-compose.yml. Anyone who came in by another door — `docker run` on
+   * the published image, a PaaS template, a Kubernetes manifest — reached a
+   * setup screen that refused every submission, with no invite path to fall
+   * back on because invites need an account that cannot exist yet.
+   *
+   * The bootstrap route closes itself once an organization exists, and that is
+   * what keeps registration from staying open — not this default.
+   */
+  it('leaves the bootstrap open when nobody said otherwise', () => {
+    expect(loadEnv(valid).ALLOW_OPEN_REGISTRATION).toBe(true)
+  })
+
+  /**
+   * The default the code applies and the value this repository ships are the
+   * same promise made in two places. They disagreed, and the half nobody reads
+   * is the one every deployment outside this compose file gets.
+   */
+  it('agrees with the value shipped in docker-compose.yml and .env.example', () => {
+    // A regex, not a plain string: the literal `${...}` compose needs here is
+    // what biome's noTemplateCurlyInString exists to catch elsewhere.
+    expect(repoFile('docker-compose.yml')).toMatch(
+      /ALLOW_OPEN_REGISTRATION: \$\{ALLOW_OPEN_REGISTRATION:-true\}/,
+    )
+    expect(repoFile('.env.example')).toContain('ALLOW_OPEN_REGISTRATION=true')
   })
 
   it('derives NODE_ID from the hostname when it is not given', () => {

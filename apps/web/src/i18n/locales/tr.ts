@@ -65,6 +65,11 @@ export const tr: Catalog = {
   'setup.ownerNote':
     '<strong>owner</strong> olarak giriyorsunuz — başka bir owner atayabilen ve kuruluşu silebilen tek rol.',
   'setup.apiUnreachable': 'API sunucusuna ulaşılamadı.',
+  'setup.closed.title': 'Bu örnekte ilk kurulum kapalı',
+  'setup.closed.body':
+    'Bu örnekte henüz bir organizasyon yok, ancak açık kayıt <strong>kapalı</strong> — bu yüzden bu ekran organizasyonu oluşturamıyor ve davetler henüz var olmayan bir hesap gerektiriyor. API ortamında şunu tanımlayın:',
+  'setup.closed.restart':
+    'Ardından API’yi yeniden başlatın. Docker Compose ile bu, docker-compose.yml yanındaki .env dosyasına bir satır ve ardından docker compose up -d demektir. Organizasyon oluştuktan sonra bu ekran bir daha gelmez ve değişken yeniden kapatılabilir.',
 
   'keys.gate':
     'Anahtar çıkarmak ve iptal etmek kimlik yönetimidir; yöneticilere ayrılmıştır. Kuruluşu yönetenden isteyin.',

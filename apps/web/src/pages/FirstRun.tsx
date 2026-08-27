@@ -15,7 +15,7 @@ import { ApiError, post } from '../lib/api'
  * The route closes itself as soon as an organization exists, so this screen
  * shows up once in the life of the instance.
  */
-export function FirstRun() {
+export function FirstRun({ openRegistration }: { openRegistration: boolean }) {
   const t = useT()
   const [organizationName, setOrganizationName] = useState('')
   const [name, setName] = useState('')
@@ -40,6 +40,17 @@ export function FirstRun() {
       setSending(false)
     }
   }
+
+  /*
+   * `needsSetup` alone used to decide this screen, and `openRegistration` came
+   * down the same response unread. The result was a form that could not
+   * succeed: it was filled in, submitted, and answered with a bare 403 whose
+   * cause — one environment variable, named in no document — the person filling
+   * it in had no way to guess. Anyone who did not deploy with this repository's
+   * docker-compose.yml landed here, with invites out of reach because they need
+   * an account that cannot exist yet.
+   */
+  if (!openRegistration) return <SetupClosed />
 
   return (
     <div className="grid min-h-dvh place-items-center bg-ground px-4 py-10">
@@ -105,6 +116,42 @@ export function FirstRun() {
         <p className="mt-4 text-center text-xs text-muted">
           <Rich text={t('setup.ownerNote')} />
         </p>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * An empty instance whose bootstrap is shut.
+ *
+ * It says which variable to set rather than which one is missing: this is the
+ * one screen where the operator and the visitor are the same person, and a
+ * message that only reported the refusal would leave them with a working panel
+ * and no way into it.
+ */
+function SetupClosed() {
+  const t = useT()
+
+  return (
+    <div className="grid min-h-dvh place-items-center bg-ground px-4 py-10">
+      <div className="w-full max-w-md">
+        <div className="mb-6 flex flex-col gap-2">
+          <div className="flex items-start justify-between gap-3">
+            <Brand />
+            <LanguagePicker />
+          </div>
+          <h1 className="text-lg font-semibold text-ink">{t('setup.closed.title')}</h1>
+        </div>
+
+        <div className="card flex flex-col gap-3 p-5 text-sm text-muted">
+          <p>
+            <Rich text={t('setup.closed.body')} />
+          </p>
+          <code className="rounded-md bg-surface-2 px-3 py-2 font-mono text-xs text-ink">
+            ALLOW_OPEN_REGISTRATION=true
+          </code>
+          <p className="text-xs">{t('setup.closed.restart')}</p>
+        </div>
       </div>
     </div>
   )

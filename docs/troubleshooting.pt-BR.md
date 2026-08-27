@@ -107,8 +107,35 @@ Ou use o SDK, que já faz isso: `verifyWebhookRequest(request, secret)`.
 **O relógio do seu servidor está errado.** A janela é de 5 minutos. Se o horário
 do seu host derivou mais que isso, toda entrega legítima é rejeitada como replay.
 
-## O painel não abre
+## A tela de setup se recusa a criar a organização
 
+**"Open registration is off on this instance."** A instância não tem
+organização, então o painel oferece a tela de primeira execução — e a API se
+recusa a agir sobre ela. Não há saída pelo navegador: convite exige uma conta, e
+a conta é justamente o que essa tela ia criar.
+
+Defina `ALLOW_OPEN_REGISTRATION=true` no ambiente da API e reinicie. No Docker
+Compose é uma linha no `.env` ao lado do `docker-compose.yml`, seguida de
+`docker compose up -d`; no `docker run`, numa PaaS ou no Kubernetes, vai onde
+aquela plataforma guarda as variáveis do serviço.
+
+Para ver o que a instância pensa, antes e depois — a rota responde sem
+credencial nenhuma:
+
+```bash
+curl http://localhost:2900/v1/auth/bootstrap
+```
+
+`{"needsSetup":true,"openRegistration":false}` é exatamente este caso.
+
+Consertar não perde nada: ainda não existe organização, então não há o que
+migrar. Depois que ela existir, a rota se fecha sozinha de vez e a variável para
+de importar — pode voltar para `false`.
+
+Instâncias que subiram antes de esse default mudar precisavam definir a
+variável; uma nova já nasce aberta, a menos que você a feche.
+
+## O painel não abre
 **Página em branco, API respondendo.** O build do dashboard não foi encontrado. O
 log do boot diz qual caso é: `dashboard served by the API` com a raiz, ou
 `dashboard not bundled`. No segundo caso, rode `pnpm --filter @awah/web build`

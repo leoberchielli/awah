@@ -66,6 +66,11 @@ export const ptBR: Catalog = {
   'setup.ownerNote':
     'Você entra como <strong>owner</strong> — o único papel que pode promover outro owner e excluir a organização.',
   'setup.apiUnreachable': 'Não consegui falar com o servidor da API.',
+  'setup.closed.title': 'A configuração inicial está fechada nesta instância',
+  'setup.closed.body':
+    'Esta instância ainda não tem organização, mas o registro aberto está <strong>desligado</strong> — então esta tela não consegue criá-la, e convites exigem uma conta que ainda não existe. Defina isto no ambiente da API:',
+  'setup.closed.restart':
+    'Depois reinicie a API. No Docker Compose é uma linha no arquivo .env ao lado do docker-compose.yml, seguida de docker compose up -d. Assim que a organização existir esta tela não volta mais, e a variável pode ser desligada de novo.',
 
   'keys.gate':
     'Emitir e revogar chave é administração de identidade, reservada a administradores. Peça a quem administra a organização.',
