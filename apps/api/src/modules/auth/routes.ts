@@ -116,12 +116,26 @@ export async function authRoutes(app: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      if (!app.env.ALLOW_OPEN_REGISTRATION) {
-        throw forbidden('Open registration is off on this instance.')
-      }
-
+      /*
+       * The order matters, because each refusal has to be the one the reader
+       * can act on. An initialized instance is done with this route whatever
+       * the flag says, so it answers "ask for an invite" — checking the flag
+       * first told whoever had shut it after setup that registration was off,
+       * as if turning it back on were the way in.
+       *
+       * On an empty instance the flag is the whole story, so the refusal names
+       * the variable: this screen has no other way forward, invites need an
+       * account that does not exist yet, and the name appears nowhere the user
+       * would have looked.
+       */
       if ((await identity.organizationCount()) > 0) {
         throw forbidden('This instance is already initialized. Ask an administrator for an invite.')
+      }
+
+      if (!app.env.ALLOW_OPEN_REGISTRATION) {
+        throw forbidden(
+          'Open registration is off on this instance. Set ALLOW_OPEN_REGISTRATION=true in the API environment and restart it to create the first organization.',
+        )
       }
 
       const { organizationName, name, email, password } = request.body

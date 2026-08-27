@@ -357,6 +357,12 @@ describe.skipIf(!hasInfra)('first run', () => {
     expect(response.json().needsSetup).toBe(false)
   })
 
+  /**
+   * The message is part of what is asserted here, and it is the point of the
+   * test. While ALLOW_OPEN_REGISTRATION defaulted to `false`, this 403 came
+   * from the flag rather than from the organization that exists — the guard
+   * this test was written for was never reached, and it passed anyway.
+   */
   it('registration closes after the first organization', async () => {
     const response = await app.inject({
       method: 'POST',
@@ -370,5 +376,6 @@ describe.skipIf(!hasInfra)('first run', () => {
     })
 
     expect(response.statusCode).toBe(403)
+    expect(response.json().error.message).toContain('already initialized')
   })
 })

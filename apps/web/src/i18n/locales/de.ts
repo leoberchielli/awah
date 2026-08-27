@@ -66,6 +66,11 @@ export const de: Catalog = {
   'setup.ownerNote':
     'Sie melden sich als <strong>owner</strong> an — die einzige Rolle, die einen weiteren Owner ernennen und die Organisation löschen kann.',
   'setup.apiUnreachable': 'Der API-Server war nicht erreichbar.',
+  'setup.closed.title': 'Die Einrichtung ist auf dieser Instanz geschlossen',
+  'setup.closed.body':
+    'Diese Instanz hat noch keine Organisation, aber die offene Registrierung ist <strong>aus</strong> — dieser Bildschirm kann sie also nicht anlegen, und Einladungen brauchen ein Konto, das es noch nicht gibt. Setzen Sie dies in der Umgebung der API:',
+  'setup.closed.restart':
+    'Danach die API neu starten. Mit Docker Compose ist das eine Zeile in der .env-Datei neben der docker-compose.yml, gefolgt von docker compose up -d. Sobald die Organisation existiert, kommt dieser Bildschirm nie wieder, und die Variable kann wieder aus.',
 
   'keys.gate':
     'Schlüssel auszustellen und zu widerrufen ist Identitätsverwaltung und Administratoren vorbehalten. Wenden Sie sich an die Verwaltung der Organisation.',

@@ -51,7 +51,8 @@ export function SignIn() {
     }
   }
 
-  if (bootstrap.data?.needsSetup) return <FirstRun />
+  if (bootstrap.data?.needsSetup)
+    return <FirstRun openRegistration={bootstrap.data.openRegistration} />
 
   const demo = bootstrap.data?.demo ?? null
 

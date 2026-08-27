@@ -41,6 +41,19 @@ pick their own IP on every request and never hit the rate limit.
 ports to make development easier. In production, remove the `ports` blocks from
 both services.
 
+**`ALLOW_OPEN_REGISTRATION` shut once setup is done.** It is on by default, and
+it has to be: without it the setup screen refuses the only organization anyone
+could create, and an instance that has never been initialized has no invitation
+to fall back on. What that leaves open is one window — between the port opening
+and the first organization existing, whoever reaches it first becomes the owner.
+The route closes itself the moment the organization exists, so setting this to
+`false` afterwards changes nothing operationally; do it anyway, and the window
+never reopens if the database is ever restored empty.
+
+```bash
+ALLOW_OPEN_REGISTRATION=false
+```
+
 **The data lives in named volumes** (`awah_awah-postgres`, `awah_awah-redis`),
 not in folders of the repository — whoever downloaded only the compose file has
 no repository at all. The backup comes out of `awah_awah-postgres`, and that is

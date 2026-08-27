@@ -40,6 +40,19 @@ próprio IP a cada requisição e nunca bate no rate limit.
 portas para facilitar desenvolvimento. Em produção, remova os blocos `ports` dos
 dois serviços.
 
+**`ALLOW_OPEN_REGISTRATION` fechado depois do setup.** Ele vem ligado por
+padrão, e precisa vir: sem isso a tela de setup recusa a única organização que
+alguém poderia criar, e instância que nunca foi inicializada não tem convite
+para onde recuar. O que fica aberto é uma janela — entre abrir a porta e existir
+a primeira organização, quem chegar primeiro vira o owner. A rota se fecha
+sozinha assim que a organização existe, então pôr `false` depois não muda nada
+na operação; ponha mesmo assim, e a janela não reabre se o banco um dia for
+restaurado vazio.
+
+```bash
+ALLOW_OPEN_REGISTRATION=false
+```
+
 **Os dados vivem em volumes nomeados** (`awah_awah-postgres`, `awah_awah-redis`),
 e não em pastas do repositório — quem baixou só o compose não tem repositório
 nenhum. É de `awah_awah-postgres` que sai o backup, e é ele que precisa

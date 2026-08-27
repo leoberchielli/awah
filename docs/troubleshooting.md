@@ -111,6 +111,34 @@ Or use the SDK, which already does this: `verifyWebhookRequest(request, secret)`
 **Your server's clock is wrong.** The window is 5 minutes. If your host's time has
 drifted more than that, every legitimate delivery is rejected as a replay.
 
+## The setup screen refuses to create the organization
+
+**"Open registration is off on this instance."** The instance has no
+organization, so the panel offers the first-run screen — and the API is refusing
+to act on it. There is no way around it from the browser: an invitation needs an
+account, and the account is what this screen was going to create.
+
+Set `ALLOW_OPEN_REGISTRATION=true` in the API's environment and restart it. With
+Docker Compose, that is one line in the `.env` next to `docker-compose.yml`,
+followed by `docker compose up -d`; with `docker run`, a PaaS or Kubernetes, it
+goes wherever that platform keeps the service's variables.
+
+Check what the instance thinks before and after — the route answers with no
+credential at all:
+
+```bash
+curl http://localhost:2900/v1/auth/bootstrap
+```
+
+`{"needsSetup":true,"openRegistration":false}` is this case exactly.
+
+Nothing is lost by fixing it: no organization exists yet, so there is nothing to
+migrate. Once it does exist, the route closes itself for good and the variable
+stops mattering — you can set it back to `false`.
+
+Instances started before this default changed had to set the variable; a new one
+has it open unless you shut it.
+
 ## The dashboard doesn't open
 
 **Blank page, API responding.** The dashboard build was not found. The boot log

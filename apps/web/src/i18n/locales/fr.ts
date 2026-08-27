@@ -65,6 +65,11 @@ export const fr: Catalog = {
   'setup.ownerNote':
     "Vous entrez en tant qu'<strong>owner</strong> — le seul rôle qui peut promouvoir un autre owner et supprimer l'organisation.",
   'setup.apiUnreachable': "Impossible de joindre le serveur de l'API.",
+  'setup.closed.title': 'La configuration initiale est fermée sur cette instance',
+  'setup.closed.body':
+    'Cette instance n’a pas encore d’organisation, mais l’inscription ouverte est <strong>désactivée</strong> — cet écran ne peut donc pas la créer, et les invitations exigent un compte qui n’existe pas encore. Définissez ceci dans l’environnement de l’API :',
+  'setup.closed.restart':
+    'Redémarrez ensuite l’API. Avec Docker Compose, c’est une ligne dans le fichier .env à côté de docker-compose.yml, suivie de docker compose up -d. Une fois l’organisation créée, cet écran ne revient plus et la variable peut être désactivée de nouveau.',
 
   'keys.gate':
     "Émettre et révoquer une clé relève de l'administration des identités, réservée aux administrateurs. Demandez à qui administre l'organisation.",

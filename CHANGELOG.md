@@ -240,6 +240,30 @@ v1.0, once the whole thing has been exercised against real traffic at scale.
 
 ### Fixed
 
+**An instance that could never be initialized.**
+
+`ALLOW_OPEN_REGISTRATION` defaulted to `false`, and the only thing that turned
+it on was one line in this repository's `docker-compose.yml`. Anyone who came in
+by another door — `docker run` on the published image, a PaaS template, a
+Kubernetes manifest, a compose file of their own — got a panel that offered the
+setup screen and an API that refused every submission. There was no way around
+it from the browser: invitations need an account, and the account was what the
+screen was going to create. The variable is named in no document, so there was
+nothing to look up either.
+
+The default is now `true`. That is not a loosening: the bootstrap route closes
+itself the moment any organization exists, which is what actually keeps
+registration from staying open — the flag only ever gated an instance that was
+still empty. `docs/production.md` says to shut it after setup, and the
+`.env.example` comment now states the default and what turning it off costs.
+
+Two smaller things came with it. The panel read `needsSetup` and ignored
+`openRegistration`, which came down the same response — so the closed case
+rendered a form that could only answer with a bare 403; it now explains which
+variable to set. And the two refusals inside the route were in the wrong order,
+so an instance shut after setup was told registration was off, as if turning it
+back on were the way in.
+
 **The budget did not hold under concurrency.**
 
 The risk engine read its sliding windows, decided, and recorded the send after
